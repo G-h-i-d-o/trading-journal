@@ -73,7 +73,7 @@ function setupEventListeners() {
         }
     });
 
-    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol'].forEach(id => {
+    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('input', () => updateRiskCalculation());
@@ -204,6 +204,7 @@ async function addTrade(e) {
         const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
+        const mood = document.getElementById('mood')?.value || '';
         const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
 
@@ -218,15 +219,25 @@ async function addTrade(e) {
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
 
         const tradeData = {
-            symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
-            mood: document.getElementById('mood')?.value || '', // ← ADD THIS LINE HERE
+            symbol, 
+            type: tradeType, 
+            instrumentType, 
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            lotSize,
+            mood: mood,
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
-            notes: document.getElementById('notes')?.value || '', timestamp: new Date().toISOString(),
-            profit, pipsPoints: pipPointInfo.risk,
+            notes: document.getElementById('notes')?.value || '', 
+            timestamp: new Date().toISOString(),
+            profit, 
+            pipsPoints: pipPointInfo.risk,
             riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
             riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-            accountSize, leverage, userId: currentUser.uid
+            accountSize, 
+            leverage, 
+            userId: currentUser.uid
         };
 
         await addDoc(collection(db, 'trades'), tradeData);
@@ -256,6 +267,7 @@ async function updateTrade(tradeId, e) {
         const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
+        const mood = document.getElementById('mood')?.value || '';
         const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
 
@@ -270,15 +282,25 @@ async function updateTrade(tradeId, e) {
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
 
         const tradeData = {
-            symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
-            mood: document.getElementById('mood')?.value || '', // ← ADD THIS LINE HERE
+            symbol, 
+            type: tradeType, 
+            instrumentType, 
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            lotSize,
+            mood: mood,
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
-            notes: document.getElementById('notes')?.value || '', timestamp: new Date().toISOString(),
-            profit, pipsPoints: pipPointInfo.risk,
+            notes: document.getElementById('notes')?.value || '', 
+            timestamp: new Date().toISOString(),
+            profit, 
+            pipsPoints: pipPointInfo.risk,
             riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
             riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-            accountSize, leverage, userId: currentUser.uid
+            accountSize, 
+            leverage, 
+            userId: currentUser.uid
         };
 
         await updateDoc(doc(db, 'trades', tradeId), tradeData);
@@ -312,14 +334,18 @@ async function loadTrades() {
         displayTrades(trades);
         updateStats(trades);
         renderCharts(trades);
+        calculateAdvancedMetrics(trades);
     } catch (error) {
         console.error('Error loading trades:', error);
-        document.getElementById('tradeHistory').innerHTML = `
-            <div class="text-center text-red-500 py-4">
-                <p>Error loading trades. Please refresh the page.</p>
-                <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2">🔄 Refresh</button>
-            </div>
-        `;
+        const tradeHistory = document.getElementById('tradeHistory');
+        if (tradeHistory) {
+            tradeHistory.innerHTML = `
+                <div class="text-center text-red-500 py-4">
+                    <p>Error loading trades. Please refresh the page.</p>
+                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2">🔄 Refresh</button>
+                </div>
+            `;
+        }
     } finally {
         hideLoading();
     }
@@ -332,15 +358,16 @@ function displayTrades(trades) {
 
     if (trades.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet.</p>';
-        tradeCount.textContent = '0 trades';
+        if (tradeCount) tradeCount.textContent = '0 trades';
         return;
     }
 
-    tradeCount.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
+    if (tradeCount) tradeCount.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
     container.innerHTML = trades.map(trade => {
         const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
         const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
         const profitClass = trade.profit >= 0 ? 'profit' : 'loss';
+        const moodEmoji = getMoodEmoji(trade.mood);
         
         return `
         <div class="trade-item">
@@ -349,6 +376,7 @@ function displayTrades(trades) {
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2">
                         <div class="font-semibold text-sm sm:text-base">
                             ${trade.symbol} <span class="market-type-badge ${badgeClass}">${badgeText}</span>
+                            ${moodEmoji ? `<span class="ml-1">${moodEmoji}</span>` : ''}
                         </div>
                         <div class="${profitClass} font-bold text-sm sm:text-base">
                             $${trade.profit.toFixed(2)}
@@ -388,6 +416,7 @@ window.editTrade = async (tradeId) => {
             document.getElementById('stopLoss').value = tradeData.stopLoss;
             document.getElementById('takeProfit').value = tradeData.takeProfit || '';
             document.getElementById('lotSize').value = tradeData.lotSize;
+            document.getElementById('mood').value = tradeData.mood || '';
             document.getElementById('beforeScreenshot').value = tradeData.beforeScreenshot || '';
             document.getElementById('afterScreenshot').value = tradeData.afterScreenshot || '';
             document.getElementById('notes').value = tradeData.notes || '';
@@ -409,10 +438,12 @@ window.editTrade = async (tradeId) => {
     }
 }
 
-function cancelEdit() {
+window.cancelEdit = () => {
     editingTradeId = null;
     document.querySelector('#tradeForm .section-title').textContent = '📝 New Trade';
     document.querySelector('#tradeForm button[type="submit"]').innerHTML = '<span>💾 Save Trade</span>';
+    document.getElementById('tradeForm').reset();
+    updateRiskCalculation();
 }
 
 window.viewScreenshot = (url) => {
@@ -512,7 +543,8 @@ function resetAdvancedMetrics() {
         if (element) element.textContent = value;
     });
 
-    document.getElementById('moodPerformance').textContent = 'No data yet';
+    const moodPerformance = document.getElementById('moodPerformance');
+    if (moodPerformance) moodPerformance.textContent = 'No data yet';
 }
 
 function updatePerformanceMetrics(metrics) {
@@ -582,8 +614,10 @@ function calculatePsychologicalMetrics(trades) {
         )
         .join(', ');
     
-    document.getElementById('moodPerformance').textContent = 
-        moodPerformanceText || 'No mood data recorded';
+    const moodPerformanceElement = document.getElementById('moodPerformance');
+    if (moodPerformanceElement) {
+        moodPerformanceElement.textContent = moodPerformanceText || 'No mood data recorded';
+    }
 }
 
 function getMoodEmoji(mood) {
@@ -689,7 +723,7 @@ function updateStats(trades) {
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
     const stats = {'totalTrades': '0', 'winRate': '0%', 'totalPL': '$0', 'currentBalance': `$${accountSize.toFixed(2)}`, 'recentStats': 'No trades yet', 'symbolStats': 'No data'};
 
-    if (trades.length > 0) {
+    if (trades && trades.length > 0) {
         const totalTrades = trades.length;
         const winningTrades = trades.filter(t => t.profit > 0).length;
         const winRate = ((winningTrades / totalTrades) * 100).toFixed(1);
@@ -712,12 +746,17 @@ function updateStats(trades) {
     Object.entries(stats).forEach(([id, value]) => {
         const element = document.getElementById(id);
         if (element) {
-            element.textContent = value;
+            if (id === 'symbolStats') {
+                element.innerHTML = value;
+            } else {
+                element.textContent = value;
+            }
+            
             if (id === 'totalPL') {
-                const plValue = parseFloat(value.replace('$', ''));
+                const plValue = parseFloat(value.replace('$', '')) || 0;
                 element.className = `stat-value ${plValue >= 0 ? 'profit' : 'loss'}`;
             } else if (id === 'currentBalance') {
-                const balanceValue = parseFloat(value.replace('$', ''));
+                const balanceValue = parseFloat(value.replace('$', '')) || 0;
                 const originalBalance = parseFloat(document.getElementById('accountSize')?.value) || 10000;
                 element.className = `stat-value ${balanceValue >= originalBalance ? 'profit' : 'loss'}`;
             }
@@ -753,76 +792,196 @@ async function loadUserSettings() {
 
 window.exportTrades = async () => {
     try {
-        showLoading();
+        if (!currentUser) return;
         const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
         const trades = [];
-        querySnapshot.forEach((doc) => {
-            const trade = doc.data();
-            const { userId, ...exportTrade } = trade;
-            trades.push(exportTrade);
-        });
-
-        const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-        const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
-        const accountCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
-
-        const exportData = { version: "1.0", exported: new Date().toISOString(), data: { trades, accountSize, riskPerTrade, accountCurrency, leverage }};
-        const dataStr = JSON.stringify(exportData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(dataBlob);
-        link.download = `trading-journal-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
+        querySnapshot.forEach((doc) => trades.push({ id: doc.id, ...doc.data() }));
+        
+        const csv = convertToCSV(trades);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trading-journal-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     } catch (error) {
         console.error('Error exporting trades:', error);
         alert('Error exporting trades.');
-    } finally {
-        hideLoading();
     }
 };
 
-function renderCharts(trades) { renderPerformanceChart(trades); renderWinLossPieChart(trades); renderMarketTypeChart(trades); }
-function renderPerformanceChart(trades) {
-    const ctx = document.getElementById('performanceChart')?.getContext('2d');
-    if (!ctx) return;
-    if (performanceChart) performanceChart.destroy();
-    if (!trades || trades.length === 0) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.font = '14px Arial'; ctx.fillStyle = '#666'; ctx.textAlign = 'center';
-        ctx.fillText('Add trades to see your progress', ctx.canvas.width / 2, ctx.canvas.height / 2);
-        return;
-    }
-    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const dates = sortedTrades.map(t => new Date(t.timestamp).toLocaleDateString());
-    const cumulativeBalance = sortedTrades.reduce((acc, trade, index) => {
-        const previousBalance = index === 0 ? accountSize : acc[index - 1];
-        acc.push(previousBalance + trade.profit);
-        return acc;
-    }, []);
-    performanceChart = new Chart(ctx, { type: 'line', data: { labels: dates, datasets: [{ label: 'Balance', data: cumulativeBalance, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, fill: true, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top' } } } });
-}
-function renderWinLossPieChart(trades) {
-    const ctx = document.getElementById('winLossChart')?.getContext('2d');
-    if (!ctx) return;
-    if (winLossChart) winLossChart.destroy();
-    if (!trades || trades.length === 0) return;
-    const winningTrades = trades.filter(t => t.profit > 0).length;
-    const losingTrades = trades.filter(t => t.profit < 0).length;
-    const breakEvenTrades = trades.filter(t => t.profit === 0).length;
-    winLossChart = new Chart(ctx, { type: 'pie', data: { labels: ['Win', 'Loss', 'Even'], datasets: [{ data: [winningTrades, losingTrades, breakEvenTrades], backgroundColor: ['#10b981', '#ef4444', '#6b7280'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-}
-function renderMarketTypeChart(trades) {
-    const ctx = document.getElementById('marketTypeChart')?.getContext('2d');
-    if (!ctx) return;
-    if (marketTypeChart) marketTypeChart.destroy();
-    if (!trades || trades.length === 0) return;
-    const forexTrades = trades.filter(t => t.instrumentType === 'forex').length;
-    const indicesTrades = trades.filter(t => t.instrumentType === 'indices').length;
-    marketTypeChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Forex', 'Indices'], datasets: [{ data: [forexTrades, indicesTrades], backgroundColor: ['#3b82f6', '#ec4899'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+function convertToCSV(trades) {
+    const headers = ['Date', 'Symbol', 'Type', 'Entry', 'SL', 'TP', 'Lots', 'Profit', 'Risk Amount', 'Risk %', 'Mood', 'Notes'];
+    const csvRows = [headers.join(',')];
+    
+    trades.forEach(trade => {
+        const row = [
+            new Date(trade.timestamp).toLocaleDateString(),
+            trade.symbol,
+            trade.type,
+            trade.entryPrice,
+            trade.stopLoss,
+            trade.takeProfit || '',
+            trade.lotSize,
+            trade.profit,
+            trade.riskAmount,
+            trade.riskPercent,
+            trade.mood || '',
+            `"${(trade.notes || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    return csvRows.join('\n');
 }
 
-document.addEventListener('click', (e) => { if (e.target === document.getElementById('screenshotModal')) closeScreenshotModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeScreenshotModal(); });
+function renderCharts(trades = []) {
+    renderPerformanceChart(trades);
+    renderWinLossChart(trades);
+    renderMarketTypeChart(trades);
+}
+
+function renderPerformanceChart(trades) {
+    const ctx = document.getElementById('performanceChart');
+    if (!ctx) return;
+
+    if (performanceChart) performanceChart.destroy();
+
+    if (trades.length === 0) {
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+        return;
+    }
+
+    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    let balance = accountSize;
+    const balanceData = [balance];
+    const labels = ['Start'];
+
+    trades.forEach((trade, index) => {
+        balance += trade.profit;
+        balanceData.push(balance);
+        labels.push(`Trade ${index + 1}`);
+    });
+
+    performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Account Balance',
+                data: balanceData,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: { display: true, title: { display: true, text: 'Trades' } },
+                y: { display: true, title: { display: true, text: 'Balance ($)' } }
+            }
+        }
+    });
+}
+
+function renderWinLossChart(trades) {
+    const ctx = document.getElementById('winLossChart');
+    if (!ctx) return;
+
+    if (winLossChart) winLossChart.destroy();
+
+    if (trades.length === 0) {
+        winLossChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#9ca3af'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+    }
+
+    const wins = trades.filter(t => t.profit > 0).length;
+    const losses = trades.filter(t => t.profit < 0).length;
+    const breakeven = trades.filter(t => t.profit === 0).length;
+
+    winLossChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [`Wins (${wins})`, `Losses (${losses})`, `Breakeven (${breakeven})`],
+            datasets: [{
+                data: [wins, losses, breakeven],
+                backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: { callbacks: { label: function(context) { return `${context.label}: ${context.parsed}`; } } }
+            }
+        }
+    });
+}
+
+function renderMarketTypeChart(trades) {
+    const ctx = document.getElementById('marketTypeChart');
+    if (!ctx) return;
+
+    if (marketTypeChart) marketTypeChart.destroy();
+
+    if (trades.length === 0) {
+        marketTypeChart = new Chart(ctx, {
+            type: 'pie',
+            data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#9ca3af'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+    }
+
+    const forexTrades = trades.filter(t => t.instrumentType === 'forex');
+    const indicesTrades = trades.filter(t => t.instrumentType === 'indices');
+
+    marketTypeChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: [`Forex (${forexTrades.length})`, `Indices (${indicesTrades.length})`],
+            datasets: [{
+                data: [forexTrades.length, indicesTrades.length],
+                backgroundColor: ['#3b82f6', '#8b5cf6'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: { callbacks: { label: function(context) { return `${context.label}: ${context.parsed}`; } } }
+            }
+        }
+    });
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Trading Journal initialized');
+});
