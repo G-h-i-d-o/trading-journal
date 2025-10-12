@@ -30,46 +30,46 @@
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full">
         <!-- Login Card -->
-        <div class="card-glass rounded-2xl shadow-2xl p-8 text-white">
+        <div id="login-card" class="card-glass rounded-2xl shadow-2xl p-8 text-white">
             <!-- Logo Section -->
             <div class="text-center mb-6">
                 <div class="logo-container">
                     <img src="logo.png" alt="Trading Journal Logo" class="logo-img">
                 </div>
-                <h1 class="text-3xl font-bold mb-2">Trading Journal</h1>
-                <p class="opacity-80">Track your trades and improve your strategy</p>
+                <h1 class="text-3xl font-bold mb-2">Trade Journal Pro</h1>
+                <p class="opacity-80">Log in to track your performance</p>
             </div>
 
-            <form id="loginForm" class="space-y-6">
+            <form id="login-form" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium mb-2">Email</label>
-                    <input type="email" id="loginEmail" required 
+                    <input type="email" id="login-email" required 
                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
                            placeholder="your@email.com">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium mb-2">Password</label>
-                    <input type="password" id="loginPassword" required 
+                    <input type="password" id="login-password" required 
                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
                            placeholder="••••••••">
                 </div>
 
+                <!-- Forgot Password Link -->
+                <div class="text-right">
+                    <button type="button" onclick="openResetModal()" class="text-white/80 hover:text-white text-sm underline transition duration-200">
+                        Forgot your password?
+                    </button>
+                </div>
+
                 <button type="submit" 
                         class="w-full bg-white text-purple-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-200 flex items-center justify-center">
-                    <span id="loginText">🚀 Sign In</span>
-                    <div id="loginSpinner" class="hidden ml-2">
+                    <span id="login-text">🚀 Sign In</span>
+                    <div id="login-spinner" class="hidden ml-2">
                         <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                     </div>
                 </button>
             </form>
-
-            <!-- Reset Password Link -->
-            <div class="text-center mt-4">
-                <button onclick="openResetModal()" class="text-white/80 hover:text-white text-sm underline transition duration-200">
-                    Forgot your password?
-                </button>
-            </div>
 
             <div class="text-center mt-6 pt-6 border-t border-white/20">
                 <p class="opacity-80">Don't have an account?</p>
@@ -80,7 +80,7 @@
         </div>
 
         <!-- Signup Card (Hidden by default) -->
-        <div id="signupCard" class="card-glass rounded-2xl shadow-2xl p-8 text-white hidden">
+        <div id="signup-card" class="card-glass rounded-2xl shadow-2xl p-8 text-white hidden">
             <!-- Logo Section -->
             <div class="text-center mb-6">
                 <div class="logo-container">
@@ -90,25 +90,32 @@
                 <p class="opacity-80">Start your trading journey</p>
             </div>
 
-            <form id="signupForm" class="space-y-6">
+            <form id="signup-form" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium mb-2">Email</label>
-                    <input type="email" id="signupEmail" required 
+                    <input type="email" id="signup-email" required 
                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
                            placeholder="your@email.com">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium mb-2">Password</label>
-                    <input type="password" id="signupPassword" required 
+                    <input type="password" id="signup-password" required 
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
+                           placeholder="••••••••">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Confirm Password</label>
+                    <input type="password" id="signup-confirm-password" required
                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
                            placeholder="••••••••">
                 </div>
 
                 <button type="submit" 
                         class="w-full bg-white text-purple-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-200 flex items-center justify-center">
-                    <span id="signupText">🎯 Create Account</span>
-                    <div id="signupSpinner" class="hidden ml-2">
+                    <span id="signup-text">🎯 Create Account</span>
+                    <div id="signup-spinner" class="hidden ml-2">
                         <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                     </div>
                 </button>
@@ -124,10 +131,10 @@
     </div>
 
     <!-- Reset Password Modal -->
-    <div id="resetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden">
+    <div id="reset-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden z-50">
         <div class="card-glass rounded-2xl shadow-2xl p-8 text-white max-w-md w-full">
             <!-- Logo in Modal -->
-            <div class="text-center mb-2">
+            <div class="text-center mb-6">
                 <div class="logo-container" style="width: 80px; height: 80px; margin-bottom: 0.5rem;">
                     <img src="logo.png" alt="Trading Journal Logo" class="logo-img">
                 </div>
@@ -135,10 +142,10 @@
                 <p class="opacity-80">Enter your email to receive a reset link</p>
             </div>
 
-            <form id="resetForm" class="space-y-6">
+            <form id="reset-form" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium mb-2">Email</label>
-                    <input type="email" id="resetEmail" required 
+                    <input type="email" id="reset-email" required 
                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
                            placeholder="your@email.com">
                 </div>
@@ -150,8 +157,8 @@
                     </button>
                     <button type="submit" 
                             class="flex-1 px-4 py-3 bg-white text-purple-600 rounded-lg font-semibold hover:bg-gray-100 transition duration-200 flex items-center justify-center">
-                        <span id="resetText">Send Link</span>
-                        <div id="resetSpinner" class="hidden ml-2">
+                        <span id="reset-text">Send Link</span>
+                        <div id="reset-spinner" class="hidden ml-2">
                             <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                         </div>
                     </button>
@@ -161,21 +168,206 @@
     </div>
 
     <!-- Success Message -->
-    <div id="successMessage" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden">
+    <div id="success-message" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
         <div class="flex items-center">
             <i class="fas fa-check-circle mr-2"></i>
-            <span id="successText">Password reset email sent!</span>
+            <span id="success-text">Password reset email sent!</span>
         </div>
     </div>
 
     <!-- Error Message -->
-    <div id="errorMessage" class="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hidden">
+    <div id="error-message" class="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
         <div class="flex items-center">
             <i class="fas fa-exclamation-circle mr-2"></i>
-            <span id="errorText">Error occurred</span>
+            <span id="error-text">Error occurred</span>
         </div>
     </div>
 
-    <script type="module" src="auth.js"></script>
+    <script type="module">
+        import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from './firebase-config.js';
+
+        let isLoginMode = true;
+
+        // Check if user is already logged in
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.location.href = 'dashboard.html';
+            }
+        });
+
+        // UI Switching Functions
+        window.switchToSignup = () => {
+            document.getElementById('login-card').classList.add('hidden');
+            document.getElementById('signup-card').classList.remove('hidden');
+            document.getElementById('signup-email').focus();
+        };
+
+        window.switchToLogin = () => {
+            document.getElementById('signup-card').classList.add('hidden');
+            document.getElementById('login-card').classList.remove('hidden');
+            document.getElementById('login-email').focus();
+        };
+
+        // Password Reset Functions
+        window.openResetModal = () => {
+            document.getElementById('reset-modal').classList.remove('hidden');
+            const loginEmail = document.getElementById('login-email').value;
+            if (loginEmail) {
+                document.getElementById('reset-email').value = loginEmail;
+            }
+            document.getElementById('reset-email').focus();
+        };
+
+        window.closeResetModal = () => {
+            document.getElementById('reset-modal').classList.add('hidden');
+            document.getElementById('reset-form').reset();
+        };
+
+        // Utility Functions
+        function showSuccess(message) {
+            const successEl = document.getElementById('success-message');
+            const successText = document.getElementById('success-text');
+            successText.textContent = message;
+            successEl.classList.remove('hidden');
+            setTimeout(() => successEl.classList.add('hidden'), 5000);
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            errorText.textContent = message;
+            errorEl.classList.remove('hidden');
+            setTimeout(() => errorEl.classList.add('hidden'), 5000);
+        }
+
+        function getAuthErrorMessage(error) {
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    return 'No account found with this email.';
+                case 'auth/invalid-email':
+                    return 'Please enter a valid email address.';
+                case 'auth/too-many-requests':
+                    return 'Too many attempts. Please try again later.';
+                case 'auth/network-request-failed':
+                    return 'Network error. Please check your connection.';
+                case 'auth/email-already-in-use':
+                    return 'This email is already registered.';
+                case 'auth/weak-password':
+                    return 'Password should be at least 6 characters.';
+                case 'auth/wrong-password':
+                    return 'Incorrect password.';
+                default:
+                    return 'An error occurred. Please try again.';
+            }
+        }
+
+        // Login Form Handler
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const loginButton = document.getElementById('login-text');
+            const loginSpinner = document.getElementById('login-spinner');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            // Show loading state
+            loginButton.textContent = 'Signing In...';
+            loginSpinner.classList.remove('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showSuccess('Login successful! Redirecting...');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Error: ' + getAuthErrorMessage(error));
+            } finally {
+                loginButton.textContent = '🚀 Sign In';
+                loginSpinner.classList.add('hidden');
+            }
+        });
+
+        // Signup Form Handler
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const signupButton = document.getElementById('signup-text');
+            const signupSpinner = document.getElementById('signup-spinner');
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm-password').value;
+
+            // Validation
+            if (password !== confirmPassword) {
+                showError('Error: Passwords do not match.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Error: Password must be at least 6 characters.');
+                return;
+            }
+
+            // Show loading state
+            signupButton.textContent = 'Creating Account...';
+            signupSpinner.classList.remove('hidden');
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                showSuccess('Account created successfully! Redirecting...');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } catch (error) {
+                console.error('Signup error:', error);
+                showError('Error: ' + getAuthErrorMessage(error));
+            } finally {
+                signupButton.textContent = '🎯 Create Account';
+                signupSpinner.classList.add('hidden');
+            }
+        });
+
+        // Reset Password Form Handler
+        document.getElementById('reset-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resetButton = document.getElementById('reset-text');
+            const resetSpinner = document.getElementById('reset-spinner');
+            const email = document.getElementById('reset-email').value;
+
+            // Show loading state
+            resetButton.textContent = 'Sending...';
+            resetSpinner.classList.remove('hidden');
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showSuccess('Password reset email sent! Check your inbox.');
+                closeResetModal();
+            } catch (error) {
+                console.error('Password reset error:', error);
+                showError('Error: ' + getAuthErrorMessage(error));
+            } finally {
+                resetButton.textContent = 'Send Link';
+                resetSpinner.classList.add('hidden');
+            }
+        });
+
+        // Modal handlers
+        document.getElementById('reset-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'reset-modal') {
+                closeResetModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('reset-modal').classList.contains('hidden')) {
+                closeResetModal();
+            }
+        });
+
+        console.log('Trading Journal Auth System Loaded');
+    </script>
 </body>
 </html>
