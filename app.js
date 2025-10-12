@@ -219,6 +219,7 @@ async function addTrade(e) {
 
         const tradeData = {
             symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
+            mood: document.getElementById('mood')?.value || '', // ← ADD THIS LINE HERE
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '', timestamp: new Date().toISOString(),
@@ -270,6 +271,7 @@ async function updateTrade(tradeId, e) {
 
         const tradeData = {
             symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
+            mood: document.getElementById('mood')?.value || '', // ← ADD THIS LINE HERE
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '', timestamp: new Date().toISOString(),
@@ -445,6 +447,243 @@ window.deleteTrade = async (tradeId) => {
         }
     }
 };
+
+// Enhanced Analytics Functions
+function calculateAdvancedMetrics(trades) {
+    if (!trades || trades.length === 0) {
+        resetAdvancedMetrics();
+        return;
+    }
+
+    const winningTrades = trades.filter(t => t.profit > 0);
+    const losingTrades = trades.filter(t => t.profit < 0);
+    const breakevenTrades = trades.filter(t => t.profit === 0);
+
+    // Basic performance metrics
+    const avgWin = winningTrades.length > 0 ? 
+        winningTrades.reduce((sum, t) => sum + t.profit, 0) / winningTrades.length : 0;
+    const avgLoss = losingTrades.length > 0 ? 
+        losingTrades.reduce((sum, t) => sum + t.profit, 0) / losingTrades.length : 0;
+    const largestWin = winningTrades.length > 0 ? 
+        Math.max(...winningTrades.map(t => t.profit)) : 0;
+    const largestLoss = losingTrades.length > 0 ? 
+        Math.min(...losingTrades.map(t => t.profit)) : 0;
+
+    // Advanced metrics
+    const profitFactor = losingTrades.length > 0 ? 
+        Math.abs(winningTrades.reduce((sum, t) => sum + t.profit, 0) / 
+                losingTrades.reduce((sum, t) => sum + t.profit, 0)) : 
+        winningTrades.length > 0 ? 999 : 0;
+    
+    const expectancy = (winningTrades.length / trades.length) * avgWin + 
+                      (losingTrades.length / trades.length) * avgLoss;
+
+    const avgRiskReward = trades.length > 0 ? 
+        trades.reduce((sum, t) => sum + (t.riskRewardRatio || 0), 0) / trades.length : 0;
+
+    // Consistency (percentage of profitable weeks)
+    const weeklyPerformance = calculateWeeklyPerformance(trades);
+    const consistency = weeklyPerformance.length > 0 ? 
+        (weeklyPerformance.filter(week => week.profit > 0).length / weeklyPerformance.length * 100) : 0;
+
+    // Update performance metrics
+    updatePerformanceMetrics({
+        avgWin, avgLoss, largestWin, largestLoss, 
+        profitFactor, expectancy, avgRiskReward, consistency
+    });
+
+    // Calculate psychological metrics
+    calculatePsychologicalMetrics(trades);
+    
+    // Calculate time analysis
+    calculateTimeAnalysis(trades);
+}
+
+function resetAdvancedMetrics() {
+    const metrics = {
+        'avgWin': '$0', 'avgLoss': '$0', 'largestWin': '$0', 'largestLoss': '$0',
+        'profitFactor': '0.00', 'expectancy': '$0', 'avgRiskReward': '0.00', 'consistency': '0%',
+        'bestMood': '-', 'worstMood': '-', 'disciplineScore': '0%', 'riskAdherence': '0%',
+        'bestDay': '-', 'bestInstrument': '-', 'avgDuration': '-', 'tradesPerMonth': '0'
+    };
+
+    Object.entries(metrics).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+
+    document.getElementById('moodPerformance').textContent = 'No data yet';
+}
+
+function updatePerformanceMetrics(metrics) {
+    const performanceElements = {
+        'avgWin': `$${metrics.avgWin.toFixed(2)}`,
+        'avgLoss': `$${metrics.avgLoss.toFixed(2)}`,
+        'largestWin': `$${metrics.largestWin.toFixed(2)}`,
+        'largestLoss': `$${metrics.largestLoss.toFixed(2)}`,
+        'profitFactor': metrics.profitFactor.toFixed(2),
+        'expectancy': `$${metrics.expectancy.toFixed(2)}`,
+        'avgRiskReward': metrics.avgRiskReward.toFixed(2),
+        'consistency': `${metrics.consistency.toFixed(1)}%`
+    };
+
+    Object.entries(performanceElements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+}
+
+function calculatePsychologicalMetrics(trades) {
+    // Mood analysis
+    const moodPerformance = {};
+    trades.forEach(trade => {
+        if (trade.mood) {
+            if (!moodPerformance[trade.mood]) {
+                moodPerformance[trade.mood] = { total: 0, count: 0, wins: 0 };
+            }
+            moodPerformance[trade.mood].total += trade.profit;
+            moodPerformance[trade.mood].count++;
+            if (trade.profit > 0) moodPerformance[trade.mood].wins++;
+        }
+    });
+
+    // Find best and worst performing moods
+    let bestMood = '-';
+    let worstMood = '-';
+    let bestMoodProfit = -Infinity;
+    let worstMoodProfit = Infinity;
+
+    Object.entries(moodPerformance).forEach(([mood, data]) => {
+        const avgProfit = data.total / data.count;
+        if (avgProfit > bestMoodProfit) {
+            bestMoodProfit = avgProfit;
+            bestMood = getMoodEmoji(mood);
+        }
+        if (avgProfit < worstMoodProfit) {
+            worstMoodProfit = avgProfit;
+            worstMood = getMoodEmoji(mood);
+        }
+    });
+
+    // Discipline score (based on risk adherence and consistency)
+    const riskAdherence = calculateRiskAdherence(trades);
+    const disciplineScore = Math.min(100, riskAdherence * 100);
+
+    // Update psychological metrics
+    document.getElementById('bestMood').textContent = bestMood;
+    document.getElementById('worstMood').textContent = worstMood;
+    document.getElementById('disciplineScore').textContent = `${disciplineScore.toFixed(0)}%`;
+    document.getElementById('riskAdherence').textContent = `${riskAdherence.toFixed(1)}%`;
+
+    // Update mood performance display
+    const moodPerformanceText = Object.entries(moodPerformance)
+        .map(([mood, data]) => 
+            `${getMoodEmoji(mood)}: $${(data.total/data.count).toFixed(1)} (${((data.wins/data.count)*100).toFixed(0)}% WR)`
+        )
+        .join(', ');
+    
+    document.getElementById('moodPerformance').textContent = 
+        moodPerformanceText || 'No mood data recorded';
+}
+
+function getMoodEmoji(mood) {
+    const emojiMap = {
+        'confident': '😊', 'neutral': '😐', 'anxious': '😰',
+        'greedy': '😈', 'fearful': '😨', 'disciplined': '🎯', 'impulsive': '⚡'
+    };
+    return emojiMap[mood] || mood;
+}
+
+function calculateRiskAdherence(trades) {
+    if (trades.length === 0) return 0;
+    
+    const acceptableRiskRange = [0.5, 2.0]; // 0.5% to 2% risk per trade
+    const withinRiskTrades = trades.filter(trade => {
+        const riskPercent = trade.riskPercent || 0;
+        return riskPercent >= acceptableRiskRange[0] && riskPercent <= acceptableRiskRange[1];
+    });
+    
+    return (withinRiskTrades.length / trades.length) * 100;
+}
+
+function calculateTimeAnalysis(trades) {
+    if (trades.length === 0) return;
+
+    // Best day of week
+    const dayPerformance = {};
+    const instrumentPerformance = {};
+    let totalDuration = 0;
+    let validDurations = 0;
+
+    trades.forEach(trade => {
+        // Day analysis
+        const tradeDate = new Date(trade.timestamp);
+        const day = tradeDate.toLocaleDateString('en', { weekday: 'short' });
+        if (!dayPerformance[day]) dayPerformance[day] = { total: 0, count: 0 };
+        dayPerformance[day].total += trade.profit;
+        dayPerformance[day].count++;
+
+        // Instrument analysis
+        const symbol = trade.symbol;
+        if (!instrumentPerformance[symbol]) instrumentPerformance[symbol] = { total: 0, count: 0 };
+        instrumentPerformance[symbol].total += trade.profit;
+        instrumentPerformance[symbol].count++;
+
+        // Duration analysis (simplified - assuming trades are intraday)
+        // In a real app, you'd calculate actual duration from entry to exit
+        validDurations++;
+    });
+
+    // Find best day
+    let bestDay = '-';
+    let bestDayProfit = -Infinity;
+    Object.entries(dayPerformance).forEach(([day, data]) => {
+        const avgProfit = data.total / data.count;
+        if (avgProfit > bestDayProfit) {
+            bestDayProfit = avgProfit;
+            bestDay = day;
+        }
+    });
+
+    // Find best instrument
+    let bestInstrument = '-';
+    let bestInstrumentProfit = -Infinity;
+    Object.entries(instrumentPerformance).forEach(([symbol, data]) => {
+        const avgProfit = data.total / data.count;
+        if (avgProfit > bestInstrumentProfit) {
+            bestInstrumentProfit = avgProfit;
+            bestInstrument = symbol;
+        }
+    });
+
+    // Trades per month
+    const monthlyTrades = trades.length / (getTradingMonths(trades) || 1);
+
+    // Update time analysis
+    document.getElementById('bestDay').textContent = bestDay;
+    document.getElementById('bestInstrument').textContent = bestInstrument;
+    document.getElementById('avgDuration').textContent = 'Intraday'; // Simplified
+    document.getElementById('tradesPerMonth').textContent = monthlyTrades.toFixed(1);
+}
+
+function calculateWeeklyPerformance(trades) {
+    const weeklyData = {};
+    trades.forEach(trade => {
+        const tradeDate = new Date(trade.timestamp);
+        const weekKey = `${tradeDate.getFullYear()}-W${Math.ceil((tradeDate.getDate() + 6) / 7)}`;
+        if (!weeklyData[weekKey]) weeklyData[weekKey] = 0;
+        weeklyData[weekKey] += trade.profit;
+    });
+    
+    return Object.entries(weeklyData).map(([week, profit]) => ({ week, profit }));
+}
+
+function getTradingMonths(trades) {
+    if (trades.length < 2) return 1;
+    const firstTrade = new Date(trades[trades.length - 1].timestamp);
+    const lastTrade = new Date(trades[0].timestamp);
+    return (lastTrade - firstTrade) / (1000 * 60 * 60 * 24 * 30.44); // Average month length
+}
 
 function updateStats(trades) {
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;

@@ -251,6 +251,54 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Metric cards */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .metric-card {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin: 2px 0;
+        }
+        
+        .metric-label {
+            font-size: 0.75em;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        /* Psychological metrics */
+        .psych-metric {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 4px 0;
+        }
+
+        .psych-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .psych-label {
+            font-size: 0.8em;
+            text-align: center;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -348,6 +396,20 @@
             <div class="card">
                 <h3 class="section-title">📝 New Trade</h3>
                 <form id="tradeForm" class="compact-form">
+                    <div class="form-group">
+                        <label>Mood / Psychology</label>
+                        <select id="mood" class="mb-2">
+                            <option value="">Select Mood</option>
+                            <option value="confident">😊 Confident</option>
+                            <option value="neutral">😐 Neutral</option>
+                            <option value="anxious">😰 Anxious</option>
+                            <option value="greedy">😈 Greedy</option>
+                            <option value="fearful">😨 Fearful</option>
+                            <option value="disciplined">🎯 Disciplined</option>
+                            <option value="impulsive">⚡ Impulsive</option>
+                        </select>
+                    </div>
+
                     <div class="form-section">
                         <div class="form-group">
                             <label>Instrument</label>
@@ -432,8 +494,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Notes</label>
-                            <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons..."></textarea>
+                            <label>Notes & Psychology</label>
+                            <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons learned, psychological state..."></textarea>
                         </div>
                     </div>
 
@@ -445,15 +507,69 @@
 
             <!-- Analytics & Charts -->
             <div class="space-y-4 sm:space-y-6">
-                <!-- Analytics -->
+                <!-- Performance Metrics -->
                 <div class="card">
-                    <h3 class="section-title">📈 Analytics</h3>
-                    <div id="analyticsContent" class="text-sm">
-                        <p><strong>Recent Trades:</strong></p>
-                        <div id="recentStats">No trades yet</div>
-                        <br>
-                        <p><strong>Top Instruments:</strong></p>
-                        <div id="symbolStats">No data</div>
+                    <h3 class="section-title">📈 Performance Analytics</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Win</div>
+                            <div class="metric-value profit" id="avgWin">$0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Loss</div>
+                            <div class="metric-value loss" id="avgLoss">$0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Largest Win</div>
+                            <div class="metric-value profit" id="largestWin">$0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Largest Loss</div>
+                            <div class="metric-value loss" id="largestLoss">$0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Profit Factor</div>
+                            <div class="metric-value" id="profitFactor">0.00</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Expectancy</div>
+                            <div class="metric-value" id="expectancy">$0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Avg R:R</div>
+                            <div class="metric-value" id="avgRiskReward">0.00</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Consistency</div>
+                            <div class="metric-value" id="consistency">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Psychological Metrics -->
+                <div class="card">
+                    <h3 class="section-title">🧠 Trading Psychology</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="psych-metric">
+                            <div class="psych-value" id="bestMood">-</div>
+                            <div class="psych-label">Best Mood</div>
+                        </div>
+                        <div class="psych-metric">
+                            <div class="psych-value" id="worstMood">-</div>
+                            <div class="psych-label">Worst Mood</div>
+                        </div>
+                        <div class="psych-metric">
+                            <div class="psych-value" id="disciplineScore">0%</div>
+                            <div class="psych-label">Discipline</div>
+                        </div>
+                        <div class="psych-metric">
+                            <div class="psych-value" id="riskAdherence">0%</div>
+                            <div class="psych-label">Risk Adherence</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-xs text-gray-600">
+                        <div>Mood Performance:</div>
+                        <div id="moodPerformance" class="mt-1">No data yet</div>
                     </div>
                 </div>
 
@@ -466,6 +582,29 @@
                         </div>
                         <div>
                             <canvas id="marketTypeChart" height="160"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Analysis -->
+                <div class="card">
+                    <h3 class="section-title">⏰ Time Analysis</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Best Day</div>
+                            <div class="metric-value" id="bestDay">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Best Instrument</div>
+                            <div class="metric-value" id="bestInstrument">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Trade Duration</div>
+                            <div class="metric-value" id="avgDuration">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Trades/Month</div>
+                            <div class="metric-value" id="tradesPerMonth">0</div>
                         </div>
                     </div>
                 </div>
