@@ -860,15 +860,19 @@ function renderPerformanceChart(trades) {
         return;
     }
 
+    // FIX: Sort trades from OLDEST to NEWEST for proper chronological progression
+    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
     let balance = accountSize;
     const balanceData = [balance];
     const labels = ['Start'];
 
-    trades.forEach((trade, index) => {
+    // FIX: Process trades in chronological order (oldest first)
+    sortedTrades.forEach((trade, index) => {
         balance += trade.profit;
         balanceData.push(balance);
-        labels.push(`Trade ${index + 1}`);
+        labels.push(`Trade ${index + 1}`); // This will now show Trade 1, Trade 2, Trade 3...
     });
 
     performanceChart = new Chart(ctx, {
@@ -890,11 +894,25 @@ function renderPerformanceChart(trades) {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { mode: 'index', intersect: false }
+                tooltip: { 
+                    mode: 'index', 
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `Balance: $${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
             },
             scales: {
-                x: { display: true, title: { display: true, text: 'Trades' } },
-                y: { display: true, title: { display: true, text: 'Balance ($)' } }
+                x: { 
+                    display: true, 
+                    title: { display: true, text: 'Trade Sequence' } 
+                },
+                y: { 
+                    display: true, 
+                    title: { display: true, text: 'Balance ($)' } 
+                }
             }
         }
     });
