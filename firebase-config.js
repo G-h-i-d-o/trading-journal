@@ -45,5 +45,5 @@ console.log('✅ Firebase Firestore initialized');
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
-    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc 
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc 
 };

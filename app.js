@@ -1,7 +1,7 @@
 // app.js
 import { 
     auth, db, onAuthStateChanged, signOut, 
-    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
 } from './firebase-config.js';
 
 let currentUser = null;
@@ -294,8 +294,9 @@ async function addTrade(e) {
     }
 }
 
-// Update existing trade
+// Update existing trade - FIXED VERSION
 async function updateTrade(tradeId, e) {
+    console.log('💾 Updating trade:', tradeId);
     e.preventDefault();
     
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -334,7 +335,7 @@ async function updateTrade(tradeId, e) {
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '',
-            timestamp: new Date().toISOString(),
+            timestamp: new Date().toISOString(), // Update timestamp
             profit,
             pipsPoints: pipPointInfo.risk,
             riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
@@ -344,7 +345,9 @@ async function updateTrade(tradeId, e) {
             userId: currentUser.uid
         };
 
+        console.log('💾 Updating trade in Firestore:', tradeId, tradeData);
         await updateDoc(doc(db, 'trades', tradeId), tradeData);
+        console.log('✅ Trade updated successfully');
         
         // Clear form and reset editing state
         e.target.reset();
@@ -355,7 +358,8 @@ async function updateTrade(tradeId, e) {
         
         alert('Trade updated successfully!');
     } catch (error) {
-        console.error('Error updating trade:', error);
+        console.error('❌ Error updating trade:', error);
+        console.error('Error details:', error.message);
         alert('Error updating trade. Please try again.');
     } finally {
         submitButton.innerHTML = originalText;
@@ -474,21 +478,26 @@ window.closeScreenshotModal = () => {
     }
 }
 
-// Edit trade
+// Edit trade - FIXED VERSION
 window.editTrade = async (tradeId) => {
+    console.log('✏️ Editing trade:', tradeId);
     try {
         showLoading();
-        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
         
-        let tradeData = null;
-        querySnapshot.forEach((doc) => {
-            if (doc.id === tradeId) {
-                tradeData = { id: doc.id, ...doc.data() };
+        // Get the specific trade document directly
+        const tradeDoc = doc(db, 'trades', tradeId);
+        const tradeSnapshot = await getDoc(tradeDoc);
+        
+        if (tradeSnapshot.exists()) {
+            const tradeData = { id: tradeSnapshot.id, ...tradeSnapshot.data() };
+            console.log('📄 Trade data loaded for editing:', tradeData);
+            
+            // Verify this trade belongs to the current user
+            if (tradeData.userId !== currentUser.uid) {
+                alert('You can only edit your own trades.');
+                return;
             }
-        });
-        
-        if (tradeData) {
+            
             // Fill form with trade data
             document.getElementById('symbol').value = tradeData.symbol;
             document.getElementById('direction').value = tradeData.type;
@@ -501,22 +510,31 @@ window.editTrade = async (tradeId) => {
             document.getElementById('notes').value = tradeData.notes || '';
             
             // Update form title and button
-            document.querySelector('#tradeForm .section-title').textContent = '✏️ Edit Trade';
-            document.querySelector('#tradeForm button[type="submit"]').innerHTML = '<span id="submitButtonText">💾 Update Trade</span>';
+            const formTitle = document.querySelector('#tradeForm .section-title');
+            const submitButton = document.querySelector('#tradeForm button[type="submit"]');
+            
+            if (formTitle) formTitle.textContent = '✏️ Edit Trade';
+            if (submitButton) submitButton.innerHTML = '<span id="submitButtonText">💾 Update Trade</span>';
             
             // Set editing state
             editingTradeId = tradeId;
             
-            // Update risk calculation
+            // Update risk calculation and instrument type
             updateRiskCalculation();
             updateInstrumentType();
             
             // Scroll to form
             document.getElementById('tradeForm').scrollIntoView({ behavior: 'smooth' });
+            
+            console.log('✅ Form populated for editing');
+        } else {
+            console.error('❌ Trade not found:', tradeId);
+            alert('Trade not found. It may have been deleted.');
         }
     } catch (error) {
-        console.error('Error loading trade for edit:', error);
-        alert('Error loading trade for editing.');
+        console.error('❌ Error loading trade for edit:', error);
+        console.error('Error details:', error.message);
+        alert('Error loading trade for editing. Please try again.');
     } finally {
         hideLoading();
     }
@@ -525,8 +543,13 @@ window.editTrade = async (tradeId) => {
 // Cancel edit
 function cancelEdit() {
     editingTradeId = null;
-    document.querySelector('#tradeForm .section-title').textContent = '📝 New Trade';
-    document.querySelector('#tradeForm button[type="submit"]').innerHTML = '<span id="submitButtonText">💾 Save Trade</span>';
+    const formTitle = document.querySelector('#tradeForm .section-title');
+    const submitButton = document.querySelector('#tradeForm button[type="submit"]');
+    
+    if (formTitle) formTitle.textContent = '📝 New Trade';
+    if (submitButton) submitButton.innerHTML = '<span id="submitButtonText">💾 Save Trade</span>';
+    
+    console.log('❌ Edit cancelled');
 }
 
 // Update statistics
