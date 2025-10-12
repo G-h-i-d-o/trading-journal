@@ -1,13 +1,14 @@
 // app.js
 import { 
     auth, db, onAuthStateChanged, signOut, 
-    collection, addDoc, getDocs, query, where, doc, deleteDoc 
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc
 } from './firebase-config.js';
 
 let currentUser = null;
 let performanceChart = null;
 let winLossChart = null;
 let marketTypeChart = null;
+let editingTradeId = null;
 
 // Check authentication state
 onAuthStateChanged(auth, async (user) => {
@@ -36,7 +37,11 @@ function setupEventListeners() {
     if (tradeForm) {
         tradeForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            addTrade(e);
+            if (editingTradeId) {
+                updateTrade(editingTradeId, e);
+            } else {
+                addTrade(e);
+            }
         });
     }
 
@@ -259,6 +264,67 @@ async function addTrade(e) {
     }
 }
 
+// Update existing trade
+async function updateTrade(tradeId, e) {
+    e.preventDefault();
+    
+    const symbol = document.getElementById('symbol')?.value;
+    const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
+    const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
+    const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+    const lotSize = parseFloat(document.getElementById('lotSize')?.value);
+    const tradeType = document.getElementById('direction')?.value;
+    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
+
+    if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
+        alert('Please fill all required fields');
+        return;
+    }
+
+    const instrumentType = getInstrumentType(symbol);
+    const exitPrice = takeProfit || entryPrice;
+    const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+    const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
+    const tradeData = {
+        symbol, 
+        type: tradeType, 
+        instrumentType,
+        entryPrice, 
+        stopLoss, 
+        takeProfit, 
+        lotSize,
+        beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
+        afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+        notes: document.getElementById('notes')?.value || '',
+        timestamp: new Date().toISOString(),
+        profit,
+        pipsPoints: pipPointInfo.risk,
+        riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
+        riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
+        accountSize: accountSize,
+        leverage: leverage,
+        userId: currentUser.uid
+    };
+
+    try {
+        await updateDoc(doc(db, 'trades', tradeId), tradeData);
+        
+        // Clear form and reset editing state
+        e.target.reset();
+        cancelEdit();
+        
+        // Reload trades
+        await loadTrades();
+        
+        alert('Trade updated successfully!');
+    } catch (error) {
+        console.error('Error updating trade:', error);
+        alert('Error updating trade. Please try again.');
+    }
+}
+
 // Load trades from Firestore
 async function loadTrades() {
     try {
@@ -284,13 +350,18 @@ async function loadTrades() {
 // Display trades in table
 function displayTrades(trades) {
     const container = document.getElementById('tradeHistory');
+    const tradeCount = document.getElementById('tradeCount');
+    
     if (!container) return;
 
     if (trades.length === 0) {
-        container.innerHTML = '<p class="text-center">No trades recorded yet.</p>';
+        container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet.</p>';
+        tradeCount.textContent = '0 trades';
         return;
     }
 
+    tradeCount.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
+    
     container.innerHTML = trades.map(trade => {
         const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
         const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
@@ -299,29 +370,117 @@ function displayTrades(trades) {
         
         return `
         <div class="trade-item">
-            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 200px;">
-                    <div style="font-weight: bold; font-size: 14px;">
-                        ${trade.symbol} <span class="market-type-badge ${badgeClass}">${badgeText}</span>
-                        <span class="${profitClass}" style="float: right;">$${trade.profit.toFixed(2)}</span>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2">
+                        <div class="font-semibold text-sm sm:text-base">
+                            ${trade.symbol} <span class="market-type-badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="${profitClass} font-bold text-sm sm:text-base">
+                            $${trade.profit.toFixed(2)}
+                        </div>
                     </div>
-                    <div style="font-size: 12px; color: #6b7280;">
-                        ${trade.type.toUpperCase()} | ${trade.lotSize} lots<br>
-                        Entry: ${trade.entryPrice} | SL: ${trade.stopLoss}<br>
-                        ${trade.takeProfit ? `TP: ${trade.takeProfit} | ` : ''}
-                        Risk: $${trade.riskAmount.toFixed(2)} (${trade.riskPercent.toFixed(1)}%)<br>
-                        <small>${new Date(trade.timestamp).toLocaleDateString()}</small>
+                    <div class="text-xs text-gray-600 space-y-1">
+                        <div>${trade.type.toUpperCase()} | ${trade.lotSize} lots | Entry: ${trade.entryPrice}</div>
+                        <div>SL: ${trade.stopLoss}${trade.takeProfit ? ` | TP: ${trade.takeProfit}` : ''}</div>
+                        <div>Risk: $${trade.riskAmount.toFixed(2)} (${trade.riskPercent.toFixed(1)}%)</div>
+                        <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()} ${new Date(trade.timestamp).toLocaleTimeString()}</div>
                     </div>
-                    ${trade.notes ? `<div style="margin-top: 8px; font-style: italic;">${trade.notes}</div>` : ''}
+                    ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
                 </div>
-                <div>
-                    <button onclick="deleteTrade('${trade.id}')" class="text-red-400 hover:text-red-300" style="padding: 8px 12px;">
-                        Delete
+                <div class="trade-actions">
+                    ${trade.beforeScreenshot ? `
+                        <button onclick="viewScreenshot('${trade.beforeScreenshot}')" class="btn-sm bg-blue-500 text-white text-xs">
+                            📸 Before
+                        </button>
+                    ` : ''}
+                    ${trade.afterScreenshot ? `
+                        <button onclick="viewScreenshot('${trade.afterScreenshot}')" class="btn-sm bg-green-500 text-white text-xs">
+                            📸 After
+                        </button>
+                    ` : ''}
+                    <button onclick="editTrade('${trade.id}')" class="btn-sm bg-yellow-500 text-white text-xs">
+                        ✏️ Edit
+                    </button>
+                    <button onclick="deleteTrade('${trade.id}')" class="btn-sm bg-red-500 text-white text-xs">
+                        🗑️ Delete
                     </button>
                 </div>
             </div>
         </div>
     `}).join('');
+}
+
+// View screenshot in modal
+window.viewScreenshot = (url) => {
+    const modal = document.getElementById('screenshotModal');
+    const image = document.getElementById('screenshotImage');
+    
+    if (modal && image) {
+        image.src = url;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Close screenshot modal
+window.closeScreenshotModal = () => {
+    const modal = document.getElementById('screenshotModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Edit trade
+window.editTrade = async (tradeId) => {
+    try {
+        const tradeDoc = await getDocs(query(collection(db, 'trades'), where('userId', '==', currentUser.uid)));
+        let tradeData = null;
+        
+        tradeDoc.forEach((doc) => {
+            if (doc.id === tradeId) {
+                tradeData = { id: doc.id, ...doc.data() };
+            }
+        });
+        
+        if (tradeData) {
+            // Fill form with trade data
+            document.getElementById('symbol').value = tradeData.symbol;
+            document.getElementById('direction').value = tradeData.type;
+            document.getElementById('entryPrice').value = tradeData.entryPrice;
+            document.getElementById('stopLoss').value = tradeData.stopLoss;
+            document.getElementById('takeProfit').value = tradeData.takeProfit || '';
+            document.getElementById('lotSize').value = tradeData.lotSize;
+            document.getElementById('beforeScreenshot').value = tradeData.beforeScreenshot || '';
+            document.getElementById('afterScreenshot').value = tradeData.afterScreenshot || '';
+            document.getElementById('notes').value = tradeData.notes || '';
+            
+            // Update form title and button
+            document.querySelector('#tradeForm .section-title').textContent = '✏️ Edit Trade';
+            document.querySelector('#tradeForm button[type="submit"]').textContent = '💾 Update Trade';
+            
+            // Set editing state
+            editingTradeId = tradeId;
+            
+            // Update risk calculation
+            updateRiskCalculation();
+            updateInstrumentType();
+            
+            // Scroll to form
+            document.getElementById('tradeForm').scrollIntoView({ behavior: 'smooth' });
+        }
+    } catch (error) {
+        console.error('Error loading trade for edit:', error);
+        alert('Error loading trade for editing.');
+    }
+}
+
+// Cancel edit
+function cancelEdit() {
+    editingTradeId = null;
+    document.querySelector('#tradeForm .section-title').textContent = '📝 New Trade';
+    document.querySelector('#tradeForm button[type="submit"]').textContent = '💾 Save Trade';
 }
 
 // Update statistics
@@ -484,12 +643,22 @@ function renderPerformanceChart(trades) {
     }
 
     if (!trades || trades.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Add trades to see your progress', ctx.canvas.width / 2, ctx.canvas.height / 2);
         return;
     }
 
     const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const dates = sortedTrades.map(t => new Date(t.timestamp).toLocaleDateString());
+    const dates = sortedTrades.map(t => {
+        const date = new Date(t.timestamp);
+        return window.innerWidth < 768 ? 
+            `${date.getMonth()+1}/${date.getDate()}` : 
+            date.toLocaleDateString();
+    });
     
     const cumulativeBalance = sortedTrades.reduce((acc, trade, index) => {
         const previousBalance = index === 0 ? accountSize : acc[index - 1];
@@ -508,7 +677,9 @@ function renderPerformanceChart(trades) {
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 tension: 0.3,
                 fill: true,
-                borderWidth: 2
+                borderWidth: 2,
+                pointRadius: window.innerWidth < 768 ? 2 : 3,
+                pointHoverRadius: window.innerWidth < 768 ? 4 : 6
             }]
         },
         options: {
@@ -516,8 +687,28 @@ function renderPerformanceChart(trades) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    display: true,
+                    display: window.innerWidth >= 768,
                     position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            if (value >= 1000) {
+                                return '$' + (value/1000).toFixed(0) + 'K';
+                            }
+                            return '$' + value;
+                        },
+                        maxTicksLimit: window.innerWidth < 768 ? 5 : 8
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: window.innerWidth < 768 ? 45 : 0,
+                        minRotation: window.innerWidth < 768 ? 45 : 0
+                    }
                 }
             }
         }
@@ -533,6 +724,11 @@ function renderWinLossPieChart(trades) {
     }
 
     if (!trades || trades.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data', ctx.canvas.width / 2, ctx.canvas.height / 2);
         return;
     }
 
@@ -546,12 +742,23 @@ function renderWinLossPieChart(trades) {
             labels: ['Win', 'Loss', 'Even'],
             datasets: [{
                 data: [winningTrades, losingTrades, breakEvenTrades],
-                backgroundColor: ['#10b981', '#ef4444', '#6b7280']
+                backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
+                borderWidth: 1,
+                borderColor: '#fff'
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: window.innerWidth < 768 ? 10 : 12 }
+                    }
+                }
+            }
         }
     });
 }
@@ -565,6 +772,11 @@ function renderMarketTypeChart(trades) {
     }
 
     if (!trades || trades.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data', ctx.canvas.width / 2, ctx.canvas.height / 2);
         return;
     }
 
@@ -577,12 +789,38 @@ function renderMarketTypeChart(trades) {
             labels: ['Forex', 'Indices'],
             datasets: [{
                 data: [forexTrades, indicesTrades],
-                backgroundColor: ['#3b82f6', '#ec4899']
+                backgroundColor: ['#3b82f6', '#ec4899'],
+                borderWidth: 1,
+                borderColor: '#fff'
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: window.innerWidth < 768 ? 10 : 12 }
+                    }
+                }
+            }
         }
     });
 }
+
+// Close modal when clicking outside image
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('screenshotModal');
+    if (e.target === modal) {
+        closeScreenshotModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeScreenshotModal();
+    }
+});
