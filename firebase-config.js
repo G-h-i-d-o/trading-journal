@@ -1,4 +1,4 @@
-// firebase-config.js
+// firebase-config.js - FIXED VERSION
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import { 
     getAuth, 
@@ -15,9 +15,9 @@ import {
     query, 
     where,
     doc,
-    deleteDoc 
+    deleteDoc,
+    updateDoc  // ✅ ADD THIS IMPORT
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -31,11 +31,19 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+console.log('🚀 Initializing Firebase...');
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const auth = getAuth(app);
-const db = getFirestore(app);
+console.log('✅ Firebase app initialized');
 
-export { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
-         onAuthStateChanged, signOut, collection, addDoc, getDocs, query, 
-         where, doc, deleteDoc };
+const auth = getAuth(app);
+console.log('✅ Firebase auth initialized');
+
+const db = getFirestore(app);
+console.log('✅ Firebase Firestore initialized');
+
+// ✅ EXPORT updateDoc
+export { 
+    auth, db, 
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc 
+};
