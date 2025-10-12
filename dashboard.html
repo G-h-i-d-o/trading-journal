@@ -23,7 +23,7 @@
         
         .card {
             background: white;
-            padding: 20px;
+            padding: 16px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 16px;
@@ -73,6 +73,13 @@
             opacity: 0.9;
         }
         
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 14px;
+            width: auto;
+            margin: 2px;
+        }
+        
         .profit { color: var(--profit); }
         .loss { color: var(--loss); }
         
@@ -87,28 +94,29 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 8px;
             margin-bottom: 16px;
         }
         
         @media (min-width: 768px) {
             .stats-grid {
                 grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
             }
         }
         
         .stat-card {
             background: white;
-            padding: 15px;
+            padding: 12px;
             border-radius: 10px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
             text-align: center;
         }
         
         .stat-value {
-            font-size: 1.3em;
+            font-size: 1.2em;
             font-weight: bold;
-            margin: 8px 0;
+            margin: 4px 0;
         }
         
         .risk-calculator {
@@ -117,6 +125,7 @@
             border-radius: 8px;
             border-left: 4px solid var(--primary);
             margin: 8px 0;
+            font-size: 13px;
         }
         
         .form-grid {
@@ -150,40 +159,111 @@
         .indices-badge { background: #fce7f3; color: #be185d; }
         
         .section-title {
-            font-size: 1.3em;
-            margin-bottom: 16px;
+            font-size: 1.2em;
+            margin-bottom: 12px;
             padding-bottom: 8px;
             border-bottom: 2px solid #e5e7eb;
+        }
+        
+        /* Mobile optimizations */
+        .mobile-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .trade-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        
+        @media (min-width: 768px) {
+            .trade-actions {
+                margin-top: 0;
+                justify-content: flex-end;
+            }
+        }
+        
+        .screenshot-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .screenshot-modal img {
+            max-width: 90%;
+            max-height: 80%;
+            border-radius: 8px;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        /* Compact mobile forms */
+        .compact-form .form-group {
+            margin-bottom: 8px;
+        }
+        
+        .compact-form input, 
+        .compact-form select, 
+        .compact-form textarea {
+            padding: 10px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
     <!-- Navigation -->
     <nav class="bg-gray-800 border-b border-gray-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <h1 class="text-xl font-bold text-white">💱 Trading Journal Pro</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-white">💱 Trading Journal</h1>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span id="user-email" class="text-gray-300"></span>
-                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
-                        Logout
-                    </button>
-                    <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <span id="user-email" class="text-gray-300 text-sm sm:text-base"></span>
+                    <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
                         Export
+                    </button>
+                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm">
+                        Logout
                     </button>
                 </div>
             </div>
         </div>
     </nav>
 
+    <!-- Screenshot Modal -->
+    <div id="screenshotModal" class="screenshot-modal">
+        <button class="close-modal" onclick="closeScreenshotModal()">×</button>
+        <img id="screenshotImage" src="" alt="Trade Screenshot">
+    </div>
+
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
         <!-- Account Setup -->
         <div class="card">
             <h3 class="section-title">💰 Account Setup</h3>
-            <div class="form-grid">
+            <div class="form-grid compact-form">
                 <div class="form-group">
                     <label>Account Balance ($)</label>
                     <input type="number" id="accountSize" placeholder="e.g., 10000" value="10000">
@@ -216,28 +296,28 @@
         <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div>Total Trades</div>
+                <div class="text-xs sm:text-sm">Total Trades</div>
                 <div class="stat-value" id="totalTrades">0</div>
             </div>
             <div class="stat-card">
-                <div>Win Rate</div>
+                <div class="text-xs sm:text-sm">Win Rate</div>
                 <div class="stat-value" id="winRate">0%</div>
             </div>
             <div class="stat-card">
-                <div>Total P&L</div>
+                <div class="text-xs sm:text-sm">Total P&L</div>
                 <div class="stat-value" id="totalPL">$0</div>
             </div>
             <div class="stat-card">
-                <div>Balance</div>
+                <div class="text-xs sm:text-sm">Balance</div>
                 <div class="stat-value" id="currentBalance">$0</div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <!-- Trade Entry Form -->
             <div class="card">
                 <h3 class="section-title">📝 New Trade</h3>
-                <form id="tradeForm">
+                <form id="tradeForm" class="compact-form">
                     <div class="form-section">
                         <div class="form-group">
                             <label>Instrument</label>
@@ -299,8 +379,8 @@
 
                     <!-- Risk Calculator -->
                     <div class="risk-calculator">
-                        <h5>🎯 Risk Management</h5>
-                        <div id="riskCalculation">
+                        <h5 class="font-bold mb-2">🎯 Risk Management</h5>
+                        <div id="riskCalculation" class="space-y-1 text-xs">
                             <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
                             <div>Amount: $<span id="totalRisk">0.00</span></div>
                             <div>Risk %: <span id="riskPercentage">0.00%</span></div>
@@ -323,7 +403,7 @@
 
                         <div class="form-group">
                             <label>Notes</label>
-                            <textarea id="notes" rows="3" placeholder="Strategy, emotions, lessons..."></textarea>
+                            <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons..."></textarea>
                         </div>
                     </div>
 
@@ -332,11 +412,11 @@
             </div>
 
             <!-- Analytics & Charts -->
-            <div class="space-y-6">
+            <div class="space-y-4 sm:space-y-6">
                 <!-- Analytics -->
                 <div class="card">
                     <h3 class="section-title">📈 Analytics</h3>
-                    <div id="analyticsContent">
+                    <div id="analyticsContent" class="text-sm">
                         <p><strong>Recent Trades:</strong></p>
                         <div id="recentStats">No trades yet</div>
                         <br>
@@ -348,12 +428,12 @@
                 <!-- Charts -->
                 <div class="card">
                     <h3 class="section-title">📊 Distribution</h3>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <canvas id="winLossChart" height="200"></canvas>
+                            <canvas id="winLossChart" height="160"></canvas>
                         </div>
                         <div>
-                            <canvas id="marketTypeChart" height="200"></canvas>
+                            <canvas id="marketTypeChart" height="160"></canvas>
                         </div>
                     </div>
                 </div>
@@ -362,14 +442,17 @@
 
         <!-- Trade History -->
         <div class="card">
-            <h3 class="section-title">📋 Trade History</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="section-title mb-0">📋 Trade History</h3>
+                <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
+            </div>
             <div id="tradeHistory"></div>
         </div>
 
         <!-- Performance Chart -->
         <div class="card">
             <h3 class="section-title">📈 Balance Progress</h3>
-            <div style="height: 300px;">
+            <div style="height: 250px;">
                 <canvas id="performanceChart"></canvas>
             </div>
         </div>
