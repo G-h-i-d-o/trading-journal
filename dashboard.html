@@ -229,6 +229,28 @@
             padding: 10px;
             font-size: 14px;
         }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -240,7 +262,7 @@
                     <h1 class="text-lg sm:text-xl font-bold text-white">💱 Trading Journal</h1>
                 </div>
                 <div class="flex items-center space-x-2 sm:space-x-4">
-                    <span id="user-email" class="text-gray-300 text-sm sm:text-base"></span>
+                    <span id="user-email" class="text-gray-300 text-sm sm:text-base">Loading...</span>
                     <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
                         Export
                     </button>
@@ -260,6 +282,14 @@
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+                <div class="loading-spinner"></div>
+                <p class="mt-2">Loading your trades...</p>
+            </div>
+        </div>
+
         <!-- Account Setup -->
         <div class="card">
             <h3 class="section-title">💰 Account Setup</h3>
@@ -407,7 +437,9 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn">💾 Save Trade</button>
+                    <button type="submit" class="btn">
+                        <span id="submitButtonText">💾 Save Trade</span>
+                    </button>
                 </form>
             </div>
 
@@ -446,7 +478,12 @@
                 <h3 class="section-title mb-0">📋 Trade History</h3>
                 <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
             </div>
-            <div id="tradeHistory"></div>
+            <div id="tradeHistory">
+                <div class="text-center text-gray-500 py-8">
+                    <div class="loading-spinner mx-auto"></div>
+                    <p class="mt-2">Loading trades...</p>
+                </div>
+            </div>
         </div>
 
         <!-- Performance Chart -->

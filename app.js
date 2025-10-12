@@ -10,14 +10,32 @@ let winLossChart = null;
 let marketTypeChart = null;
 let editingTradeId = null;
 
+// Show loading indicator
+function showLoading() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+    }
+}
+
+// Hide loading indicator
+function hideLoading() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+}
+
 // Check authentication state
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
         document.getElementById('user-email').textContent = user.email;
-        await loadTrades();
+        showLoading();
         await loadUserSettings();
+        await loadTrades();
         setupEventListeners();
+        hideLoading();
     } else {
         window.location.href = 'index.html';
     }
@@ -29,6 +47,7 @@ window.logout = async () => {
         await signOut(auth);
     } catch (error) {
         console.error('Logout error:', error);
+        alert('Error logging out. Please try again.');
     }
 };
 
@@ -81,6 +100,9 @@ function setupEventListeners() {
     if (symbolSelect) {
         symbolSelect.addEventListener('change', updateInstrumentType);
     }
+
+    // Initialize risk calculation
+    updateRiskCalculation();
 }
 
 function getInstrumentType(symbol) {
@@ -208,47 +230,52 @@ window.updateInstrumentType = () => {
 async function addTrade(e) {
     e.preventDefault();
     
-    const symbol = document.getElementById('symbol')?.value;
-    const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
-    const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
-    const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
-    const lotSize = parseFloat(document.getElementById('lotSize')?.value);
-    const tradeType = document.getElementById('direction')?.value;
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
-
-    if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
-        alert('Please fill all required fields');
-        return;
-    }
-
-    const instrumentType = getInstrumentType(symbol);
-    const exitPrice = takeProfit || entryPrice;
-    const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
-    const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-
-    const tradeData = {
-        symbol, 
-        type: tradeType, 
-        instrumentType,
-        entryPrice, 
-        stopLoss, 
-        takeProfit, 
-        lotSize,
-        beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
-        afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
-        notes: document.getElementById('notes')?.value || '',
-        timestamp: new Date().toISOString(),
-        profit,
-        pipsPoints: pipPointInfo.risk,
-        riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
-        riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-        accountSize: accountSize,
-        leverage: leverage,
-        userId: currentUser.uid
-    };
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<div class="loading-spinner"></div> Saving...';
+    submitButton.disabled = true;
 
     try {
+        const symbol = document.getElementById('symbol')?.value;
+        const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
+        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
+        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+        const lotSize = parseFloat(document.getElementById('lotSize')?.value);
+        const tradeType = document.getElementById('direction')?.value;
+        const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
+
+        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        const instrumentType = getInstrumentType(symbol);
+        const exitPrice = takeProfit || entryPrice;
+        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
+        const tradeData = {
+            symbol, 
+            type: tradeType, 
+            instrumentType,
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            lotSize,
+            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
+            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+            notes: document.getElementById('notes')?.value || '',
+            timestamp: new Date().toISOString(),
+            profit,
+            pipsPoints: pipPointInfo.risk,
+            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
+            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
+            accountSize: accountSize,
+            leverage: leverage,
+            userId: currentUser.uid
+        };
+
         await addDoc(collection(db, 'trades'), tradeData);
         
         // Clear form
@@ -261,6 +288,9 @@ async function addTrade(e) {
     } catch (error) {
         console.error('Error adding trade:', error);
         alert('Error adding trade. Please try again.');
+    } finally {
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
     }
 }
 
@@ -268,47 +298,52 @@ async function addTrade(e) {
 async function updateTrade(tradeId, e) {
     e.preventDefault();
     
-    const symbol = document.getElementById('symbol')?.value;
-    const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
-    const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
-    const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
-    const lotSize = parseFloat(document.getElementById('lotSize')?.value);
-    const tradeType = document.getElementById('direction')?.value;
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
-
-    if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
-        alert('Please fill all required fields');
-        return;
-    }
-
-    const instrumentType = getInstrumentType(symbol);
-    const exitPrice = takeProfit || entryPrice;
-    const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
-    const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-
-    const tradeData = {
-        symbol, 
-        type: tradeType, 
-        instrumentType,
-        entryPrice, 
-        stopLoss, 
-        takeProfit, 
-        lotSize,
-        beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
-        afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
-        notes: document.getElementById('notes')?.value || '',
-        timestamp: new Date().toISOString(),
-        profit,
-        pipsPoints: pipPointInfo.risk,
-        riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
-        riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-        accountSize: accountSize,
-        leverage: leverage,
-        userId: currentUser.uid
-    };
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<div class="loading-spinner"></div> Updating...';
+    submitButton.disabled = true;
 
     try {
+        const symbol = document.getElementById('symbol')?.value;
+        const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
+        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
+        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+        const lotSize = parseFloat(document.getElementById('lotSize')?.value);
+        const tradeType = document.getElementById('direction')?.value;
+        const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
+
+        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        const instrumentType = getInstrumentType(symbol);
+        const exitPrice = takeProfit || entryPrice;
+        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
+        const tradeData = {
+            symbol, 
+            type: tradeType, 
+            instrumentType,
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            lotSize,
+            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
+            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+            notes: document.getElementById('notes')?.value || '',
+            timestamp: new Date().toISOString(),
+            profit,
+            pipsPoints: pipPointInfo.risk,
+            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
+            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
+            accountSize: accountSize,
+            leverage: leverage,
+            userId: currentUser.uid
+        };
+
         await updateDoc(doc(db, 'trades', tradeId), tradeData);
         
         // Clear form and reset editing state
@@ -322,12 +357,16 @@ async function updateTrade(tradeId, e) {
     } catch (error) {
         console.error('Error updating trade:', error);
         alert('Error updating trade. Please try again.');
+    } finally {
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
     }
 }
 
 // Load trades from Firestore
 async function loadTrades() {
     try {
+        showLoading();
         const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
         
@@ -344,6 +383,9 @@ async function loadTrades() {
         renderCharts(trades);
     } catch (error) {
         console.error('Error loading trades:', error);
+        alert('Error loading trades. Please refresh the page.');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -355,7 +397,7 @@ function displayTrades(trades) {
     if (!container) return;
 
     if (trades.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet.</p>';
+        container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet. Add your first trade above!</p>';
         tradeCount.textContent = '0 trades';
         return;
     }
@@ -435,10 +477,12 @@ window.closeScreenshotModal = () => {
 // Edit trade
 window.editTrade = async (tradeId) => {
     try {
-        const tradeDoc = await getDocs(query(collection(db, 'trades'), where('userId', '==', currentUser.uid)));
-        let tradeData = null;
+        showLoading();
+        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
         
-        tradeDoc.forEach((doc) => {
+        let tradeData = null;
+        querySnapshot.forEach((doc) => {
             if (doc.id === tradeId) {
                 tradeData = { id: doc.id, ...doc.data() };
             }
@@ -458,7 +502,7 @@ window.editTrade = async (tradeId) => {
             
             // Update form title and button
             document.querySelector('#tradeForm .section-title').textContent = '✏️ Edit Trade';
-            document.querySelector('#tradeForm button[type="submit"]').textContent = '💾 Update Trade';
+            document.querySelector('#tradeForm button[type="submit"]').innerHTML = '<span id="submitButtonText">💾 Update Trade</span>';
             
             // Set editing state
             editingTradeId = tradeId;
@@ -473,6 +517,8 @@ window.editTrade = async (tradeId) => {
     } catch (error) {
         console.error('Error loading trade for edit:', error);
         alert('Error loading trade for editing.');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -480,7 +526,7 @@ window.editTrade = async (tradeId) => {
 function cancelEdit() {
     editingTradeId = null;
     document.querySelector('#tradeForm .section-title').textContent = '📝 New Trade';
-    document.querySelector('#tradeForm button[type="submit"]').textContent = '💾 Save Trade';
+    document.querySelector('#tradeForm button[type="submit"]').innerHTML = '<span id="submitButtonText">💾 Save Trade</span>';
 }
 
 // Update statistics
@@ -559,11 +605,14 @@ function calculateSymbolStats(trades) {
 window.deleteTrade = async (tradeId) => {
     if (confirm('Are you sure you want to delete this trade?')) {
         try {
+            showLoading();
             await deleteDoc(doc(db, 'trades', tradeId));
             await loadTrades();
         } catch (error) {
             console.error('Error deleting trade:', error);
             alert('Error deleting trade.');
+        } finally {
+            hideLoading();
         }
     }
 };
@@ -585,6 +634,7 @@ async function loadUserSettings() {
 // Export trades
 window.exportTrades = async () => {
     try {
+        showLoading();
         const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
         
@@ -624,6 +674,8 @@ window.exportTrades = async () => {
     } catch (error) {
         console.error('Error exporting trades:', error);
         alert('Error exporting trades.');
+    } finally {
+        hideLoading();
     }
 };
 
