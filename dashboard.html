@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Journal - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --profit: #10b981;
+            --loss: #ef4444;
+            --primary: #3b82f6;
+            --bg: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: #1f2937;
+            line-height: 1.5;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 16px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .profit { color: var(--profit); }
+        .loss { color: var(--loss); }
+        
+        .trade-item {
+            border-left: 4px solid var(--primary);
+            padding: 12px;
+            margin: 8px 0;
+            background: #f9fafb;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .risk-calculator {
+            background: #f0f9ff;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            margin: 8px 0;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        
+        @media (min-width: 480px) {
+            .form-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .pip-display {
+            font-size: 0.8em;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+        
+        .market-type-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.65em;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        
+        .forex-badge { background: #dbeafe; color: #1e40af; }
+        .indices-badge { background: #fce7f3; color: #be185d; }
+        
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-white">💱 Trading Journal Pro</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="user-email" class="text-gray-300"></span>
+                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                        Logout
+                    </button>
+                    <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                        Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Account Setup -->
+        <div class="card">
+            <h3 class="section-title">💰 Account Setup</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Account Balance ($)</label>
+                    <input type="number" id="accountSize" placeholder="e.g., 10000" value="10000">
+                </div>
+                <div class="form-group">
+                    <label>Risk Per Trade (%)</label>
+                    <input type="number" id="riskPerTrade" step="0.1" min="0.1" max="5" value="1.0" placeholder="0.1 - 5%">
+                </div>
+                <div class="form-group">
+                    <label>Account Currency</label>
+                    <select id="accountCurrency">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Leverage</label>
+                    <select id="leverage">
+                        <option value="10">1:10</option>
+                        <option value="20">1:20</option>
+                        <option value="50" selected>1:50</option>
+                        <option value="100">1:100</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div>Total Trades</div>
+                <div class="stat-value" id="totalTrades">0</div>
+            </div>
+            <div class="stat-card">
+                <div>Win Rate</div>
+                <div class="stat-value" id="winRate">0%</div>
+            </div>
+            <div class="stat-card">
+                <div>Total P&L</div>
+                <div class="stat-value" id="totalPL">$0</div>
+            </div>
+            <div class="stat-card">
+                <div>Balance</div>
+                <div class="stat-value" id="currentBalance">$0</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Trade Entry Form -->
+            <div class="card">
+                <h3 class="section-title">📝 New Trade</h3>
+                <form id="tradeForm">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>Instrument</label>
+                            <select id="symbol" required>
+                                <option value="">Select Instrument</option>
+                                <optgroup label="Forex">
+                                    <option value="EUR/USD">EUR/USD</option>
+                                    <option value="GBP/USD">GBP/USD</option>
+                                    <option value="USD/JPY">USD/JPY</option>
+                                    <option value="AUD/USD">AUD/USD</option>
+                                </optgroup>
+                                <optgroup label="Indices">
+                                    <option value="US30">US30</option>
+                                    <option value="SPX500">S&P 500</option>
+                                    <option value="NAS100">NASDAQ</option>
+                                    <option value="GE30">DAX 30</option>
+                                </optgroup>
+                            </select>
+                            <div id="instrumentTypeDisplay" class="pip-display"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Direction</label>
+                            <select id="direction" required>
+                                <option value="">Select</option>
+                                <option value="long">Buy</option>
+                                <option value="short">Sell</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Entry Price</label>
+                                <input type="number" id="entryPrice" step="0.00001" required>
+                                <div class="pip-display" id="entryPipDisplay"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Stop Loss</label>
+                                <input type="number" id="stopLoss" step="0.00001" required>
+                                <div class="pip-display" id="slPipDisplay"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Take Profit</label>
+                                <input type="number" id="takeProfit" step="0.00001">
+                                <div class="pip-display" id="tpPipDisplay"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Size (Lots)</label>
+                                <input type="number" id="lotSize" step="0.01" value="0.01" required>
+                                <div class="pip-display">Std Lot = 100k</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Calculator -->
+                    <div class="risk-calculator">
+                        <h5>🎯 Risk Management</h5>
+                        <div id="riskCalculation">
+                            <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
+                            <div>Amount: $<span id="totalRisk">0.00</span></div>
+                            <div>Risk %: <span id="riskPercentage">0.00%</span></div>
+                            <div>R:R: <span id="riskRewardRatio">0.00</span></div>
+                            <div>Rec. Lots: <span id="recommendedLotSize">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Screenshots -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>📸 Before Chart URL</label>
+                            <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
+                        </div>
+
+                        <div class="form-group">
+                            <label>📸 After Chart URL</label>
+                            <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea id="notes" rows="3" placeholder="Strategy, emotions, lessons..."></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn">💾 Save Trade</button>
+                </form>
+            </div>
+
+            <!-- Analytics & Charts -->
+            <div class="space-y-6">
+                <!-- Analytics -->
+                <div class="card">
+                    <h3 class="section-title">📈 Analytics</h3>
+                    <div id="analyticsContent">
+                        <p><strong>Recent Trades:</strong></p>
+                        <div id="recentStats">No trades yet</div>
+                        <br>
+                        <p><strong>Top Instruments:</strong></p>
+                        <div id="symbolStats">No data</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="card">
+                    <h3 class="section-title">📊 Distribution</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <canvas id="winLossChart" height="200"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="marketTypeChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade History -->
+        <div class="card">
+            <h3 class="section-title">📋 Trade History</h3>
+            <div id="tradeHistory"></div>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="card">
+            <h3 class="section-title">📈 Balance Progress</h3>
+            <div style="height: 300px;">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
