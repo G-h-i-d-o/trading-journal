@@ -3,240 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Journal Login</title>
-    <!-- Load Tailwind CSS -->
+    <title>Trading Journal - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configure Tailwind to use Inter font and custom colors -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        'primary-dark': '#1e293b', // Slate 800
-                        'secondary-dark': '#334155', // Slate 700
-                        'accent': '#06b6d4', // Cyan 500
-                    },
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Ensuring full height and smooth transitions */
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .form-container {
-            transition: all 0.3s ease-in-out;
-        }
-        /* Custom styling for the logo/icon */
-        .logo-icon {
-            display: inline-block;
-            width: 32px;
-            height: 32px;
-            stroke-width: 2.5;
-            color: #06b6d4; /* Cyan 500 */
-        }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
     </style>
 </head>
-<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4">
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full">
+        <!-- Login Card -->
+        <div class="card-glass rounded-2xl shadow-2xl p-8 text-white">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold mb-2">📈 Trading Journal</h1>
+                <p class="opacity-80">Track your trades and improve your strategy</p>
+            </div>
 
-    <!-- Main Container Card -->
-    <div id="auth-card" class="form-container w-full max-w-md bg-gray-800 p-8 md:p-10 rounded-xl shadow-2xl border border-gray-700">
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="loginEmail" required 
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
+                           placeholder="your@email.com">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="loginPassword" required 
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
+                           placeholder="••••••••">
+                </div>
 
-        <!-- Header/Logo -->
-        <div class="text-center mb-8">
-            <!-- Icon: Use a simple chart or financial icon -->
-            <svg class="logo-icon mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 3v18h18" />
-                <path d="M18.7 18.7l-3.2-3.2a1 1 0 0 0-.7-.3h-1.5a1 1 0 0 1-1-1v-1.5a1 1 0 0 0-.3-.7l-3.2-3.2" />
-                <path d="M12 12l2.5 2.5" />
-            </svg>
-            <h1 class="text-3xl font-bold text-white tracking-tight">Trade Journal Pro</h1>
-            <p id="page-subtitle" class="text-gray-400 mt-2">Log in to track your performance.</p>
+                <button type="submit" 
+                        class="w-full bg-white text-purple-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-200 flex items-center justify-center">
+                    <span id="loginText">🚀 Sign In</span>
+                    <div id="loginSpinner" class="hidden ml-2">
+                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                    </div>
+                </button>
+            </form>
+
+            <!-- Reset Password Link -->
+            <div class="text-center mt-4">
+                <button onclick="openResetModal()" class="text-white/80 hover:text-white text-sm underline transition duration-200">
+                    Forgot your password?
+                </button>
+            </div>
+
+            <div class="text-center mt-6 pt-6 border-t border-white/20">
+                <p class="opacity-80">Don't have an account?</p>
+                <button onclick="switchToSignup()" class="text-white font-semibold hover:underline mt-2">
+                    Create Account
+                </button>
+            </div>
         </div>
 
-        <!-- Authentication Form (Swaps between Login and Sign Up) -->
-        <form id="auth-form">
-            <!-- Email Input (Common) -->
-            <div class="mb-4">
-                <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                <input type="email" id="email" name="email" required
-                       class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-accent focus:ring-accent focus:outline-none transition duration-150"
-                       placeholder="you@example.com">
+        <!-- Signup Card (Hidden by default) -->
+        <div id="signupCard" class="card-glass rounded-2xl shadow-2xl p-8 text-white hidden">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold mb-2">📈 Create Account</h1>
+                <p class="opacity-80">Start your trading journey</p>
             </div>
 
-            <!-- Password Input (Common) -->
-            <div class="mb-6">
-                <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                <input type="password" id="password" name="password" required
-                       class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-accent focus:ring-accent focus:outline-none transition duration-150"
-                       placeholder="••••••••">
+            <form id="signupForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="signupEmail" required 
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
+                           placeholder="your@email.com">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="signupPassword" required 
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
+                           placeholder="••••••••">
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-white text-purple-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-200 flex items-center justify-center">
+                    <span id="signupText">🎯 Create Account</span>
+                    <div id="signupSpinner" class="hidden ml-2">
+                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                    </div>
+                </button>
+            </form>
+
+            <div class="text-center mt-6 pt-6 border-t border-white/20">
+                <p class="opacity-80">Already have an account?</p>
+                <button onclick="switchToLogin()" class="text-white font-semibold hover:underline mt-2">
+                    Sign In
+                </button>
             </div>
-
-            <!-- Confirm Password Input (Only visible for Sign Up) -->
-            <div id="confirm-password-group" class="mb-6 hidden">
-                <label for="confirm-password" class="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
-                <input type="password" id="confirm-password" name="confirm-password"
-                       class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-accent focus:ring-accent focus:outline-none transition duration-150"
-                       placeholder="••••••••">
-            </div>
-
-            <!-- Submit Button -->
-            <button id="auth-button" type="submit"
-                    class="w-full py-3 bg-accent text-gray-900 font-semibold rounded-lg shadow-md hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-gray-900 transition duration-200 ease-in-out transform hover:scale-[1.01] active:scale-[0.99]">
-                Log In
-            </button>
-        </form>
-
-        <!-- Toggle Link & Status Message -->
-        <div class="mt-8 text-center">
-            <p id="toggle-message" class="text-gray-400 text-sm">
-                Don't have an account?
-                <a href="#" id="toggle-link" class="text-accent hover:text-cyan-400 font-medium transition duration-150">
-                    Sign Up
-                </a>
-            </p>
         </div>
-
-        <!-- Feedback Message Box (for non-alert messages) -->
-        <div id="feedback-message" class="mt-4 p-3 hidden rounded-lg text-sm font-medium text-center"></div>
-
     </div>
 
-    <script type="module">
-        import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from './firebase-config.js';
+    <!-- Reset Password Modal -->
+    <div id="resetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden">
+        <div class="card-glass rounded-2xl shadow-2xl p-8 text-white max-w-md w-full">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold mb-2">🔐 Reset Password</h2>
+                <p class="opacity-80">Enter your email to receive a reset link</p>
+            </div>
 
-        let isLoginMode = true;
+            <form id="resetForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="resetEmail" required 
+                           class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-white/60"
+                           placeholder="your@email.com">
+                </div>
 
-        // UI Element References
-        const subtitle = document.getElementById('page-subtitle');
-        const authButton = document.getElementById('auth-button');
-        const toggleMessage = document.getElementById('toggle-message');
-        const toggleLink = document.getElementById('toggle-link');
-        const confirmPasswordGroup = document.getElementById('confirm-password-group');
-        const feedbackMessage = document.getElementById('feedback-message');
-        const confirmPasswordInput = document.getElementById('confirm-password');
-        const authForm = document.getElementById('auth-form');
+                <div class="flex space-x-4">
+                    <button type="button" onclick="closeResetModal()" 
+                            class="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg font-semibold hover:bg-white/20 transition duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 px-4 py-3 bg-white text-purple-600 rounded-lg font-semibold hover:bg-gray-100 transition duration-200 flex items-center justify-center">
+                        <span id="resetText">Send Link</span>
+                        <div id="resetSpinner" class="hidden ml-2">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                        </div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        // Check if user is already logged in
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.location.href = 'dashboard.html';
-            }
-        });
+    <!-- Success Message -->
+    <div id="successMessage" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden">
+        <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span id="successText">Password reset email sent!</span>
+        </div>
+    </div>
 
-        // Toggle between login and signup
-        toggleLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            isLoginMode = !isLoginMode;
-            
-            if (isLoginMode) {
-                subtitle.textContent = "Log in to track your performance.";
-                authButton.textContent = "Log In";
-                toggleMessage.innerHTML = `Don't have an account? <a href="#" id="toggle-link" class="text-accent hover:text-cyan-400 font-medium transition duration-150">Sign Up</a>`;
-                confirmPasswordGroup.classList.add('hidden');
-                confirmPasswordInput.removeAttribute('required');
-            } else {
-                subtitle.textContent = "Create your account to start journaling.";
-                authButton.textContent = "Sign Up";
-                toggleMessage.innerHTML = `Already have an account? <a href="#" id="toggle-link" class="text-accent hover:text-cyan-400 font-medium transition duration-150">Log In</a>`;
-                confirmPasswordGroup.classList.remove('hidden');
-                confirmPasswordInput.setAttribute('required', 'required');
-            }
-            
-            // Re-attach event listener to new toggle link
-            document.getElementById('toggle-link').addEventListener('click', arguments.callee);
-            showFeedback('');
-        });
+    <!-- Error Message -->
+    <div id="errorMessage" class="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hidden">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <span id="errorText">Error occurred</span>
+        </div>
+    </div>
 
-        function showFeedback(message, isError = false) {
-            feedbackMessage.textContent = message;
-            if (message) {
-                feedbackMessage.classList.remove('hidden', 'bg-red-900', 'text-red-300', 'bg-green-900', 'text-green-300');
-                if (isError) {
-                    feedbackMessage.classList.add('bg-red-900', 'text-red-300');
-                } else {
-                    feedbackMessage.classList.add('bg-green-900', 'text-green-300');
-                }
-            } else {
-                feedbackMessage.classList.add('hidden');
-            }
-        }
-
-        // Handle form submission
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            authButton.disabled = true;
-            authButton.textContent = isLoginMode ? "Logging In..." : "Signing Up...";
-            showFeedback('');
-
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-
-            // Validation
-            if (!isLoginMode && password !== confirmPassword) {
-                showFeedback("Error: Passwords do not match.", true);
-                authButton.disabled = false;
-                authButton.textContent = "Sign Up";
-                return;
-            }
-
-            if (password.length < 6) {
-                showFeedback("Error: Password must be at least 6 characters.", true);
-                authButton.disabled = false;
-                authButton.textContent = isLoginMode ? "Log In" : "Sign Up";
-                return;
-            }
-
-            try {
-                if (isLoginMode) {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    showFeedback("Login successful! Redirecting...", false);
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1000);
-                } else {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    showFeedback("Account created successfully! Redirecting...", false);
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1000);
-                }
-            } catch (error) {
-                console.error("Auth error:", error);
-                let errorMessage = "Authentication failed. ";
-                
-                switch (error.code) {
-                    case 'auth/email-already-in-use':
-                        errorMessage += "Email already in use.";
-                        break;
-                    case 'auth/invalid-email':
-                        errorMessage += "Invalid email address.";
-                        break;
-                    case 'auth/weak-password':
-                        errorMessage += "Password is too weak.";
-                        break;
-                    case 'auth/user-not-found':
-                        errorMessage += "No account found with this email.";
-                        break;
-                    case 'auth/wrong-password':
-                        errorMessage += "Incorrect password.";
-                        break;
-                    default:
-                        errorMessage += "Please try again.";
-                }
-                
-                showFeedback(`Error: ${errorMessage}`, true);
-            } finally {
-                authButton.disabled = false;
-                authButton.textContent = isLoginMode ? "Log In" : "Sign Up";
-            }
-        });
-    </script>
+    <script type="module" src="auth.js"></script>
 </body>
 </html>
