@@ -1072,6 +1072,412 @@ function renderMarketTypeChart(trades) {
         return;
     }
 
+    // Add currency conversion rates (these would typically come from an API in production)
+const exchangeRates = {
+    USD: 1,
+    EUR: 0.85,
+    GBP: 0.73,
+    JPY: 110.0,
+    ZAR: 15.0,
+    CAD: 1.25,
+    AUD: 1.35,
+    CHF: 0.92
+};
+
+// Currency symbol mapping
+const currencySymbols = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    JPY: '¥',
+    ZAR: 'R',
+    CAD: 'C$',
+    AUD: 'A$',
+    CHF: 'Fr'
+};
+
+// Function to convert amount to selected currency
+function convertToCurrency(amount, fromCurrency = 'USD', toCurrency = null) {
+    if (!toCurrency) {
+        toCurrency = document.getElementById('accountCurrency')?.value || 'USD';
+    }
+    
+    // Convert from USD to target currency
+    const amountInUSD = amount / exchangeRates[fromCurrency];
+    const convertedAmount = amountInUSD * exchangeRates[toCurrency];
+    
+    return {
+        amount: convertedAmount,
+        symbol: currencySymbols[toCurrency] || '$',
+        code: toCurrency
+    };
+}
+
+// Function to format currency display
+function formatCurrency(amount, currencyCode = null) {
+    if (!currencyCode) {
+        currencyCode = document.getElementById('accountCurrency')?.value || 'USD';
+    }
+    const symbol = currencySymbols[currencyCode] || '$';
+    return `${symbol}${amount.toFixed(2)}`;
+}
+
+// Update the updateStats function to use selected currency
+function updateStats(trades) {
+    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
+    
+    const stats = {
+        'totalTrades': '0', 
+        'winRate': '0%', 
+        'totalPL': formatCurrency(0, selectedCurrency), 
+        'currentBalance': formatCurrency(accountSize, selectedCurrency), 
+        'recentStats': 'No trades yet', 
+        'symbolStats': 'No data'
+    };
+
+    if (trades && trades.length > 0) {
+        const totalTrades = trades.length;
+        const winningTrades = trades.filter(t => t.profit > 0).length;
+        const winRate = ((winningTrades / totalTrades) * 100).toFixed(1);
+        const totalPL = trades.reduce((sum, trade) => sum + trade.profit, 0);
+        const currentBalance = accountSize + totalPL;
+
+        // Convert to selected currency
+        const convertedTotalPL = convertToCurrency(totalPL, 'USD', selectedCurrency);
+        const convertedCurrentBalance = convertToCurrency(currentBalance, 'USD', selectedCurrency);
+
+        stats.totalTrades = totalTrades;
+        stats.winRate = `${winRate}%`;
+        stats.totalPL = formatCurrency(convertedTotalPL.amount, selectedCurrency);
+        stats.currentBalance = formatCurrency(convertedCurrentBalance.amount, selectedCurrency);
+
+        const recentTrades = trades.slice(0, 3);
+        const recentProfit = recentTrades.reduce((sum, trade) => sum + trade.profit, 0);
+        const convertedRecentProfit = convertToCurrency(recentProfit, 'USD', selectedCurrency);
+        stats.recentStats = `Last 3: ${formatCurrency(convertedRecentProfit.amount, selectedCurrency)}`;
+
+        const symbolStats = calculateSymbolStats(trades);
+        stats.symbolStats = symbolStats.slice(0, 3).map(stat => {
+            const convertedProfit = convertToCurrency(stat.totalProfit, 'USD', selectedCurrency);
+            return `${stat.symbol}: ${formatCurrency(convertedProfit.amount, selectedCurrency)}`;
+        }).join('<br>');
+    }
+
+    Object.entries(stats).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            if (id === 'symbolStats') {
+                element.innerHTML = value;
+            } else {
+                element.textContent = value;
+            }
+            
+            if (id === 'totalPL') {
+                const plValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
+                element.className = `stat-value ${plValue >= 0 ? 'profit' : 'loss'}`;
+            } else if (id === 'currentBalance') {
+                const balanceValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
+                const originalBalance = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+                const convertedOriginalBalance = convertToCurrency(originalBalance, 'USD', selectedCurrency);
+                element.className = `stat-value ${balanceValue >= convertedOriginalBalance.amount ? 'profit' : 'loss'}`;
+            }
+        }
+    });
+}
+
+// Update the updatePerformanceMetrics function
+function updatePerformanceMetrics(metrics) {
+    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
+    
+    const performanceElements = {
+        'avgWin': formatCurrency(convertToCurrency(metrics.avgWin, 'USD', selectedCurrency).amount, selectedCurrency),
+        'avgLoss': formatCurrency(convertToCurrency(metrics.avgLoss, 'USD', selectedCurrency).amount, selectedCurrency),
+        'largestWin': formatCurrency(convertToCurrency(metrics.largestWin, 'USD', selectedCurrency).amount, selectedCurrency),
+        'largestLoss': formatCurrency(convertToCurrency(metrics.largestLoss, 'USD', selectedCurrency).amount, selectedCurrency),
+        'profitFactor': metrics.profitFactor.toFixed(2),
+        'expectancy': formatCurrency(convertToCurrency(metrics.expectancy, 'USD', selectedCurrency).amount, selectedCurrency),
+        'avgRiskReward': metrics.avgRiskReward.toFixed(2),
+        'consistency': `${metrics.consistency.toFixed(1)}%`
+    };
+
+    Object.entries(performanceElements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+}
+
+// Update the displayTrades function to show currency
+function displayTrades(trades) {
+    const container = document.getElementById('tradeHistory');
+    const tradeCount = document.getElementById('tradeCount');
+    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
+    
+    if (!container) return;
+
+    if (trades.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet.</p>';
+        if (tradeCount) tradeCount.textContent = '0 trades';
+        return;
+    }
+
+    if (tradeCount) tradeCount.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
+    container.innerHTML = trades.map(trade => {
+        const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
+        const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
+        const profitClass = trade.profit >= 0 ? 'profit' : 'loss';
+        const moodEmoji = getMoodEmoji(trade.mood);
+        
+        // Convert trade values to selected currency
+        const convertedProfit = convertToCurrency(trade.profit, 'USD', selectedCurrency);
+        const convertedRiskAmount = convertToCurrency(trade.riskAmount, 'USD', selectedCurrency);
+        
+        return `
+        <div class="trade-item">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2">
+                        <div class="font-semibold text-sm sm:text-base">
+                            ${trade.symbol} <span class="market-type-badge ${badgeClass}">${badgeText}</span>
+                            ${moodEmoji ? `<span class="ml-1">${moodEmoji}</span>` : ''}
+                        </div>
+                        <div class="${profitClass} font-bold text-sm sm:text-base">
+                            ${formatCurrency(convertedProfit.amount, selectedCurrency)}
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-600 space-y-1">
+                        <div>${trade.type.toUpperCase()} | ${trade.lotSize} lots | Entry: ${trade.entryPrice}</div>
+                        <div>SL: ${trade.stopLoss}${trade.takeProfit ? ` | TP: ${trade.takeProfit}` : ''}</div>
+                        <div>Risk: ${formatCurrency(convertedRiskAmount.amount, selectedCurrency)} (${trade.riskPercent.toFixed(1)}%)</div>
+                        <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()}</div>
+                    </div>
+                    ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
+                </div>
+                <div class="trade-actions">
+                    ${trade.beforeScreenshot ? `<button onclick="viewScreenshot('${trade.beforeScreenshot}')" class="btn-sm bg-blue-500 text-white text-xs">📸 Before</button>` : ''}
+                    ${trade.afterScreenshot ? `<button onclick="viewScreenshot('${trade.afterScreenshot}')" class="btn-sm bg-green-500 text-white text-xs">📸 After</button>` : ''}
+                    <button onclick="editTrade('${trade.id}')" class="btn-sm bg-yellow-500 text-white text-xs">✏️ Edit</button>
+                    <button onclick="deleteTrade('${trade.id}')" class="btn-sm bg-red-500 text-white text-xs">🗑️ Delete</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Update the risk calculation display
+function updateRiskCalculation() {
+    const symbol = document.getElementById('symbol')?.value;
+    const entryPrice = parseFloat(document.getElementById('entryPrice')?.value) || 0;
+    const stopLoss = parseFloat(document.getElementById('stopLoss')?.value) || 0;
+    const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || 0;
+    const lotSize = parseFloat(document.getElementById('lotSize')?.value) || 0.01;
+    const tradeType = document.getElementById('direction')?.value;
+    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
+    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
+
+    if (entryPrice > 0 && stopLoss > 0 && symbol) {
+        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+        const potentialProfit = takeProfit ? calculateProfitLoss(entryPrice, takeProfit, lotSize, symbol, tradeType) : 0;
+        const potentialLoss = calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType);
+        const riskRewardRatio = takeProfit && potentialLoss !== 0 ? Math.abs(potentialProfit / potentialLoss) : 0;
+        const maxRiskAmount = accountSize * (riskPerTrade / 100);
+        const riskPerLot = Math.abs(calculateProfitLoss(entryPrice, stopLoss, 1, symbol, tradeType));
+        const recommendedLotSize = riskPerLot > 0 ? (maxRiskAmount / riskPerLot).toFixed(2) : 0;
+        const instrumentType = getInstrumentType(symbol);
+        const unitType = instrumentType === 'forex' ? 'pips' : 'points';
+
+        // Convert risk amounts to selected currency
+        const convertedTotalRisk = convertToCurrency(Math.abs(potentialLoss), 'USD', selectedCurrency);
+        const convertedMaxRiskAmount = convertToCurrency(maxRiskAmount, 'USD', selectedCurrency);
+
+        const riskElements = {
+            'pipsRisk': pipPointInfo.risk.toFixed(1) + ' ' + unitType,
+            'totalRisk': formatCurrency(convertedTotalRisk.amount, selectedCurrency),
+            'riskPercentage': (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%',
+            'riskRewardRatio': riskRewardRatio.toFixed(2),
+            'recommendedLotSize': recommendedLotSize
+        };
+
+        Object.entries(riskElements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+
+        const pipDisplays = {
+            'entryPipDisplay': `Entry: ${entryPrice}`,
+            'slPipDisplay': `SL: ${stopLoss} (${pipPointInfo.risk.toFixed(1)} ${unitType})`,
+            'tpPipDisplay': takeProfit ? `TP: ${takeProfit} (${pipPointInfo.reward.toFixed(1)} ${unitType})` : ''
+        };
+
+        Object.entries(pipDisplays).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+    }
+}
+
+// Update the renderPerformanceChart function to use selected currency
+function renderPerformanceChart(trades) {
+    const ctx = document.getElementById('performanceChart');
+    if (!ctx) return;
+
+    if (performanceChart) performanceChart.destroy();
+
+    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
+    const currencySymbol = currencySymbols[selectedCurrency] || '$';
+
+    if (trades.length === 0) {
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } } 
+            }
+        });
+        return;
+    }
+
+    // Sort trades from OLDEST to NEWEST for proper chronological progression
+    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    let balance = accountSize;
+    const balanceData = [convertToCurrency(balance, 'USD', selectedCurrency).amount];
+    const labels = ['Start'];
+
+    // Process trades in chronological order with dates
+    sortedTrades.forEach((trade, index) => {
+        balance += trade.profit;
+        const convertedBalance = convertToCurrency(balance, 'USD', selectedCurrency).amount;
+        balanceData.push(convertedBalance);
+        
+        // Use actual dates instead of "Trade X"
+        const tradeDate = new Date(trade.timestamp);
+        const dateLabel = tradeDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        labels.push(dateLabel);
+    });
+
+    performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Account Balance',
+                data: balanceData,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { 
+                    mode: 'index', 
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `Balance: ${currencySymbol}${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    display: true, 
+                    title: { display: true, text: 'Date & Time' },
+                    ticks: {
+                        maxTicksLimit: 8,
+                        callback: function(value, index, values) {
+                            if (index === 0) return 'Start';
+                            const label = this.getLabelForValue(value);
+                            if (label.length > 8) {
+                                return label.split(' ')[0];
+                            }
+                            return label;
+                        }
+                    }
+                },
+                y: { 
+                    display: true, 
+                    title: { display: true, text: `Balance (${currencySymbol})` } 
+                }
+            }
+        }
+    });
+}
+
+// Add event listener for currency change to refresh all displays
+function setupEventListeners() {
+    const tradeForm = document.getElementById('tradeForm');
+    if (tradeForm) {
+        tradeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (editingTradeId) {
+                updateTrade(editingTradeId, e);
+            } else {
+                addTrade(e);
+            }
+        });
+    }
+
+    ['accountSize', 'riskPerTrade', 'leverage'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', (e) => {
+                const value = id === 'accountSize' || id === 'riskPerTrade' ? 
+                    parseFloat(e.target.value) : id === 'leverage' ? 
+                    parseInt(e.target.value) : e.target.value;
+                localStorage.setItem(id, value);
+                if (id === 'accountSize') {
+                    updateStats();
+                    renderCharts();
+                }
+                if (id !== 'accountCurrency') updateRiskCalculation();
+            });
+        }
+    });
+
+    // Special handling for currency change
+    const accountCurrency = document.getElementById('accountCurrency');
+    if (accountCurrency) {
+        accountCurrency.addEventListener('change', (e) => {
+            const value = e.target.value;
+            localStorage.setItem('accountCurrency', value);
+            // Refresh all displays when currency changes
+            updateStats();
+            renderCharts();
+            updateRiskCalculation();
+            // Reload trades to update currency display
+            loadTrades();
+        });
+    }
+
+    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', () => updateRiskCalculation());
+            element.addEventListener('change', () => updateRiskCalculation());
+        }
+    });
+
+        const symbolSelect = document.getElementById('symbol');
+        if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
+        updateRiskCalculation();
+    }
+
     const forexTrades = trades.filter(t => t.instrumentType === 'forex');
     const indicesTrades = trades.filter(t => t.instrumentType === 'indices');
 
