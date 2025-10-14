@@ -28,6 +28,7 @@ onAuthStateChanged(auth, async (user) => {
         await loadUserSettings();
         await loadTrades();
         setupEventListeners();
+        setupTabs(); // Add this line
         hideLoading();
     } else {
         window.location.href = 'index.html';
@@ -957,6 +958,42 @@ function renderWinLossChart(trades) {
             }
         }
     });
+}
+
+// Tab Management
+function setupTabs() {
+    const dashboardTab = document.getElementById('dashboardTab');
+    const tradesTab = document.getElementById('tradesTab');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const tradesContent = document.getElementById('tradesContent');
+
+    if (dashboardTab && tradesTab) {
+        // Switch to Dashboard tab
+        dashboardTab.addEventListener('click', () => {
+            // Update tab buttons
+            dashboardTab.classList.add('active');
+            tradesTab.classList.remove('active');
+            
+            // Update content
+            dashboardContent.classList.add('active');
+            dashboardContent.classList.remove('hidden');
+            tradesContent.classList.remove('active');
+            tradesContent.classList.add('hidden');
+        });
+
+        // Switch to Trades tab
+        tradesTab.addEventListener('click', () => {
+            // Update tab buttons
+            tradesTab.classList.add('active');
+            dashboardTab.classList.remove('active');
+            
+            // Update content
+            tradesContent.classList.add('active');
+            tradesContent.classList.remove('hidden');
+            dashboardContent.classList.remove('active');
+            dashboardContent.classList.add('hidden');
+        });
+    }
 }
 
 function renderMarketTypeChart(trades) {

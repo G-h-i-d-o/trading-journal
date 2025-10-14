@@ -299,6 +299,39 @@
             text-align: center;
             opacity: 0.9;
         }
+
+        /* Tab Styles */
+        .tab-button {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            outline: none;
+            padding: 12px 24px;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-button.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab-button:not(.active) {
+            color: #6b7280;
+        }
+
+        .tab-button:not(.active):hover {
+            color: #374151;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -338,298 +371,318 @@
             </div>
         </div>
 
-        <!-- Account Setup -->
-        <div class="card">
-            <h3 class="section-title">💰 Account Setup</h3>
-            <div class="form-grid compact-form">
-                <div class="form-group">
-                    <label>Account Balance ($)</label>
-                    <input type="number" id="accountSize" placeholder="e.g., 10000" value="10000">
-                </div>
-                <div class="form-group">
-                    <label>Risk Per Trade (%)</label>
-                    <input type="number" id="riskPerTrade" step="0.1" min="0.1" max="5" value="1.0" placeholder="0.1 - 5%">
-                </div>
-                <div class="form-group">
-                    <label>Account Currency</label>
-                    <select id="accountCurrency">
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="JPY">JPY</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Leverage</label>
-                    <select id="leverage">
-                        <option value="10">1:10</option>
-                        <option value="20">1:20</option>
-                        <option value="50" selected>1:50</option>
-                        <option value="100">1:100</option>
-                    </select>
-                </div>
-            </div>
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg">
+            <button id="dashboardTab" class="tab-button active">
+                📊 Dashboard
+            </button>
+            <button id="tradesTab" class="tab-button">
+                📋 Trade History
+            </button>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="text-xs sm:text-sm">Total Trades</div>
-                <div class="stat-value" id="totalTrades">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="text-xs sm:text-sm">Win Rate</div>
-                <div class="stat-value" id="winRate">0%</div>
-            </div>
-            <div class="stat-card">
-                <div class="text-xs sm:text-sm">Total P&L</div>
-                <div class="stat-value" id="totalPL">$0</div>
-            </div>
-            <div class="stat-card">
-                <div class="text-xs sm:text-sm">Balance</div>
-                <div class="stat-value" id="currentBalance">$0</div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <!-- Trade Entry Form -->
+        <!-- Dashboard Tab Content -->
+        <div id="dashboardContent" class="tab-content active">
+            <!-- Account Setup -->
             <div class="card">
-                <h3 class="section-title">📝 New Trade</h3>
-                <form id="tradeForm" class="compact-form">
+                <h3 class="section-title">💰 Account Setup</h3>
+                <div class="form-grid compact-form">
                     <div class="form-group">
-                        <label>Mood / Psychology</label>
-                        <select id="mood" class="mb-2">
-                            <option value="">Select Mood</option>
-                            <option value="confident">😊 Confident</option>
-                            <option value="neutral">😐 Neutral</option>
-                            <option value="anxious">😰 Anxious</option>
-                            <option value="greedy">😈 Greedy</option>
-                            <option value="fearful">😨 Fearful</option>
-                            <option value="disciplined">🎯 Disciplined</option>
-                            <option value="impulsive">⚡ Impulsive</option>
+                        <label>Account Balance ($)</label>
+                        <input type="number" id="accountSize" placeholder="e.g., 10000" value="10000">
+                    </div>
+                    <div class="form-group">
+                        <label>Risk Per Trade (%)</label>
+                        <input type="number" id="riskPerTrade" step="0.1" min="0.1" max="5" value="1.0" placeholder="0.1 - 5%">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Currency</label>
+                        <select id="accountCurrency">
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                            <option value="JPY">JPY</option>
                         </select>
                     </div>
-
-                    <div class="form-section">
-                        <div class="form-group">
-                            <label>Instrument</label>
-                            <select id="symbol" required>
-                                <option value="">Select Instrument</option>
-                                <optgroup label="Forex">
-                                    <option value="EUR/USD">EUR/USD</option>
-                                    <option value="GBP/USD">GBP/USD</option>
-                                    <option value="USD/JPY">USD/JPY</option>
-                                    <option value="AUD/USD">AUD/USD</option>
-                                </optgroup>
-                                <optgroup label="Indices">
-                                    <option value="US30">US30</option>
-                                    <option value="SPX500">S&P 500</option>
-                                    <option value="NAS100">NASDAQ</option>
-                                    <option value="GE30">DAX 30</option>
-                                </optgroup>
-                            </select>
-                            <div id="instrumentTypeDisplay" class="pip-display"></div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Direction</label>
-                            <select id="direction" required>
-                                <option value="">Select</option>
-                                <option value="long">Buy</option>
-                                <option value="short">Sell</option>
-                            </select>
-                        </div>
+                    <div class="form-group">
+                        <label>Leverage</label>
+                        <select id="leverage">
+                            <option value="10">1:10</option>
+                            <option value="20">1:20</option>
+                            <option value="50" selected>1:50</option>
+                            <option value="100">1:100</option>
+                        </select>
                     </div>
-
-                    <div class="form-section">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Entry Price</label>
-                                <input type="number" id="entryPrice" step="0.00001" required>
-                                <div class="pip-display" id="entryPipDisplay"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Stop Loss</label>
-                                <input type="number" id="stopLoss" step="0.00001" required>
-                                <div class="pip-display" id="slPipDisplay"></div>
-                            </div>
-                        </div>
-
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Take Profit</label>
-                                <input type="number" id="takeProfit" step="0.00001">
-                                <div class="pip-display" id="tpPipDisplay"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Size (Lots)</label>
-                                <input type="number" id="lotSize" step="0.01" value="0.01" required>
-                                <div class="pip-display">Std Lot = 100k</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Risk Calculator -->
-                    <div class="risk-calculator">
-                        <h5 class="font-bold mb-2">🎯 Risk Management</h5>
-                        <div id="riskCalculation" class="space-y-1 text-xs">
-                            <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
-                            <div>Amount: $<span id="totalRisk">0.00</span></div>
-                            <div>Risk %: <span id="riskPercentage">0.00%</span></div>
-                            <div>R:R: <span id="riskRewardRatio">0.00</span></div>
-                            <div>Rec. Lots: <span id="recommendedLotSize">0.00</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Screenshots -->
-                    <div class="form-section">
-                        <div class="form-group">
-                            <label>📸 Before Chart URL</label>
-                            <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
-                        </div>
-
-                        <div class="form-group">
-                            <label>📸 After Chart URL</label>
-                            <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Notes & Psychology</label>
-                            <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons learned, psychological state..."></textarea>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn">
-                        <span id="submitButtonText">💾 Save Trade</span>
-                    </button>
-                </form>
+                </div>
             </div>
 
-            <!-- Analytics & Charts -->
-            <div class="space-y-4 sm:space-y-6">
-                <!-- Performance Metrics -->
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Total Trades</div>
+                    <div class="stat-value" id="totalTrades">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Win Rate</div>
+                    <div class="stat-value" id="winRate">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Total P&L</div>
+                    <div class="stat-value" id="totalPL">$0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Balance</div>
+                    <div class="stat-value" id="currentBalance">$0</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <!-- Trade Entry Form -->
                 <div class="card">
-                    <h3 class="section-title">📈 Performance Analytics</h3>
-                    <div class="metric-grid">
-                        <div class="metric-card">
-                            <div class="metric-label">Avg Win</div>
-                            <div class="metric-value profit" id="avgWin">$0</div>
+                    <h3 class="section-title">📝 New Trade</h3>
+                    <form id="tradeForm" class="compact-form">
+                        <div class="form-group">
+                            <label>Mood / Psychology</label>
+                            <select id="mood" class="mb-2">
+                                <option value="">Select Mood</option>
+                                <option value="confident">😊 Confident</option>
+                                <option value="neutral">😐 Neutral</option>
+                                <option value="anxious">😰 Anxious</option>
+                                <option value="greedy">😈 Greedy</option>
+                                <option value="fearful">😨 Fearful</option>
+                                <option value="disciplined">🎯 Disciplined</option>
+                                <option value="impulsive">⚡ Impulsive</option>
+                            </select>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Avg Loss</div>
-                            <div class="metric-value loss" id="avgLoss">$0</div>
+
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label>Instrument</label>
+                                <select id="symbol" required>
+                                    <option value="">Select Instrument</option>
+                                    <optgroup label="Forex">
+                                        <option value="EUR/USD">EUR/USD</option>
+                                        <option value="GBP/USD">GBP/USD</option>
+                                        <option value="USD/JPY">USD/JPY</option>
+                                        <option value="AUD/USD">AUD/USD</option>
+                                    </optgroup>
+                                    <optgroup label="Indices">
+                                        <option value="US30">US30</option>
+                                        <option value="SPX500">S&P 500</option>
+                                        <option value="NAS100">NASDAQ</option>
+                                        <option value="GE30">DAX 30</option>
+                                    </optgroup>
+                                </select>
+                                <div id="instrumentTypeDisplay" class="pip-display"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Direction</label>
+                                <select id="direction" required>
+                                    <option value="">Select</option>
+                                    <option value="long">Buy</option>
+                                    <option value="short">Sell</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Largest Win</div>
-                            <div class="metric-value profit" id="largestWin">$0</div>
+
+                        <div class="form-section">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Entry Price</label>
+                                    <input type="number" id="entryPrice" step="0.00001" required>
+                                    <div class="pip-display" id="entryPipDisplay"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Stop Loss</label>
+                                    <input type="number" id="stopLoss" step="0.00001" required>
+                                    <div class="pip-display" id="slPipDisplay"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Take Profit</label>
+                                    <input type="number" id="takeProfit" step="0.00001">
+                                    <div class="pip-display" id="tpPipDisplay"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Size (Lots)</label>
+                                    <input type="number" id="lotSize" step="0.01" value="0.01" required>
+                                    <div class="pip-display">Std Lot = 100k</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Largest Loss</div>
-                            <div class="metric-value loss" id="largestLoss">$0</div>
+
+                        <!-- Risk Calculator -->
+                        <div class="risk-calculator">
+                            <h5 class="font-bold mb-2">🎯 Risk Management</h5>
+                            <div id="riskCalculation" class="space-y-1 text-xs">
+                                <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
+                                <div>Amount: $<span id="totalRisk">0.00</span></div>
+                                <div>Risk %: <span id="riskPercentage">0.00%</span></div>
+                                <div>R:R: <span id="riskRewardRatio">0.00</span></div>
+                                <div>Rec. Lots: <span id="recommendedLotSize">0.00</span></div>
+                            </div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Profit Factor</div>
-                            <div class="metric-value" id="profitFactor">0.00</div>
+
+                        <!-- Screenshots -->
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label>📸 Before Chart URL</label>
+                                <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
+                            </div>
+
+                            <div class="form-group">
+                                <label>📸 After Chart URL</label>
+                                <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Notes & Psychology</label>
+                                <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons learned, psychological state..."></textarea>
+                            </div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Expectancy</div>
-                            <div class="metric-value" id="expectancy">$0</div>
+
+                        <button type="submit" class="btn">
+                            <span id="submitButtonText">💾 Save Trade</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Analytics & Charts -->
+                <div class="space-y-4 sm:space-y-6">
+                    <!-- Performance Metrics -->
+                    <div class="card">
+                        <h3 class="section-title">📈 Performance Analytics</h3>
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Avg Win</div>
+                                <div class="metric-value profit" id="avgWin">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Avg Loss</div>
+                                <div class="metric-value loss" id="avgLoss">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Largest Win</div>
+                                <div class="metric-value profit" id="largestWin">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Largest Loss</div>
+                                <div class="metric-value loss" id="largestLoss">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Profit Factor</div>
+                                <div class="metric-value" id="profitFactor">0.00</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Expectancy</div>
+                                <div class="metric-value" id="expectancy">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Avg R:R</div>
+                                <div class="metric-value" id="avgRiskReward">0.00</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Consistency</div>
+                                <div class="metric-value" id="consistency">0%</div>
+                            </div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Avg R:R</div>
-                            <div class="metric-value" id="avgRiskReward">0.00</div>
+                    </div>
+
+                    <!-- Psychological Metrics -->
+                    <div class="card">
+                        <h3 class="section-title">🧠 Trading Psychology</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="psych-metric">
+                                <div class="psych-value" id="bestMood">-</div>
+                                <div class="psych-label">Best Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="worstMood">-</div>
+                                <div class="psych-label">Worst Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="disciplineScore">0%</div>
+                                <div class="psych-label">Discipline</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="riskAdherence">0%</div>
+                                <div class="psych-label">Risk Adherence</div>
+                            </div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Consistency</div>
-                            <div class="metric-value" id="consistency">0%</div>
+                        <div class="mt-3 text-xs text-gray-600">
+                            <div>Mood Performance:</div>
+                            <div id="moodPerformance" class="mt-1">No data yet</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="card">
+                        <h3 class="section-title">📊 Distribution</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <canvas id="winLossChart" height="160"></canvas>
+                            </div>
+                            <div>
+                                <canvas id="marketTypeChart" height="160"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Analysis -->
+                    <div class="card">
+                        <h3 class="section-title">⏰ Time Analysis</h3>
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Best Day</div>
+                                <div class="metric-value" id="bestDay">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Best Instrument</div>
+                                <div class="metric-value" id="bestInstrument">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Avg Trade Duration</div>
+                                <div class="metric-value" id="avgDuration">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Trades/Month</div>
+                                <div class="metric-value" id="tradesPerMonth">0</div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Psychological Metrics -->
-                <div class="card">
-                    <h3 class="section-title">🧠 Trading Psychology</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="psych-metric">
-                            <div class="psych-value" id="bestMood">-</div>
-                            <div class="psych-label">Best Mood</div>
-                        </div>
-                        <div class="psych-metric">
-                            <div class="psych-value" id="worstMood">-</div>
-                            <div class="psych-label">Worst Mood</div>
-                        </div>
-                        <div class="psych-metric">
-                            <div class="psych-value" id="disciplineScore">0%</div>
-                            <div class="psych-label">Discipline</div>
-                        </div>
-                        <div class="psych-metric">
-                            <div class="psych-value" id="riskAdherence">0%</div>
-                            <div class="psych-label">Risk Adherence</div>
-                        </div>
-                    </div>
-                    <div class="mt-3 text-xs text-gray-600">
-                        <div>Mood Performance:</div>
-                        <div id="moodPerformance" class="mt-1">No data yet</div>
-                    </div>
-                </div>
-
-                <!-- Charts -->
-                <div class="card">
-                    <h3 class="section-title">📊 Distribution</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <canvas id="winLossChart" height="160"></canvas>
-                        </div>
-                        <div>
-                            <canvas id="marketTypeChart" height="160"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Time Analysis -->
-                <div class="card">
-                    <h3 class="section-title">⏰ Time Analysis</h3>
-                    <div class="metric-grid">
-                        <div class="metric-card">
-                            <div class="metric-label">Best Day</div>
-                            <div class="metric-value" id="bestDay">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Best Instrument</div>
-                            <div class="metric-value" id="bestInstrument">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Avg Trade Duration</div>
-                            <div class="metric-value" id="avgDuration">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Trades/Month</div>
-                            <div class="metric-value" id="tradesPerMonth">0</div>
-                        </div>
-                    </div>
+            <!-- Performance Chart -->
+            <div class="card">
+                <h3 class="section-title">📈 Balance Progress</h3>
+                <div style="height: 250px;">
+                    <canvas id="performanceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Trade History -->
-        <div class="card">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="section-title mb-0">📋 Trade History</h3>
-                <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
-            </div>
-            <div id="tradeHistory">
-                <div class="text-center text-gray-500 py-8">
-                    <div class="loading-spinner mx-auto"></div>
-                    <p class="mt-2">Loading trades...</p>
+        <!-- Trade History Tab Content -->
+        <div id="tradesContent" class="tab-content">
+            <div class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="section-title mb-0">📋 Trade History</h3>
+                    <div class="flex items-center space-x-2">
+                        <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
+                        <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
+                            Export CSV
+                        </button>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Performance Chart -->
-        <div class="card">
-            <h3 class="section-title">📈 Balance Progress</h3>
-            <div style="height: 250px;">
-                <canvas id="performanceChart"></canvas>
+                <div id="tradeHistory">
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="loading-spinner mx-auto"></div>
+                        <p class="mt-2">Loading trades...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
