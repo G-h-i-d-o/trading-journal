@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION
+// app.js - COMPLETE FIXED VERSION WITH ALL MODIFICATIONS
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -20,6 +20,67 @@ function hideLoading() {
     if (loadingIndicator) loadingIndicator.style.display = 'none';
 }
 
+// Tab Management
+function setupTabs() {
+    const dashboardTab = document.getElementById('dashboardTab');
+    const tradesTab = document.getElementById('tradesTab');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const tradesContent = document.getElementById('tradesContent');
+
+    if (dashboardTab && tradesTab) {
+        // Switch to Dashboard tab
+        dashboardTab.addEventListener('click', () => {
+            // Update tab buttons
+            dashboardTab.classList.add('active');
+            tradesTab.classList.remove('active');
+            
+            // Update content
+            dashboardContent.classList.add('active');
+            dashboardContent.classList.remove('hidden');
+            tradesContent.classList.remove('active');
+            tradesContent.classList.add('hidden');
+        });
+
+        // Switch to Trades tab
+        tradesTab.addEventListener('click', () => {
+            // Update tab buttons
+            tradesTab.classList.add('active');
+            dashboardTab.classList.remove('active');
+            
+            // Update content
+            tradesContent.classList.add('active');
+            tradesContent.classList.remove('hidden');
+            dashboardContent.classList.remove('active');
+            dashboardContent.classList.add('hidden');
+        });
+    }
+}
+
+// Mobile Menu Toggle
+function setupMobileMenu() {
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileUserEmail = document.getElementById('mobile-user-email');
+
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
+                mobileMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Update mobile user email
+    if (mobileUserEmail && currentUser) {
+        mobileUserEmail.textContent = currentUser.email;
+    }
+}
+
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
@@ -28,7 +89,8 @@ onAuthStateChanged(auth, async (user) => {
         await loadUserSettings();
         await loadTrades();
         setupEventListeners();
-        setupTabs(); // Add this line
+        setupTabs();
+        setupMobileMenu();
         hideLoading();
     } else {
         window.location.href = 'index.html';
@@ -510,8 +572,22 @@ function calculateAdvancedMetrics(trades) {
     const expectancy = (winningTrades.length / trades.length) * avgWin + 
                       (losingTrades.length / trades.length) * avgLoss;
 
+    // FIXED: Calculate actual Risk:Reward ratio for each trade and average
     const avgRiskReward = trades.length > 0 ? 
-        trades.reduce((sum, t) => sum + (t.riskRewardRatio || 0), 0) / trades.length : 0;
+        trades.reduce((sum, trade) => {
+            if (trade.takeProfit && trade.riskAmount > 0) {
+                const potentialProfit = Math.abs(calculateProfitLoss(
+                    trade.entryPrice, 
+                    trade.takeProfit, 
+                    trade.lotSize, 
+                    trade.symbol, 
+                    trade.type
+                ));
+                const riskReward = potentialProfit / trade.riskAmount;
+                return sum + riskReward;
+            }
+            return sum;
+        }, 0) / trades.filter(t => t.takeProfit && t.riskAmount > 0).length : 0;
 
     // Consistency (percentage of profitable weeks)
     const weeklyPerformance = calculateWeeklyPerformance(trades);
@@ -861,7 +937,7 @@ function renderPerformanceChart(trades) {
         return;
     }
 
-    // FIX: Sort trades from OLDEST to NEWEST for proper chronological progression
+    // Sort trades from OLDEST to NEWEST for proper chronological progression
     const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
@@ -869,11 +945,20 @@ function renderPerformanceChart(trades) {
     const balanceData = [balance];
     const labels = ['Start'];
 
-    // FIX: Process trades in chronological order (oldest first)
+    // Process trades in chronological order with dates
     sortedTrades.forEach((trade, index) => {
         balance += trade.profit;
         balanceData.push(balance);
-        labels.push(`Trade ${index + 1}`); // This will now show Trade 1, Trade 2, Trade 3...
+        
+        // Use actual dates instead of "Trade X"
+        const tradeDate = new Date(trade.timestamp);
+        const dateLabel = tradeDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        labels.push(dateLabel);
     });
 
     performanceChart = new Chart(ctx, {
@@ -908,7 +993,19 @@ function renderPerformanceChart(trades) {
             scales: {
                 x: { 
                     display: true, 
-                    title: { display: true, text: 'Trade Sequence' } 
+                    title: { display: true, text: 'Date & Time' },
+                    ticks: {
+                        maxTicksLimit: 8, // Limit number of labels to prevent crowding
+                        callback: function(value, index, values) {
+                            // Show shorter labels for x-axis
+                            if (index === 0) return 'Start';
+                            const label = this.getLabelForValue(value);
+                            if (label.length > 8) {
+                                return label.split(' ')[0]; // Just show date part on x-axis
+                            }
+                            return label;
+                        }
+                    }
                 },
                 y: { 
                     display: true, 
@@ -958,42 +1055,6 @@ function renderWinLossChart(trades) {
             }
         }
     });
-}
-
-// Tab Management
-function setupTabs() {
-    const dashboardTab = document.getElementById('dashboardTab');
-    const tradesTab = document.getElementById('tradesTab');
-    const dashboardContent = document.getElementById('dashboardContent');
-    const tradesContent = document.getElementById('tradesContent');
-
-    if (dashboardTab && tradesTab) {
-        // Switch to Dashboard tab
-        dashboardTab.addEventListener('click', () => {
-            // Update tab buttons
-            dashboardTab.classList.add('active');
-            tradesTab.classList.remove('active');
-            
-            // Update content
-            dashboardContent.classList.add('active');
-            dashboardContent.classList.remove('hidden');
-            tradesContent.classList.remove('active');
-            tradesContent.classList.add('hidden');
-        });
-
-        // Switch to Trades tab
-        tradesTab.addEventListener('click', () => {
-            // Update tab buttons
-            tradesTab.classList.add('active');
-            dashboardTab.classList.remove('active');
-            
-            // Update content
-            tradesContent.classList.add('active');
-            tradesContent.classList.remove('hidden');
-            dashboardContent.classList.remove('active');
-            dashboardContent.classList.add('hidden');
-        });
-    }
 }
 
 function renderMarketTypeChart(trades) {
