@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION WITH ALL MODIFICATIONS
+// app.js - COMPLETE FIXED VERSION WITH WORKING CURRENCY SYSTEM
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -9,6 +9,52 @@ let performanceChart = null;
 let winLossChart = null;
 let marketTypeChart = null;
 let editingTradeId = null;
+
+// Currency configuration
+const exchangeRates = {
+    USD: 1,
+    EUR: 0.92,
+    GBP: 0.79,
+    JPY: 150.25,
+    ZAR: 18.75,
+    CAD: 1.35,
+    AUD: 1.52,
+    CHF: 0.88
+};
+
+const currencySymbols = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    JPY: '¥',
+    ZAR: 'R',
+    CAD: 'C$',
+    AUD: 'A$',
+    CHF: 'CHF'
+};
+
+// Currency utility functions
+function getSelectedCurrency() {
+    return document.getElementById('accountCurrency')?.value || 'USD';
+}
+
+function getCurrencySymbol(currencyCode = null) {
+    if (!currencyCode) currencyCode = getSelectedCurrency();
+    return currencySymbols[currencyCode] || '$';
+}
+
+function convertToSelectedCurrency(amountUSD) {
+    const targetCurrency = getSelectedCurrency();
+    const rate = exchangeRates[targetCurrency] || 1;
+    return amountUSD * rate;
+}
+
+function formatCurrency(amountUSD, currencyCode = null) {
+    if (!currencyCode) currencyCode = getSelectedCurrency();
+    const convertedAmount = convertToSelectedCurrency(amountUSD);
+    const symbol = getCurrencySymbol(currencyCode);
+    return `${symbol}${convertedAmount.toFixed(2)}`;
+}
 
 function showLoading() {
     const loadingIndicator = document.getElementById('loadingIndicator');
@@ -28,26 +74,18 @@ function setupTabs() {
     const tradesContent = document.getElementById('tradesContent');
 
     if (dashboardTab && tradesTab) {
-        // Switch to Dashboard tab
         dashboardTab.addEventListener('click', () => {
-            // Update tab buttons
             dashboardTab.classList.add('active');
             tradesTab.classList.remove('active');
-            
-            // Update content
             dashboardContent.classList.add('active');
             dashboardContent.classList.remove('hidden');
             tradesContent.classList.remove('active');
             tradesContent.classList.add('hidden');
         });
 
-        // Switch to Trades tab
         tradesTab.addEventListener('click', () => {
-            // Update tab buttons
             tradesTab.classList.add('active');
             dashboardTab.classList.remove('active');
-            
-            // Update content
             tradesContent.classList.add('active');
             tradesContent.classList.remove('hidden');
             dashboardContent.classList.remove('active');
@@ -67,7 +105,6 @@ function setupMobileMenu() {
             mobileMenu.classList.toggle('hidden');
         });
 
-        // Close mobile menu when clicking outside
         document.addEventListener('click', (e) => {
             if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
                 mobileMenu.classList.add('hidden');
@@ -75,12 +112,12 @@ function setupMobileMenu() {
         });
     }
 
-    // Update mobile user email
     if (mobileUserEmail && currentUser) {
         mobileUserEmail.textContent = currentUser.email;
     }
 }
 
+// Authentication
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
@@ -119,23 +156,38 @@ function setupEventListeners() {
         });
     }
 
-    ['accountSize', 'riskPerTrade', 'accountCurrency', 'leverage'].forEach(id => {
+    // Account settings listeners
+    ['accountSize', 'riskPerTrade', 'leverage'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('change', (e) => {
                 const value = id === 'accountSize' || id === 'riskPerTrade' ? 
-                    parseFloat(e.target.value) : id === 'leverage' ? 
-                    parseInt(e.target.value) : e.target.value;
+                    parseFloat(e.target.value) : parseInt(e.target.value);
                 localStorage.setItem(id, value);
                 if (id === 'accountSize') {
                     updateStats();
                     renderCharts();
                 }
-                if (id !== 'accountCurrency') updateRiskCalculation();
+                updateRiskCalculation();
             });
         }
     });
 
+    // Currency change listener
+    const accountCurrency = document.getElementById('accountCurrency');
+    if (accountCurrency) {
+        accountCurrency.addEventListener('change', (e) => {
+            const value = e.target.value;
+            localStorage.setItem('accountCurrency', value);
+            // Refresh all currency displays
+            updateStats();
+            renderCharts();
+            updateRiskCalculation();
+            loadTrades(); // Reload trades to update currency display
+        });
+    }
+
+    // Trade form listeners
     ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -146,9 +198,11 @@ function setupEventListeners() {
 
     const symbolSelect = document.getElementById('symbol');
     if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
+    
     updateRiskCalculation();
 }
 
+// Trading calculation functions
 function getInstrumentType(symbol) {
     const forexPairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'];
     const indices = ['US30', 'SPX500', 'NAS100', 'GE30', 'FTSE100', 'NIKKEI225'];
@@ -217,7 +271,7 @@ function updateRiskCalculation() {
 
         const riskElements = {
             'pipsRisk': pipPointInfo.risk.toFixed(1) + ' ' + unitType,
-            'totalRisk': Math.abs(potentialLoss).toFixed(2),
+            'totalRisk': formatCurrency(Math.abs(potentialLoss)),
             'riskPercentage': (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%',
             'riskRewardRatio': riskRewardRatio.toFixed(2),
             'recommendedLotSize': recommendedLotSize
@@ -253,6 +307,7 @@ window.updateInstrumentType = () => {
     }
 };
 
+// Trade CRUD operations
 async function addTrade(e) {
     e.preventDefault();
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -442,13 +497,13 @@ function displayTrades(trades) {
                             ${moodEmoji ? `<span class="ml-1">${moodEmoji}</span>` : ''}
                         </div>
                         <div class="${profitClass} font-bold text-sm sm:text-base">
-                            $${trade.profit.toFixed(2)}
+                            ${formatCurrency(trade.profit)}
                         </div>
                     </div>
                     <div class="text-xs text-gray-600 space-y-1">
                         <div>${trade.type.toUpperCase()} | ${trade.lotSize} lots | Entry: ${trade.entryPrice}</div>
                         <div>SL: ${trade.stopLoss}${trade.takeProfit ? ` | TP: ${trade.takeProfit}` : ''}</div>
-                        <div>Risk: $${trade.riskAmount.toFixed(2)} (${trade.riskPercent.toFixed(1)}%)</div>
+                        <div>Risk: ${formatCurrency(trade.riskAmount)} (${trade.riskPercent.toFixed(1)}%)</div>
                         <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()}</div>
                     </div>
                     ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
@@ -542,7 +597,7 @@ window.deleteTrade = async (tradeId) => {
     }
 };
 
-// Enhanced Analytics Functions
+// Analytics and Metrics
 function calculateAdvancedMetrics(trades) {
     if (!trades || trades.length === 0) {
         resetAdvancedMetrics();
@@ -553,7 +608,6 @@ function calculateAdvancedMetrics(trades) {
     const losingTrades = trades.filter(t => t.profit < 0);
     const breakevenTrades = trades.filter(t => t.profit === 0);
 
-    // Basic performance metrics
     const avgWin = winningTrades.length > 0 ? 
         winningTrades.reduce((sum, t) => sum + t.profit, 0) / winningTrades.length : 0;
     const avgLoss = losingTrades.length > 0 ? 
@@ -563,7 +617,6 @@ function calculateAdvancedMetrics(trades) {
     const largestLoss = losingTrades.length > 0 ? 
         Math.min(...losingTrades.map(t => t.profit)) : 0;
 
-    // Advanced metrics
     const profitFactor = losingTrades.length > 0 ? 
         Math.abs(winningTrades.reduce((sum, t) => sum + t.profit, 0) / 
                 losingTrades.reduce((sum, t) => sum + t.profit, 0)) : 
@@ -572,7 +625,6 @@ function calculateAdvancedMetrics(trades) {
     const expectancy = (winningTrades.length / trades.length) * avgWin + 
                       (losingTrades.length / trades.length) * avgLoss;
 
-    // FIXED: Calculate actual Risk:Reward ratio for each trade and average
     const avgRiskReward = trades.length > 0 ? 
         trades.reduce((sum, trade) => {
             if (trade.takeProfit && trade.riskAmount > 0) {
@@ -589,30 +641,37 @@ function calculateAdvancedMetrics(trades) {
             return sum;
         }, 0) / trades.filter(t => t.takeProfit && t.riskAmount > 0).length : 0;
 
-    // Consistency (percentage of profitable weeks)
     const weeklyPerformance = calculateWeeklyPerformance(trades);
     const consistency = weeklyPerformance.length > 0 ? 
         (weeklyPerformance.filter(week => week.profit > 0).length / weeklyPerformance.length * 100) : 0;
 
-    // Update performance metrics
     updatePerformanceMetrics({
         avgWin, avgLoss, largestWin, largestLoss, 
         profitFactor, expectancy, avgRiskReward, consistency
     });
 
-    // Calculate psychological metrics
     calculatePsychologicalMetrics(trades);
-    
-    // Calculate time analysis
     calculateTimeAnalysis(trades);
 }
 
 function resetAdvancedMetrics() {
     const metrics = {
-        'avgWin': '$0', 'avgLoss': '$0', 'largestWin': '$0', 'largestLoss': '$0',
-        'profitFactor': '0.00', 'expectancy': '$0', 'avgRiskReward': '0.00', 'consistency': '0%',
-        'bestMood': '-', 'worstMood': '-', 'disciplineScore': '0%', 'riskAdherence': '0%',
-        'bestDay': '-', 'bestInstrument': '-', 'avgDuration': '-', 'tradesPerMonth': '0'
+        'avgWin': formatCurrency(0),
+        'avgLoss': formatCurrency(0),
+        'largestWin': formatCurrency(0),
+        'largestLoss': formatCurrency(0),
+        'profitFactor': '0.00',
+        'expectancy': formatCurrency(0),
+        'avgRiskReward': '0.00',
+        'consistency': '0%',
+        'bestMood': '-',
+        'worstMood': '-',
+        'disciplineScore': '0%',
+        'riskAdherence': '0%',
+        'bestDay': '-',
+        'bestInstrument': '-',
+        'avgDuration': '-',
+        'tradesPerMonth': '0'
     };
 
     Object.entries(metrics).forEach(([id, value]) => {
@@ -626,12 +685,12 @@ function resetAdvancedMetrics() {
 
 function updatePerformanceMetrics(metrics) {
     const performanceElements = {
-        'avgWin': `$${metrics.avgWin.toFixed(2)}`,
-        'avgLoss': `$${metrics.avgLoss.toFixed(2)}`,
-        'largestWin': `$${metrics.largestWin.toFixed(2)}`,
-        'largestLoss': `$${metrics.largestLoss.toFixed(2)}`,
+        'avgWin': formatCurrency(metrics.avgWin),
+        'avgLoss': formatCurrency(metrics.avgLoss),
+        'largestWin': formatCurrency(metrics.largestWin),
+        'largestLoss': formatCurrency(metrics.largestLoss),
         'profitFactor': metrics.profitFactor.toFixed(2),
-        'expectancy': `$${metrics.expectancy.toFixed(2)}`,
+        'expectancy': formatCurrency(metrics.expectancy),
         'avgRiskReward': metrics.avgRiskReward.toFixed(2),
         'consistency': `${metrics.consistency.toFixed(1)}%`
     };
@@ -643,7 +702,6 @@ function updatePerformanceMetrics(metrics) {
 }
 
 function calculatePsychologicalMetrics(trades) {
-    // Mood analysis
     const moodPerformance = {};
     trades.forEach(trade => {
         if (trade.mood) {
@@ -656,7 +714,6 @@ function calculatePsychologicalMetrics(trades) {
         }
     });
 
-    // Find best and worst performing moods
     let bestMood = '-';
     let worstMood = '-';
     let bestMoodProfit = -Infinity;
@@ -674,20 +731,17 @@ function calculatePsychologicalMetrics(trades) {
         }
     });
 
-    // Discipline score (based on risk adherence and consistency)
     const riskAdherence = calculateRiskAdherence(trades);
     const disciplineScore = Math.min(100, riskAdherence * 100);
 
-    // Update psychological metrics
     document.getElementById('bestMood').textContent = bestMood;
     document.getElementById('worstMood').textContent = worstMood;
     document.getElementById('disciplineScore').textContent = `${disciplineScore.toFixed(0)}%`;
     document.getElementById('riskAdherence').textContent = `${riskAdherence.toFixed(1)}%`;
 
-    // Update mood performance display
     const moodPerformanceText = Object.entries(moodPerformance)
         .map(([mood, data]) => 
-            `${getMoodEmoji(mood)}: $${(data.total/data.count).toFixed(1)} (${((data.wins/data.count)*100).toFixed(0)}% WR)`
+            `${getMoodEmoji(mood)}: ${formatCurrency(data.total/data.count)} (${((data.wins/data.count)*100).toFixed(0)}% WR)`
         )
         .join(', ');
     
@@ -708,7 +762,7 @@ function getMoodEmoji(mood) {
 function calculateRiskAdherence(trades) {
     if (trades.length === 0) return 0;
     
-    const acceptableRiskRange = [0.5, 2.0]; // 0.5% to 2% risk per trade
+    const acceptableRiskRange = [0.5, 2.0];
     const withinRiskTrades = trades.filter(trade => {
         const riskPercent = trade.riskPercent || 0;
         return riskPercent >= acceptableRiskRange[0] && riskPercent <= acceptableRiskRange[1];
@@ -720,32 +774,22 @@ function calculateRiskAdherence(trades) {
 function calculateTimeAnalysis(trades) {
     if (trades.length === 0) return;
 
-    // Best day of week
     const dayPerformance = {};
     const instrumentPerformance = {};
-    let totalDuration = 0;
-    let validDurations = 0;
 
     trades.forEach(trade => {
-        // Day analysis
         const tradeDate = new Date(trade.timestamp);
         const day = tradeDate.toLocaleDateString('en', { weekday: 'short' });
         if (!dayPerformance[day]) dayPerformance[day] = { total: 0, count: 0 };
         dayPerformance[day].total += trade.profit;
         dayPerformance[day].count++;
 
-        // Instrument analysis
         const symbol = trade.symbol;
         if (!instrumentPerformance[symbol]) instrumentPerformance[symbol] = { total: 0, count: 0 };
         instrumentPerformance[symbol].total += trade.profit;
         instrumentPerformance[symbol].count++;
-
-        // Duration analysis (simplified - assuming trades are intraday)
-        // In a real app, you'd calculate actual duration from entry to exit
-        validDurations++;
     });
 
-    // Find best day
     let bestDay = '-';
     let bestDayProfit = -Infinity;
     Object.entries(dayPerformance).forEach(([day, data]) => {
@@ -756,7 +800,6 @@ function calculateTimeAnalysis(trades) {
         }
     });
 
-    // Find best instrument
     let bestInstrument = '-';
     let bestInstrumentProfit = -Infinity;
     Object.entries(instrumentPerformance).forEach(([symbol, data]) => {
@@ -767,13 +810,11 @@ function calculateTimeAnalysis(trades) {
         }
     });
 
-    // Trades per month
     const monthlyTrades = trades.length / (getTradingMonths(trades) || 1);
 
-    // Update time analysis
     document.getElementById('bestDay').textContent = bestDay;
     document.getElementById('bestInstrument').textContent = bestInstrument;
-    document.getElementById('avgDuration').textContent = 'Intraday'; // Simplified
+    document.getElementById('avgDuration').textContent = 'Intraday';
     document.getElementById('tradesPerMonth').textContent = monthlyTrades.toFixed(1);
 }
 
@@ -793,12 +834,19 @@ function getTradingMonths(trades) {
     if (trades.length < 2) return 1;
     const firstTrade = new Date(trades[trades.length - 1].timestamp);
     const lastTrade = new Date(trades[0].timestamp);
-    return (lastTrade - firstTrade) / (1000 * 60 * 60 * 24 * 30.44); // Average month length
+    return (lastTrade - firstTrade) / (1000 * 60 * 60 * 24 * 30.44);
 }
 
 function updateStats(trades) {
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const stats = {'totalTrades': '0', 'winRate': '0%', 'totalPL': '$0', 'currentBalance': `$${accountSize.toFixed(2)}`, 'recentStats': 'No trades yet', 'symbolStats': 'No data'};
+    const stats = {
+        'totalTrades': '0', 
+        'winRate': '0%', 
+        'totalPL': formatCurrency(0), 
+        'currentBalance': formatCurrency(accountSize), 
+        'recentStats': 'No trades yet', 
+        'symbolStats': 'No data'
+    };
 
     if (trades && trades.length > 0) {
         const totalTrades = trades.length;
@@ -809,15 +857,17 @@ function updateStats(trades) {
 
         stats.totalTrades = totalTrades;
         stats.winRate = `${winRate}%`;
-        stats.totalPL = `$${totalPL.toFixed(2)}`;
-        stats.currentBalance = `$${currentBalance.toFixed(2)}`;
+        stats.totalPL = formatCurrency(totalPL);
+        stats.currentBalance = formatCurrency(currentBalance);
 
         const recentTrades = trades.slice(0, 3);
         const recentProfit = recentTrades.reduce((sum, trade) => sum + trade.profit, 0);
-        stats.recentStats = `Last 3: $${recentProfit.toFixed(2)}`;
+        stats.recentStats = `Last 3: ${formatCurrency(recentProfit)}`;
 
         const symbolStats = calculateSymbolStats(trades);
-        stats.symbolStats = symbolStats.slice(0, 3).map(stat => `${stat.symbol}: $${stat.totalProfit.toFixed(0)}`).join('<br>');
+        stats.symbolStats = symbolStats.slice(0, 3).map(stat => 
+            `${stat.symbol}: ${formatCurrency(stat.totalProfit)}`
+        ).join('<br>');
     }
 
     Object.entries(stats).forEach(([id, value]) => {
@@ -830,12 +880,12 @@ function updateStats(trades) {
             }
             
             if (id === 'totalPL') {
-                const plValue = parseFloat(value.replace('$', '')) || 0;
-                element.className = `stat-value ${plValue >= 0 ? 'profit' : 'loss'}`;
+                const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
+                element.className = `stat-value ${numericValue >= 0 ? 'profit' : 'loss'}`;
             } else if (id === 'currentBalance') {
-                const balanceValue = parseFloat(value.replace('$', '')) || 0;
-                const originalBalance = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-                element.className = `stat-value ${balanceValue >= originalBalance ? 'profit' : 'loss'}`;
+                const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
+                const originalBalance = convertToSelectedCurrency(accountSize);
+                element.className = `stat-value ${numericValue >= originalBalance ? 'profit' : 'loss'}`;
             }
         }
     });
@@ -928,35 +978,37 @@ function renderPerformanceChart(trades) {
 
     if (performanceChart) performanceChart.destroy();
 
+    const selectedCurrency = getSelectedCurrency();
+    const currencySymbol = getCurrencySymbol();
+
     if (trades.length === 0) {
         performanceChart = new Chart(ctx, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } } 
+            }
         });
         return;
     }
 
-    // Sort trades from OLDEST to NEWEST for proper chronological progression
     const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
     const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
     let balance = accountSize;
-    const balanceData = [balance];
+    const balanceData = [convertToSelectedCurrency(balance)];
     const labels = ['Start'];
 
-    // Process trades in chronological order with dates
-    sortedTrades.forEach((trade, index) => {
+    sortedTrades.forEach((trade) => {
         balance += trade.profit;
-        balanceData.push(balance);
+        balanceData.push(convertToSelectedCurrency(balance));
         
-        // Use actual dates instead of "Trade X"
         const tradeDate = new Date(trade.timestamp);
         const dateLabel = tradeDate.toLocaleDateString('en-US', { 
             month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            day: 'numeric'
         });
         labels.push(dateLabel);
     });
@@ -985,7 +1037,7 @@ function renderPerformanceChart(trades) {
                     intersect: false,
                     callbacks: {
                         label: function(context) {
-                            return `Balance: $${context.parsed.y.toFixed(2)}`;
+                            return `Balance: ${currencySymbol}${context.parsed.y.toFixed(2)}`;
                         }
                     }
                 }
@@ -993,23 +1045,11 @@ function renderPerformanceChart(trades) {
             scales: {
                 x: { 
                     display: true, 
-                    title: { display: true, text: 'Date & Time' },
-                    ticks: {
-                        maxTicksLimit: 8, // Limit number of labels to prevent crowding
-                        callback: function(value, index, values) {
-                            // Show shorter labels for x-axis
-                            if (index === 0) return 'Start';
-                            const label = this.getLabelForValue(value);
-                            if (label.length > 8) {
-                                return label.split(' ')[0]; // Just show date part on x-axis
-                            }
-                            return label;
-                        }
-                    }
+                    title: { display: true, text: 'Date' }
                 },
                 y: { 
                     display: true, 
-                    title: { display: true, text: 'Balance ($)' } 
+                    title: { display: true, text: `Balance (${currencySymbol})` } 
                 }
             }
         }
@@ -1070,412 +1110,6 @@ function renderMarketTypeChart(trades) {
             options: { responsive: true, maintainAspectRatio: false }
         });
         return;
-    }
-
-    // Add currency conversion rates (these would typically come from an API in production)
-const exchangeRates = {
-    USD: 1,
-    EUR: 0.85,
-    GBP: 0.73,
-    JPY: 110.0,
-    ZAR: 15.0,
-    CAD: 1.25,
-    AUD: 1.35,
-    CHF: 0.92
-};
-
-// Currency symbol mapping
-const currencySymbols = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    JPY: '¥',
-    ZAR: 'R',
-    CAD: 'C$',
-    AUD: 'A$',
-    CHF: 'Fr'
-};
-
-// Function to convert amount to selected currency
-function convertToCurrency(amount, fromCurrency = 'USD', toCurrency = null) {
-    if (!toCurrency) {
-        toCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-    }
-    
-    // Convert from USD to target currency
-    const amountInUSD = amount / exchangeRates[fromCurrency];
-    const convertedAmount = amountInUSD * exchangeRates[toCurrency];
-    
-    return {
-        amount: convertedAmount,
-        symbol: currencySymbols[toCurrency] || '$',
-        code: toCurrency
-    };
-}
-
-// Function to format currency display
-function formatCurrency(amount, currencyCode = null) {
-    if (!currencyCode) {
-        currencyCode = document.getElementById('accountCurrency')?.value || 'USD';
-    }
-    const symbol = currencySymbols[currencyCode] || '$';
-    return `${symbol}${amount.toFixed(2)}`;
-}
-
-// Update the updateStats function to use selected currency
-function updateStats(trades) {
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-    
-    const stats = {
-        'totalTrades': '0', 
-        'winRate': '0%', 
-        'totalPL': formatCurrency(0, selectedCurrency), 
-        'currentBalance': formatCurrency(accountSize, selectedCurrency), 
-        'recentStats': 'No trades yet', 
-        'symbolStats': 'No data'
-    };
-
-    if (trades && trades.length > 0) {
-        const totalTrades = trades.length;
-        const winningTrades = trades.filter(t => t.profit > 0).length;
-        const winRate = ((winningTrades / totalTrades) * 100).toFixed(1);
-        const totalPL = trades.reduce((sum, trade) => sum + trade.profit, 0);
-        const currentBalance = accountSize + totalPL;
-
-        // Convert to selected currency
-        const convertedTotalPL = convertToCurrency(totalPL, 'USD', selectedCurrency);
-        const convertedCurrentBalance = convertToCurrency(currentBalance, 'USD', selectedCurrency);
-
-        stats.totalTrades = totalTrades;
-        stats.winRate = `${winRate}%`;
-        stats.totalPL = formatCurrency(convertedTotalPL.amount, selectedCurrency);
-        stats.currentBalance = formatCurrency(convertedCurrentBalance.amount, selectedCurrency);
-
-        const recentTrades = trades.slice(0, 3);
-        const recentProfit = recentTrades.reduce((sum, trade) => sum + trade.profit, 0);
-        const convertedRecentProfit = convertToCurrency(recentProfit, 'USD', selectedCurrency);
-        stats.recentStats = `Last 3: ${formatCurrency(convertedRecentProfit.amount, selectedCurrency)}`;
-
-        const symbolStats = calculateSymbolStats(trades);
-        stats.symbolStats = symbolStats.slice(0, 3).map(stat => {
-            const convertedProfit = convertToCurrency(stat.totalProfit, 'USD', selectedCurrency);
-            return `${stat.symbol}: ${formatCurrency(convertedProfit.amount, selectedCurrency)}`;
-        }).join('<br>');
-    }
-
-    Object.entries(stats).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) {
-            if (id === 'symbolStats') {
-                element.innerHTML = value;
-            } else {
-                element.textContent = value;
-            }
-            
-            if (id === 'totalPL') {
-                const plValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
-                element.className = `stat-value ${plValue >= 0 ? 'profit' : 'loss'}`;
-            } else if (id === 'currentBalance') {
-                const balanceValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
-                const originalBalance = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-                const convertedOriginalBalance = convertToCurrency(originalBalance, 'USD', selectedCurrency);
-                element.className = `stat-value ${balanceValue >= convertedOriginalBalance.amount ? 'profit' : 'loss'}`;
-            }
-        }
-    });
-}
-
-// Update the updatePerformanceMetrics function
-function updatePerformanceMetrics(metrics) {
-    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-    
-    const performanceElements = {
-        'avgWin': formatCurrency(convertToCurrency(metrics.avgWin, 'USD', selectedCurrency).amount, selectedCurrency),
-        'avgLoss': formatCurrency(convertToCurrency(metrics.avgLoss, 'USD', selectedCurrency).amount, selectedCurrency),
-        'largestWin': formatCurrency(convertToCurrency(metrics.largestWin, 'USD', selectedCurrency).amount, selectedCurrency),
-        'largestLoss': formatCurrency(convertToCurrency(metrics.largestLoss, 'USD', selectedCurrency).amount, selectedCurrency),
-        'profitFactor': metrics.profitFactor.toFixed(2),
-        'expectancy': formatCurrency(convertToCurrency(metrics.expectancy, 'USD', selectedCurrency).amount, selectedCurrency),
-        'avgRiskReward': metrics.avgRiskReward.toFixed(2),
-        'consistency': `${metrics.consistency.toFixed(1)}%`
-    };
-
-    Object.entries(performanceElements).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = value;
-    });
-}
-
-// Update the displayTrades function to show currency
-function displayTrades(trades) {
-    const container = document.getElementById('tradeHistory');
-    const tradeCount = document.getElementById('tradeCount');
-    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-    
-    if (!container) return;
-
-    if (trades.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet.</p>';
-        if (tradeCount) tradeCount.textContent = '0 trades';
-        return;
-    }
-
-    if (tradeCount) tradeCount.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
-    container.innerHTML = trades.map(trade => {
-        const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
-        const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
-        const profitClass = trade.profit >= 0 ? 'profit' : 'loss';
-        const moodEmoji = getMoodEmoji(trade.mood);
-        
-        // Convert trade values to selected currency
-        const convertedProfit = convertToCurrency(trade.profit, 'USD', selectedCurrency);
-        const convertedRiskAmount = convertToCurrency(trade.riskAmount, 'USD', selectedCurrency);
-        
-        return `
-        <div class="trade-item">
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2">
-                        <div class="font-semibold text-sm sm:text-base">
-                            ${trade.symbol} <span class="market-type-badge ${badgeClass}">${badgeText}</span>
-                            ${moodEmoji ? `<span class="ml-1">${moodEmoji}</span>` : ''}
-                        </div>
-                        <div class="${profitClass} font-bold text-sm sm:text-base">
-                            ${formatCurrency(convertedProfit.amount, selectedCurrency)}
-                        </div>
-                    </div>
-                    <div class="text-xs text-gray-600 space-y-1">
-                        <div>${trade.type.toUpperCase()} | ${trade.lotSize} lots | Entry: ${trade.entryPrice}</div>
-                        <div>SL: ${trade.stopLoss}${trade.takeProfit ? ` | TP: ${trade.takeProfit}` : ''}</div>
-                        <div>Risk: ${formatCurrency(convertedRiskAmount.amount, selectedCurrency)} (${trade.riskPercent.toFixed(1)}%)</div>
-                        <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()}</div>
-                    </div>
-                    ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
-                </div>
-                <div class="trade-actions">
-                    ${trade.beforeScreenshot ? `<button onclick="viewScreenshot('${trade.beforeScreenshot}')" class="btn-sm bg-blue-500 text-white text-xs">📸 Before</button>` : ''}
-                    ${trade.afterScreenshot ? `<button onclick="viewScreenshot('${trade.afterScreenshot}')" class="btn-sm bg-green-500 text-white text-xs">📸 After</button>` : ''}
-                    <button onclick="editTrade('${trade.id}')" class="btn-sm bg-yellow-500 text-white text-xs">✏️ Edit</button>
-                    <button onclick="deleteTrade('${trade.id}')" class="btn-sm bg-red-500 text-white text-xs">🗑️ Delete</button>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-// Update the risk calculation display
-function updateRiskCalculation() {
-    const symbol = document.getElementById('symbol')?.value;
-    const entryPrice = parseFloat(document.getElementById('entryPrice')?.value) || 0;
-    const stopLoss = parseFloat(document.getElementById('stopLoss')?.value) || 0;
-    const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || 0;
-    const lotSize = parseFloat(document.getElementById('lotSize')?.value) || 0.01;
-    const tradeType = document.getElementById('direction')?.value;
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
-    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-
-    if (entryPrice > 0 && stopLoss > 0 && symbol) {
-        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-        const potentialProfit = takeProfit ? calculateProfitLoss(entryPrice, takeProfit, lotSize, symbol, tradeType) : 0;
-        const potentialLoss = calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType);
-        const riskRewardRatio = takeProfit && potentialLoss !== 0 ? Math.abs(potentialProfit / potentialLoss) : 0;
-        const maxRiskAmount = accountSize * (riskPerTrade / 100);
-        const riskPerLot = Math.abs(calculateProfitLoss(entryPrice, stopLoss, 1, symbol, tradeType));
-        const recommendedLotSize = riskPerLot > 0 ? (maxRiskAmount / riskPerLot).toFixed(2) : 0;
-        const instrumentType = getInstrumentType(symbol);
-        const unitType = instrumentType === 'forex' ? 'pips' : 'points';
-
-        // Convert risk amounts to selected currency
-        const convertedTotalRisk = convertToCurrency(Math.abs(potentialLoss), 'USD', selectedCurrency);
-        const convertedMaxRiskAmount = convertToCurrency(maxRiskAmount, 'USD', selectedCurrency);
-
-        const riskElements = {
-            'pipsRisk': pipPointInfo.risk.toFixed(1) + ' ' + unitType,
-            'totalRisk': formatCurrency(convertedTotalRisk.amount, selectedCurrency),
-            'riskPercentage': (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%',
-            'riskRewardRatio': riskRewardRatio.toFixed(2),
-            'recommendedLotSize': recommendedLotSize
-        };
-
-        Object.entries(riskElements).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
-        });
-
-        const pipDisplays = {
-            'entryPipDisplay': `Entry: ${entryPrice}`,
-            'slPipDisplay': `SL: ${stopLoss} (${pipPointInfo.risk.toFixed(1)} ${unitType})`,
-            'tpPipDisplay': takeProfit ? `TP: ${takeProfit} (${pipPointInfo.reward.toFixed(1)} ${unitType})` : ''
-        };
-
-        Object.entries(pipDisplays).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
-        });
-    }
-}
-
-// Update the renderPerformanceChart function to use selected currency
-function renderPerformanceChart(trades) {
-    const ctx = document.getElementById('performanceChart');
-    if (!ctx) return;
-
-    if (performanceChart) performanceChart.destroy();
-
-    const selectedCurrency = document.getElementById('accountCurrency')?.value || 'USD';
-    const currencySymbol = currencySymbols[selectedCurrency] || '$';
-
-    if (trades.length === 0) {
-        performanceChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } } 
-            }
-        });
-        return;
-    }
-
-    // Sort trades from OLDEST to NEWEST for proper chronological progression
-    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    let balance = accountSize;
-    const balanceData = [convertToCurrency(balance, 'USD', selectedCurrency).amount];
-    const labels = ['Start'];
-
-    // Process trades in chronological order with dates
-    sortedTrades.forEach((trade, index) => {
-        balance += trade.profit;
-        const convertedBalance = convertToCurrency(balance, 'USD', selectedCurrency).amount;
-        balanceData.push(convertedBalance);
-        
-        // Use actual dates instead of "Trade X"
-        const tradeDate = new Date(trade.timestamp);
-        const dateLabel = tradeDate.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        labels.push(dateLabel);
-    });
-
-    performanceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Account Balance',
-                data: balanceData,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { 
-                    mode: 'index', 
-                    intersect: false,
-                    callbacks: {
-                        label: function(context) {
-                            return `Balance: ${currencySymbol}${context.parsed.y.toFixed(2)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: { 
-                    display: true, 
-                    title: { display: true, text: 'Date & Time' },
-                    ticks: {
-                        maxTicksLimit: 8,
-                        callback: function(value, index, values) {
-                            if (index === 0) return 'Start';
-                            const label = this.getLabelForValue(value);
-                            if (label.length > 8) {
-                                return label.split(' ')[0];
-                            }
-                            return label;
-                        }
-                    }
-                },
-                y: { 
-                    display: true, 
-                    title: { display: true, text: `Balance (${currencySymbol})` } 
-                }
-            }
-        }
-    });
-}
-
-// Add event listener for currency change to refresh all displays
-function setupEventListeners() {
-    const tradeForm = document.getElementById('tradeForm');
-    if (tradeForm) {
-        tradeForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (editingTradeId) {
-                updateTrade(editingTradeId, e);
-            } else {
-                addTrade(e);
-            }
-        });
-    }
-
-    ['accountSize', 'riskPerTrade', 'leverage'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', (e) => {
-                const value = id === 'accountSize' || id === 'riskPerTrade' ? 
-                    parseFloat(e.target.value) : id === 'leverage' ? 
-                    parseInt(e.target.value) : e.target.value;
-                localStorage.setItem(id, value);
-                if (id === 'accountSize') {
-                    updateStats();
-                    renderCharts();
-                }
-                if (id !== 'accountCurrency') updateRiskCalculation();
-            });
-        }
-    });
-
-    // Special handling for currency change
-    const accountCurrency = document.getElementById('accountCurrency');
-    if (accountCurrency) {
-        accountCurrency.addEventListener('change', (e) => {
-            const value = e.target.value;
-            localStorage.setItem('accountCurrency', value);
-            // Refresh all displays when currency changes
-            updateStats();
-            renderCharts();
-            updateRiskCalculation();
-            // Reload trades to update currency display
-            loadTrades();
-        });
-    }
-
-    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('input', () => updateRiskCalculation());
-            element.addEventListener('change', () => updateRiskCalculation());
-        }
-    });
-
-        const symbolSelect = document.getElementById('symbol');
-        if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
-        updateRiskCalculation();
     }
 
     const forexTrades = trades.filter(t => t.instrumentType === 'forex');
