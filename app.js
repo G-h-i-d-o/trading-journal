@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION WITH BASE CURRENCY SYSTEM
+// app.js - COMPLETE FIXED VERSION WITH SCREENSHOT FIXES AND NO EDIT BUTTON
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -219,7 +219,7 @@ function updateCurrencyDisplay() {
     console.log(`Currency updated to: ${selectedCurrency} (${currencySymbol})`);
 }
 
-// Trading calculation functions (remain the same as before)
+// Trading calculation functions
 function getInstrumentType(symbol) {
     const forexPairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'];
     const indices = ['US30', 'SPX500', 'NAS100', 'GE30', 'FTSE100', 'NIKKEI225'];
@@ -324,7 +324,7 @@ window.updateInstrumentType = () => {
     }
 };
 
-// Trade CRUD operations (remain the same)
+// Trade CRUD operations
 async function addTrade(e) {
     e.preventDefault();
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -526,19 +526,89 @@ function displayTrades(trades) {
                     ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
                 </div>
                 <div class="trade-actions">
-                    ${trade.beforeScreenshot ? `<button onclick="viewScreenshot('${trade.beforeScreenshot}')" class="btn-sm bg-blue-500 text-white text-xs">📸 Before</button>` : ''}
-                    ${trade.afterScreenshot ? `<button onclick="viewScreenshot('${trade.afterScreenshot}')" class="btn-sm bg-green-500 text-white text-xs">📸 After</button>` : ''}
-                    <button onclick="editTrade('${trade.id}')" class="btn-sm bg-yellow-500 text-white text-xs">✏️ Edit</button>
-                    <button onclick="deleteTrade('${trade.id}')" class="btn-sm bg-red-500 text-white text-xs">🗑️ Delete</button>
+                    ${trade.beforeScreenshot ? `<button onclick="viewScreenshot('${trade.beforeScreenshot}')" class="btn-sm bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors">📸 Before</button>` : ''}
+                    ${trade.afterScreenshot ? `<button onclick="viewScreenshot('${trade.afterScreenshot}')" class="btn-sm bg-green-500 text-white text-xs hover:bg-green-600 transition-colors">📸 After</button>` : ''}
+                    <button onclick="deleteTrade('${trade.id}')" class="btn-sm bg-red-500 text-white text-xs hover:bg-red-600 transition-colors">🗑️ Delete</button>
                 </div>
             </div>
         </div>`;
     }).join('');
 }
 
-// ... (keep all the other functions like editTrade, cancelEdit, viewScreenshot, deleteTrade the same)
+// Fixed screenshot viewer function
+window.viewScreenshot = (url) => {
+    // Validate and clean the URL
+    let cleanedUrl = url.trim();
+    
+    // Add https:// if no protocol is specified
+    if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
+        cleanedUrl = 'https://' + cleanedUrl;
+    }
+    
+    // Validate it's a proper URL
+    try {
+        new URL(cleanedUrl);
+    } catch (e) {
+        alert('Invalid screenshot URL. Please check the URL format.');
+        return;
+    }
 
-// Analytics and Metrics (updated for base currency)
+    const modal = document.getElementById('screenshotModal');
+    const image = document.getElementById('screenshotImage');
+    
+    if (modal && image) {
+        // Show loading state
+        image.src = '';
+        image.alt = 'Loading screenshot...';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        // Set image source with error handling
+        image.onload = function() {
+            console.log('Screenshot loaded successfully:', cleanedUrl);
+        };
+        
+        image.onerror = function() {
+            console.error('Failed to load screenshot:', cleanedUrl);
+            image.alt = 'Failed to load screenshot. Please check the URL.';
+            image.src = ''; // Clear broken image
+            alert('Failed to load screenshot. Please check if the URL is correct and accessible.');
+        };
+        
+        image.src = cleanedUrl;
+    }
+};
+
+window.closeScreenshotModal = () => {
+    const modal = document.getElementById('screenshotModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        // Clear the image source when closing
+        const image = document.getElementById('screenshotImage');
+        if (image) {
+            image.src = '';
+            image.alt = '';
+        }
+    }
+};
+
+window.deleteTrade = async (tradeId) => {
+    if (confirm('Are you sure you want to delete this trade?')) {
+        try {
+            showLoading();
+            await deleteDoc(doc(db, 'trades', tradeId));
+            await loadTrades();
+        } catch (error) {
+            console.error('Error deleting trade:', error);
+            alert('Error deleting trade.');
+        } finally {
+            hideLoading();
+        }
+    }
+};
+
+// Analytics and Metrics
 function calculateAdvancedMetrics(trades) {
     if (!trades || trades.length === 0) {
         resetAdvancedMetrics();
