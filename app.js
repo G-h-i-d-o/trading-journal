@@ -563,17 +563,46 @@ window.viewScreenshot = (url) => {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
-        // Set image source with error handling
+        let hasLoaded = false;
+        let errorShown = false;
+        
+        // Set image source with better error handling
         image.onload = function() {
             console.log('Screenshot loaded successfully:', cleanedUrl);
+            hasLoaded = true;
+            // Clear any previous error state
+            image.alt = 'Trade Screenshot';
         };
         
         image.onerror = function() {
             console.error('Failed to load screenshot:', cleanedUrl);
-            image.alt = 'Failed to load screenshot. Please check the URL.';
-            image.src = ''; // Clear broken image
-            alert('Failed to load screenshot. Please check if the URL is correct and accessible.');
+            
+            // Only show error if image hasn't loaded and we haven't shown an error yet
+            if (!hasLoaded && !errorShown) {
+                errorShown = true;
+                image.alt = 'Failed to load screenshot. The image may be blocked by CORS policy or the URL may be incorrect.';
+                
+                // Don't show alert if the image is from a known image hosting service
+                const knownDomains = ['images.unsplash.com', 'imgur.com', 'i.imgur.com', 'postimg.cc', 'prnt.sc', 'gyazo.com', 'ibb.co'];
+                const isKnownDomain = knownDomains.some(domain => cleanedUrl.includes(domain));
+                
+                if (!isKnownDomain) {
+                    setTimeout(() => {
+                        if (!hasLoaded) {
+                            alert('Failed to load screenshot. This could be due to:\n\n• CORS restrictions (common with some image hosts)\n• The image being deleted or moved\n• Network connectivity issues\n\nTry uploading to a different image hosting service like Imgur.');
+                        }
+                    }, 1000);
+                }
+            }
         };
+        
+        // Set a timeout to handle cases where the image loads but has issues
+        setTimeout(() => {
+            if (!hasLoaded && !errorShown) {
+                console.log('Screenshot loading taking longer than expected:', cleanedUrl);
+                // Don't show error immediately, let the natural loading continue
+            }
+        }, 3000);
         
         image.src = cleanedUrl;
     }
