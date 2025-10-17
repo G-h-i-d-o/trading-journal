@@ -113,7 +113,7 @@ function renderPagination() {
     paginationContainer.innerHTML = paginationHTML;
 }
 
-// Import trades function
+// Enhanced Import/Export functions
 window.importTrades = () => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -129,18 +129,25 @@ window.importTrades = () => {
             const trades = parseCSV(text);
             
             if (trades.length === 0) {
-                alert('No valid trades found in the CSV file.');
+                alert('No valid trades found in the CSV file. Please check the format.');
                 return;
             }
             
-            if (confirm(`Found ${trades.length} trades. Import them?`)) {
+            // Show import preview
+            const previewText = trades.slice(0, 5).map((trade, i) => 
+                `${i + 1}. ${trade.symbol} ${trade.type} - Profit: ${formatCurrency(trade.profit)}`
+            ).join('\n');
+            
+            const extraTrades = trades.length > 5 ? `\n... and ${trades.length - 5} more trades` : '';
+            
+            if (confirm(`Found ${trades.length} trades:\n\n${previewText}${extraTrades}\n\nImport these trades?`)) {
                 await importTradesToFirestore(trades);
                 await loadTrades();
-                alert(`Successfully imported ${trades.length} trades!`);
+                alert(`✅ Successfully imported ${trades.length} trades!\n\nAll trade calculations have been verified and updated.`);
             }
         } catch (error) {
             console.error('Error importing trades:', error);
-            alert('Error importing trades. Please check the CSV format.');
+            alert('❌ Error importing trades. Please check the CSV format and try again.');
         } finally {
             hideLoading();
         }
@@ -161,31 +168,71 @@ function parseCSV(csvText) {
         if (values.length !== headers.length) continue;
         
         try {
+            // Get values with fallbacks for different header names
+            const getValue = (possibleHeaders) => {
+                for (const header of possibleHeaders) {
+                    const index = headers.indexOf(header);
+                    if (index !== -1 && values[index] !== undefined) {
+                        return values[index];
+                    }
+                }
+                return '';
+            };
+
+            const symbol = getValue(['Symbol', 'symbol']);
+            const entryPrice = parseFloat(getValue(['Entry', 'entryPrice', 'Entry Price']));
+            const stopLoss = parseFloat(getValue(['SL', 'stopLoss', 'Stop Loss']));
+            const takeProfit = getValue(['TP', 'takeProfit', 'Take Profit']) ? 
+                parseFloat(getValue(['TP', 'takeProfit', 'Take Profit'])) : null;
+            const lotSize = parseFloat(getValue(['Lots', 'lotSize', 'Lot Size']) || '0.01');
+            const tradeType = getValue(['Type', 'type']) || 'long';
+            const instrumentType = getValue(['InstrumentType', 'instrumentType']) || getInstrumentType(symbol);
+            
+            // Calculate profit if not provided
+            let profit = parseFloat(getValue(['Profit', 'profit']) || '0');
+            
+            // If profit is 0, calculate it based on trade parameters
+            if (profit === 0 && symbol && entryPrice && stopLoss) {
+                const exitPrice = takeProfit || entryPrice;
+                profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+            }
+            
             const trade = {
-                symbol: values[headers.indexOf('Symbol')] || values[headers.indexOf('symbol')],
-                type: values[headers.indexOf('Type')] || values[headers.indexOf('type')] || 'long',
-                instrumentType: getInstrumentType(values[headers.indexOf('Symbol')] || values[headers.indexOf('symbol')]),
-                entryPrice: parseFloat(values[headers.indexOf('Entry')] || values[headers.indexOf('entryPrice')]),
-                stopLoss: parseFloat(values[headers.indexOf('SL')] || values[headers.indexOf('stopLoss')]),
-                takeProfit: values[headers.indexOf('TP')] || values[headers.indexOf('takeProfit')] ? 
-                    parseFloat(values[headers.indexOf('TP')] || values[headers.indexOf('takeProfit')]) : null,
-                lotSize: parseFloat(values[headers.indexOf('Lots')] || values[headers.indexOf('lotSize')] || '0.01'),
-                mood: values[headers.indexOf('Mood')] || values[headers.indexOf('mood')] || '',
-                notes: (values[headers.indexOf('Notes')] || values[headers.indexOf('notes')] || '').replace(/""/g, '"'),
-                timestamp: new Date(values[headers.indexOf('Date')] || values[headers.indexOf('timestamp')] || new Date()).toISOString(),
-                profit: parseFloat(values[headers.indexOf('Profit')] || values[headers.indexOf('profit')] || '0'),
-                riskAmount: parseFloat(values[headers.indexOf('Risk Amount')] || values[headers.indexOf('riskAmount')] || '0'),
-                riskPercent: parseFloat(values[headers.indexOf('Risk %')] || values[headers.indexOf('riskPercent')] || '0'),
-                accountSize: parseFloat(localStorage.getItem('accountSize')) || 10000,
-                leverage: parseInt(localStorage.getItem('leverage')) || 50,
+                symbol: symbol,
+                type: tradeType,
+                instrumentType: instrumentType,
+                entryPrice: entryPrice,
+                stopLoss: stopLoss,
+                takeProfit: takeProfit,
+                lotSize: lotSize,
+                mood: getValue(['Mood', 'mood']) || '',
+                beforeScreenshot: getValue(['BeforeScreenshot', 'beforeScreenshot']) || '',
+                afterScreenshot: getValue(['AfterScreenshot', 'afterScreenshot']) || '',
+                notes: (getValue(['Notes', 'notes']) || '').replace(/""/g, '"'),
+                timestamp: getValue(['Timestamp', 'timestamp']) || new Date(getValue(['Date', 'date']) || new Date()).toISOString(),
+                profit: profit,
+                pipsPoints: parseFloat(getValue(['PipsPoints', 'pipsPoints']) || '0'),
+                riskAmount: parseFloat(getValue(['Risk Amount', 'riskAmount', 'RiskAmount']) || '0'),
+                riskPercent: parseFloat(getValue(['Risk %', 'riskPercent', 'RiskPercent']) || '0'),
+                accountSize: parseFloat(getValue(['AccountSize', 'accountSize']) || localStorage.getItem('accountSize') || 10000),
+                leverage: parseInt(getValue(['Leverage', 'leverage']) || localStorage.getItem('leverage') || 50),
                 userId: currentUser.uid
             };
+            
+            // Recalculate risk metrics if they are missing or zero
+            if ((!trade.riskAmount || trade.riskAmount === 0) && symbol && entryPrice && stopLoss) {
+                trade.riskAmount = Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType));
+                trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
+                
+                const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+                trade.pipsPoints = pipPointInfo.risk;
+            }
             
             if (trade.symbol && !isNaN(trade.entryPrice) && !isNaN(trade.stopLoss)) {
                 trades.push(trade);
             }
         } catch (error) {
-            console.warn('Skipping invalid trade row:', error);
+            console.warn('Skipping invalid trade row:', error, values);
         }
     }
     
@@ -215,11 +262,109 @@ function parseCSVLine(line) {
 }
 
 async function importTradesToFirestore(trades) {
-    const importPromises = trades.map(trade => 
-        addDoc(collection(db, 'trades'), trade)
-    );
+    const importPromises = trades.map(async (trade) => {
+        // Ensure all calculations are correct before importing
+        if (trade.symbol && trade.entryPrice && trade.stopLoss) {
+            // Recalculate profit if it seems incorrect
+            if (trade.profit === 0 && trade.takeProfit) {
+                trade.profit = calculateProfitLoss(
+                    trade.entryPrice, 
+                    trade.takeProfit, 
+                    trade.lotSize, 
+                    trade.symbol, 
+                    trade.type
+                );
+            }
+            
+            // Recalculate risk metrics
+            trade.riskAmount = Math.abs(calculateProfitLoss(
+                trade.entryPrice, 
+                trade.stopLoss, 
+                trade.lotSize, 
+                trade.symbol, 
+                trade.type
+            ));
+            
+            trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
+            
+            const pipPointInfo = calculatePipsPoints(
+                trade.entryPrice, 
+                trade.stopLoss, 
+                trade.takeProfit, 
+                trade.symbol, 
+                trade.type
+            );
+            trade.pipsPoints = pipPointInfo.risk;
+        }
+        
+        return addDoc(collection(db, 'trades'), trade);
+    });
     
     await Promise.all(importPromises);
+}
+
+window.exportTrades = async () => {
+    try {
+        if (!currentUser) return;
+        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const trades = [];
+        querySnapshot.forEach((doc) => trades.push({ id: doc.id, ...doc.data() }));
+        
+        const csv = convertToCSV(trades);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trading-journal-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error exporting trades:', error);
+        alert('Error exporting trades.');
+    }
+};
+
+function convertToCSV(trades) {
+    const selectedCurrency = getSelectedCurrency();
+    const currencyName = currencyNames[selectedCurrency] || 'US Dollar';
+    
+    const headers = [
+        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
+        'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
+        'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
+        'Notes', 'AccountSize', 'Leverage', 'Timestamp'
+    ];
+    const csvRows = [headers.join(',')];
+    
+    trades.forEach(trade => {
+        const row = [
+            new Date(trade.timestamp).toLocaleDateString(),
+            trade.symbol,
+            trade.type,
+            trade.instrumentType,
+            trade.entryPrice,
+            trade.stopLoss,
+            trade.takeProfit || '',
+            trade.lotSize,
+            trade.profit,
+            trade.riskAmount,
+            trade.riskPercent,
+            trade.pipsPoints,
+            trade.mood || '',
+            `"${(trade.beforeScreenshot || '').replace(/"/g, '""')}"`,
+            `"${(trade.afterScreenshot || '').replace(/"/g, '""')}"`,
+            `"${(trade.notes || '').replace(/"/g, '""')}"`,
+            trade.accountSize,
+            trade.leverage,
+            trade.timestamp
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    return csvRows.join('\n');
 }
 
 // Tab Management
@@ -416,15 +561,18 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
 
 function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
     const instrumentType = getInstrumentType(symbol);
+    
     if (instrumentType === 'forex') {
         const pipValue = 10 * lotSize;
         const pipSize = getPipSize(symbol);
         const pips = type === 'long' ? (exit - entry) / pipSize : (entry - exit) / pipSize;
-        return pips * pipValue;
+        const profit = pips * pipValue;
+        return parseFloat(profit.toFixed(2));
     } else {
         const pointValue = getPointValue(symbol) * lotSize;
         const points = type === 'long' ? (exit - entry) : (entry - exit);
-        return points * pointValue;
+        const profit = points * pointValue;
+        return parseFloat(profit.toFixed(2));
     }
 }
 
@@ -1128,58 +1276,6 @@ async function loadUserSettings() {
     
     // Update currency display when loading settings
     updateCurrencyDisplay();
-}
-
-window.exportTrades = async () => {
-    try {
-        if (!currentUser) return;
-        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        const trades = [];
-        querySnapshot.forEach((doc) => trades.push({ id: doc.id, ...doc.data() }));
-        
-        const csv = convertToCSV(trades);
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `trading-journal-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Error exporting trades:', error);
-        alert('Error exporting trades.');
-    }
-};
-
-function convertToCSV(trades) {
-    const selectedCurrency = getSelectedCurrency();
-    const currencyName = currencyNames[selectedCurrency] || 'US Dollar';
-    
-    const headers = ['Date', 'Symbol', 'Type', 'Entry', 'SL', 'TP', 'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 'Risk %', 'Mood', 'Notes'];
-    const csvRows = [headers.join(',')];
-    
-    trades.forEach(trade => {
-        const row = [
-            new Date(trade.timestamp).toLocaleDateString(),
-            trade.symbol,
-            trade.type,
-            trade.entryPrice,
-            trade.stopLoss,
-            trade.takeProfit || '',
-            trade.lotSize,
-            trade.profit,
-            trade.riskAmount,
-            trade.riskPercent,
-            trade.mood || '',
-            `"${(trade.notes || '').replace(/"/g, '""')}"`
-        ];
-        csvRows.push(row.join(','));
-    });
-    
-    return csvRows.join('\n');
 }
 
 function renderCharts(trades = []) {
