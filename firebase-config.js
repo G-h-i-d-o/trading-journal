@@ -6,7 +6,7 @@ import {
     createUserWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
-    sendPasswordResetEmail  // ← ADD THIS
+    sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { 
     getFirestore, 
@@ -17,7 +17,7 @@ import {
     where,
     doc,
     deleteDoc,
-    updateDoc,  // ✅ ADD THIS IMPORT
+    updateDoc,
     getDoc
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
@@ -46,6 +46,6 @@ console.log('✅ Firebase Firestore initialized');
 // ✅ EXPORT updateDoc
 export { 
     auth, db, 
-    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,sendPasswordResetEmail,  // ← ADD THIS
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,sendPasswordResetEmail,
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc 
 };

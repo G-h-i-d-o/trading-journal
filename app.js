@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION WITH SCREENSHOT FIXES AND NO EDIT BUTTON
+// app.js - COMPLETE FIXED VERSION WITH PAGINATION AND IMPORT
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -9,6 +9,9 @@ let performanceChart = null;
 let winLossChart = null;
 let marketTypeChart = null;
 let editingTradeId = null;
+let currentPage = 1;
+const tradesPerPage = 10;
+let allTrades = [];
 
 // Currency configuration
 const currencySymbols = {
@@ -57,6 +60,166 @@ function showLoading() {
 function hideLoading() {
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) loadingIndicator.style.display = 'none';
+}
+
+// Pagination functions
+function setupPagination(trades) {
+    allTrades = trades;
+    currentPage = 1;
+    renderPagination();
+    displayTradesPage(currentPage);
+}
+
+function displayTradesPage(page) {
+    currentPage = page;
+    const startIndex = (page - 1) * tradesPerPage;
+    const endIndex = startIndex + tradesPerPage;
+    const pageTrades = allTrades.slice(startIndex, endIndex);
+    
+    displayTrades(pageTrades);
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(allTrades.length / tradesPerPage);
+    const paginationContainer = document.getElementById('pagination');
+    
+    if (!paginationContainer || totalPages <= 1) {
+        if (paginationContainer) paginationContainer.innerHTML = '';
+        return;
+    }
+
+    let paginationHTML = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        paginationHTML += `<button onclick="displayTradesPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">← Previous</button>`;
+    }
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === currentPage) {
+            paginationHTML += `<span class="px-3 py-1 bg-blue-500 text-white rounded">${i}</span>`;
+        } else {
+            paginationHTML += `<button onclick="displayTradesPage(${i})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">${i}</button>`;
+        }
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        paginationHTML += `<button onclick="displayTradesPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next →</button>`;
+    }
+    
+    paginationContainer.innerHTML = paginationHTML;
+}
+
+// Import trades function
+window.importTrades = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            showLoading();
+            const text = await file.text();
+            const trades = parseCSV(text);
+            
+            if (trades.length === 0) {
+                alert('No valid trades found in the CSV file.');
+                return;
+            }
+            
+            if (confirm(`Found ${trades.length} trades. Import them?`)) {
+                await importTradesToFirestore(trades);
+                await loadTrades();
+                alert(`Successfully imported ${trades.length} trades!`);
+            }
+        } catch (error) {
+            console.error('Error importing trades:', error);
+            alert('Error importing trades. Please check the CSV format.');
+        } finally {
+            hideLoading();
+        }
+    };
+    
+    fileInput.click();
+};
+
+function parseCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim());
+    const trades = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length !== headers.length) continue;
+        
+        try {
+            const trade = {
+                symbol: values[headers.indexOf('Symbol')] || values[headers.indexOf('symbol')],
+                type: values[headers.indexOf('Type')] || values[headers.indexOf('type')] || 'long',
+                instrumentType: getInstrumentType(values[headers.indexOf('Symbol')] || values[headers.indexOf('symbol')]),
+                entryPrice: parseFloat(values[headers.indexOf('Entry')] || values[headers.indexOf('entryPrice')]),
+                stopLoss: parseFloat(values[headers.indexOf('SL')] || values[headers.indexOf('stopLoss')]),
+                takeProfit: values[headers.indexOf('TP')] || values[headers.indexOf('takeProfit')] ? 
+                    parseFloat(values[headers.indexOf('TP')] || values[headers.indexOf('takeProfit')]) : null,
+                lotSize: parseFloat(values[headers.indexOf('Lots')] || values[headers.indexOf('lotSize')] || '0.01'),
+                mood: values[headers.indexOf('Mood')] || values[headers.indexOf('mood')] || '',
+                notes: (values[headers.indexOf('Notes')] || values[headers.indexOf('notes')] || '').replace(/""/g, '"'),
+                timestamp: new Date(values[headers.indexOf('Date')] || values[headers.indexOf('timestamp')] || new Date()).toISOString(),
+                profit: parseFloat(values[headers.indexOf('Profit')] || values[headers.indexOf('profit')] || '0'),
+                riskAmount: parseFloat(values[headers.indexOf('Risk Amount')] || values[headers.indexOf('riskAmount')] || '0'),
+                riskPercent: parseFloat(values[headers.indexOf('Risk %')] || values[headers.indexOf('riskPercent')] || '0'),
+                accountSize: parseFloat(localStorage.getItem('accountSize')) || 10000,
+                leverage: parseInt(localStorage.getItem('leverage')) || 50,
+                userId: currentUser.uid
+            };
+            
+            if (trade.symbol && !isNaN(trade.entryPrice) && !isNaN(trade.stopLoss)) {
+                trades.push(trade);
+            }
+        } catch (error) {
+            console.warn('Skipping invalid trade row:', error);
+        }
+    }
+    
+    return trades;
+}
+
+function parseCSVLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    values.push(current.trim());
+    return values;
+}
+
+async function importTradesToFirestore(trades) {
+    const importPromises = trades.map(trade => 
+        addDoc(collection(db, 'trades'), trade)
+    );
+    
+    await Promise.all(importPromises);
 }
 
 // Tab Management
@@ -466,7 +629,9 @@ async function loadTrades() {
         });
 
         trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        displayTrades(trades);
+        
+        // Use pagination instead of direct display
+        setupPagination(trades);
         updateStats(trades);
         renderCharts(trades);
         calculateAdvancedMetrics(trades);
@@ -497,7 +662,13 @@ function displayTrades(trades) {
         return;
     }
 
-    if (tradeCount) tradeCount.textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
+    if (tradeCount) {
+        const totalTrades = allTrades.length;
+        const startIndex = (currentPage - 1) * tradesPerPage + 1;
+        const endIndex = Math.min(currentPage * tradesPerPage, totalTrades);
+        tradeCount.textContent = `Showing ${startIndex}-${endIndex} of ${totalTrades} trades`;
+    }
+
     container.innerHTML = trades.map(trade => {
         const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
         const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';

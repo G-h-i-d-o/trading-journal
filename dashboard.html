@@ -359,6 +359,36 @@
             right: 0;
             z-index: 50;
         }
+
+        /* Pagination Styles */
+        #pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        #pagination button, #pagination span {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid #d1d5db;
+        }
+
+        #pagination button:hover {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        #pagination span {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -727,8 +757,11 @@
                     <h3 class="section-title mb-0">📋 Trade History</h3>
                     <div class="flex items-center space-x-2">
                         <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
+                        <button onclick="importTrades()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
+                            📥 Import CSV
+                        </button>
                         <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
-                            Export CSV
+                            📤 Export CSV
                         </button>
                     </div>
                 </div>
@@ -737,6 +770,10 @@
                         <div class="loading-spinner mx-auto"></div>
                         <p class="mt-2">Loading trades...</p>
                     </div>
+                </div>
+                <!-- Pagination -->
+                <div id="pagination" class="flex justify-center items-center space-x-2 mt-4 pt-4 border-t border-gray-200">
+                    <!-- Pagination buttons will be inserted here by JavaScript -->
                 </div>
             </div>
         </div>
