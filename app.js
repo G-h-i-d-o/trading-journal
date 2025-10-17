@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION WITH PAGINATION AND IMPORT
+// app.js - COMPLETE WORKING VERSION WITH AFFIRMATIONS, IMPORT/EXPORT, PAGINATION
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -12,6 +12,8 @@ let editingTradeId = null;
 let currentPage = 1;
 const tradesPerPage = 10;
 let allTrades = [];
+let allAffirmations = [];
+let editingAffirmationId = null;
 
 // Currency configuration
 const currencySymbols = {
@@ -35,6 +37,55 @@ const currencyNames = {
     AUD: 'Australian Dollar',
     CHF: 'Swiss Franc'
 };
+
+// Sample affirmations data
+const sampleAffirmations = [
+    {
+        id: '1',
+        text: "I trust my trading strategy and execute it with precision and confidence.",
+        category: "discipline",
+        isFavorite: true,
+        isActive: true,
+        usageCount: 12,
+        lastUsed: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        strength: 92
+    },
+    {
+        id: '2',
+        text: "I am patient and wait for the perfect setups that align with my trading plan.",
+        category: "patience",
+        isFavorite: false,
+        isActive: true,
+        usageCount: 8,
+        lastUsed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        strength: 85
+    },
+    {
+        id: '3',
+        text: "Every trade is an opportunity to learn and improve my skills as a trader.",
+        category: "mindset",
+        isFavorite: true,
+        isActive: true,
+        usageCount: 15,
+        lastUsed: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        strength: 88
+    }
+];
+
+// Motivational quotes
+const motivationalQuotes = [
+    "The stock market is a device for transferring money from the impatient to the patient. - Warren Buffett",
+    "Risk comes from not knowing what you're doing. - Warren Buffett",
+    "The most important quality for an investor is temperament, not intellect. - Warren Buffett",
+    "In trading and investing, it's not about being right; it's about making money.",
+    "The best investment you can make is in yourself. - Warren Buffett",
+    "Time in the market beats timing the market.",
+    "Emotion is the enemy of successful trading.",
+    "Plan your trade and trade your plan."
+];
 
 // Currency utility functions
 function getSelectedCurrency() {
@@ -62,336 +113,65 @@ function hideLoading() {
     if (loadingIndicator) loadingIndicator.style.display = 'none';
 }
 
-// Pagination functions
-function setupPagination(trades) {
-    allTrades = trades;
-    currentPage = 1;
-    renderPagination();
-    displayTradesPage(currentPage);
-}
-
-function displayTradesPage(page) {
-    currentPage = page;
-    const startIndex = (page - 1) * tradesPerPage;
-    const endIndex = startIndex + tradesPerPage;
-    const pageTrades = allTrades.slice(startIndex, endIndex);
-    
-    displayTrades(pageTrades);
-    renderPagination();
-}
-
-function renderPagination() {
-    const totalPages = Math.ceil(allTrades.length / tradesPerPage);
-    const paginationContainer = document.getElementById('pagination');
-    
-    if (!paginationContainer || totalPages <= 1) {
-        if (paginationContainer) paginationContainer.innerHTML = '';
-        return;
-    }
-
-    let paginationHTML = '';
-    
-    // Previous button
-    if (currentPage > 1) {
-        paginationHTML += `<button onclick="displayTradesPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">← Previous</button>`;
-    }
-    
-    // Page numbers
-    for (let i = 1; i <= totalPages; i++) {
-        if (i === currentPage) {
-            paginationHTML += `<span class="px-3 py-1 bg-blue-500 text-white rounded">${i}</span>`;
-        } else {
-            paginationHTML += `<button onclick="displayTradesPage(${i})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">${i}</button>`;
-        }
-    }
-    
-    // Next button
-    if (currentPage < totalPages) {
-        paginationHTML += `<button onclick="displayTradesPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next →</button>`;
-    }
-    
-    paginationContainer.innerHTML = paginationHTML;
-}
-
-// Enhanced Import/Export functions
-window.importTrades = () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.csv';
-    
-    fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        try {
-            showLoading();
-            const text = await file.text();
-            const trades = parseCSV(text);
-            
-            if (trades.length === 0) {
-                alert('No valid trades found in the CSV file. Please check the format.');
-                return;
-            }
-            
-            // Show import preview
-            const previewText = trades.slice(0, 5).map((trade, i) => 
-                `${i + 1}. ${trade.symbol} ${trade.type} - Profit: ${formatCurrency(trade.profit)}`
-            ).join('\n');
-            
-            const extraTrades = trades.length > 5 ? `\n... and ${trades.length - 5} more trades` : '';
-            
-            if (confirm(`Found ${trades.length} trades:\n\n${previewText}${extraTrades}\n\nImport these trades?`)) {
-                await importTradesToFirestore(trades);
-                await loadTrades();
-                alert(`✅ Successfully imported ${trades.length} trades!\n\nAll trade calculations have been verified and updated.`);
-            }
-        } catch (error) {
-            console.error('Error importing trades:', error);
-            alert('❌ Error importing trades. Please check the CSV format and try again.');
-        } finally {
-            hideLoading();
-        }
-    };
-    
-    fileInput.click();
-};
-
-function parseCSV(csvText) {
-    const lines = csvText.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
-    
-    const headers = lines[0].split(',').map(h => h.trim());
-    const trades = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        if (values.length !== headers.length) continue;
-        
-        try {
-            // Get values with fallbacks for different header names
-            const getValue = (possibleHeaders) => {
-                for (const header of possibleHeaders) {
-                    const index = headers.indexOf(header);
-                    if (index !== -1 && values[index] !== undefined) {
-                        return values[index];
-                    }
-                }
-                return '';
-            };
-
-            const symbol = getValue(['Symbol', 'symbol']);
-            const entryPrice = parseFloat(getValue(['Entry', 'entryPrice', 'Entry Price']));
-            const stopLoss = parseFloat(getValue(['SL', 'stopLoss', 'Stop Loss']));
-            const takeProfit = getValue(['TP', 'takeProfit', 'Take Profit']) ? 
-                parseFloat(getValue(['TP', 'takeProfit', 'Take Profit'])) : null;
-            const lotSize = parseFloat(getValue(['Lots', 'lotSize', 'Lot Size']) || '0.01');
-            const tradeType = getValue(['Type', 'type']) || 'long';
-            const instrumentType = getValue(['InstrumentType', 'instrumentType']) || getInstrumentType(symbol);
-            
-            // Calculate profit if not provided
-            let profit = parseFloat(getValue(['Profit', 'profit']) || '0');
-            
-            // If profit is 0, calculate it based on trade parameters
-            if (profit === 0 && symbol && entryPrice && stopLoss) {
-                const exitPrice = takeProfit || entryPrice;
-                profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
-            }
-            
-            const trade = {
-                symbol: symbol,
-                type: tradeType,
-                instrumentType: instrumentType,
-                entryPrice: entryPrice,
-                stopLoss: stopLoss,
-                takeProfit: takeProfit,
-                lotSize: lotSize,
-                mood: getValue(['Mood', 'mood']) || '',
-                beforeScreenshot: getValue(['BeforeScreenshot', 'beforeScreenshot']) || '',
-                afterScreenshot: getValue(['AfterScreenshot', 'afterScreenshot']) || '',
-                notes: (getValue(['Notes', 'notes']) || '').replace(/""/g, '"'),
-                timestamp: getValue(['Timestamp', 'timestamp']) || new Date(getValue(['Date', 'date']) || new Date()).toISOString(),
-                profit: profit,
-                pipsPoints: parseFloat(getValue(['PipsPoints', 'pipsPoints']) || '0'),
-                riskAmount: parseFloat(getValue(['Risk Amount', 'riskAmount', 'RiskAmount']) || '0'),
-                riskPercent: parseFloat(getValue(['Risk %', 'riskPercent', 'RiskPercent']) || '0'),
-                accountSize: parseFloat(getValue(['AccountSize', 'accountSize']) || localStorage.getItem('accountSize') || 10000),
-                leverage: parseInt(getValue(['Leverage', 'leverage']) || localStorage.getItem('leverage') || 50),
-                userId: currentUser.uid
-            };
-            
-            // Recalculate risk metrics if they are missing or zero
-            if ((!trade.riskAmount || trade.riskAmount === 0) && symbol && entryPrice && stopLoss) {
-                trade.riskAmount = Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType));
-                trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
-                
-                const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-                trade.pipsPoints = pipPointInfo.risk;
-            }
-            
-            if (trade.symbol && !isNaN(trade.entryPrice) && !isNaN(trade.stopLoss)) {
-                trades.push(trade);
-            }
-        } catch (error) {
-            console.warn('Skipping invalid trade row:', error, values);
-        }
-    }
-    
-    return trades;
-}
-
-function parseCSVLine(line) {
-    const values = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            values.push(current.trim());
-            current = '';
-        } else {
-            current += char;
-        }
-    }
-    
-    values.push(current.trim());
-    return values;
-}
-
-async function importTradesToFirestore(trades) {
-    const importPromises = trades.map(async (trade) => {
-        // Ensure all calculations are correct before importing
-        if (trade.symbol && trade.entryPrice && trade.stopLoss) {
-            // Recalculate profit if it seems incorrect
-            if (trade.profit === 0 && trade.takeProfit) {
-                trade.profit = calculateProfitLoss(
-                    trade.entryPrice, 
-                    trade.takeProfit, 
-                    trade.lotSize, 
-                    trade.symbol, 
-                    trade.type
-                );
-            }
-            
-            // Recalculate risk metrics
-            trade.riskAmount = Math.abs(calculateProfitLoss(
-                trade.entryPrice, 
-                trade.stopLoss, 
-                trade.lotSize, 
-                trade.symbol, 
-                trade.type
-            ));
-            
-            trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
-            
-            const pipPointInfo = calculatePipsPoints(
-                trade.entryPrice, 
-                trade.stopLoss, 
-                trade.takeProfit, 
-                trade.symbol, 
-                trade.type
-            );
-            trade.pipsPoints = pipPointInfo.risk;
-        }
-        
-        return addDoc(collection(db, 'trades'), trade);
-    });
-    
-    await Promise.all(importPromises);
-}
-
-window.exportTrades = async () => {
-    try {
-        if (!currentUser) return;
-        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        const trades = [];
-        querySnapshot.forEach((doc) => trades.push({ id: doc.id, ...doc.data() }));
-        
-        const csv = convertToCSV(trades);
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `trading-journal-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Error exporting trades:', error);
-        alert('Error exporting trades.');
-    }
-};
-
-function convertToCSV(trades) {
-    const selectedCurrency = getSelectedCurrency();
-    const currencyName = currencyNames[selectedCurrency] || 'US Dollar';
-    
-    const headers = [
-        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
-        'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
-        'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
-        'Notes', 'AccountSize', 'Leverage', 'Timestamp'
-    ];
-    const csvRows = [headers.join(',')];
-    
-    trades.forEach(trade => {
-        const row = [
-            new Date(trade.timestamp).toLocaleDateString(),
-            trade.symbol,
-            trade.type,
-            trade.instrumentType,
-            trade.entryPrice,
-            trade.stopLoss,
-            trade.takeProfit || '',
-            trade.lotSize,
-            trade.profit,
-            trade.riskAmount,
-            trade.riskPercent,
-            trade.pipsPoints,
-            trade.mood || '',
-            `"${(trade.beforeScreenshot || '').replace(/"/g, '""')}"`,
-            `"${(trade.afterScreenshot || '').replace(/"/g, '""')}"`,
-            `"${(trade.notes || '').replace(/"/g, '""')}"`,
-            trade.accountSize,
-            trade.leverage,
-            trade.timestamp
-        ];
-        csvRows.push(row.join(','));
-    });
-    
-    return csvRows.join('\n');
-}
-
 // Tab Management
 function setupTabs() {
     const dashboardTab = document.getElementById('dashboardTab');
     const tradesTab = document.getElementById('tradesTab');
+    const affirmationsTab = document.getElementById('affirmationsTab');
     const dashboardContent = document.getElementById('dashboardContent');
     const tradesContent = document.getElementById('tradesContent');
+    const affirmationsContent = document.getElementById('affirmationsContent');
 
-    if (dashboardTab && tradesTab) {
-        dashboardTab.addEventListener('click', () => {
-            dashboardTab.classList.add('active');
-            tradesTab.classList.remove('active');
-            dashboardContent.classList.add('active');
-            dashboardContent.classList.remove('hidden');
-            tradesContent.classList.remove('active');
-            tradesContent.classList.add('hidden');
+    function switchToTab(tabName) {
+        // Hide all content
+        [dashboardContent, tradesContent, affirmationsContent].forEach(content => {
+            if (content) {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            }
         });
 
-        tradesTab.addEventListener('click', () => {
-            tradesTab.classList.add('active');
-            dashboardTab.classList.remove('active');
-            tradesContent.classList.add('active');
-            tradesContent.classList.remove('hidden');
-            dashboardContent.classList.remove('active');
-            dashboardContent.classList.add('hidden');
+        // Remove active class from all tabs
+        [dashboardTab, tradesTab, affirmationsTab].forEach(tab => {
+            if (tab) tab.classList.remove('active');
         });
+
+        // Show selected content and activate tab
+        switch(tabName) {
+            case 'dashboard':
+                if (dashboardContent) {
+                    dashboardContent.classList.add('active');
+                    dashboardContent.style.display = 'block';
+                }
+                if (dashboardTab) dashboardTab.classList.add('active');
+                break;
+            case 'trades':
+                if (tradesContent) {
+                    tradesContent.classList.add('active');
+                    tradesContent.style.display = 'block';
+                }
+                if (tradesTab) tradesTab.classList.add('active');
+                break;
+            case 'affirmations':
+                if (affirmationsContent) {
+                    affirmationsContent.classList.add('active');
+                    affirmationsContent.style.display = 'block';
+                    loadAffirmations();
+                }
+                if (affirmationsTab) affirmationsTab.classList.add('active');
+                break;
+        }
+    }
+
+    // Add event listeners
+    if (dashboardTab) {
+        dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
+    }
+    if (tradesTab) {
+        tradesTab.addEventListener('click', () => switchToTab('trades'));
+    }
+    if (affirmationsTab) {
+        affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
     }
 }
 
@@ -424,12 +204,18 @@ onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         document.getElementById('user-email').textContent = user.email;
         showLoading();
-        await loadUserSettings();
-        await loadTrades();
-        setupEventListeners();
-        setupTabs();
-        setupMobileMenu();
-        hideLoading();
+        
+        try {
+            await loadUserSettings();
+            await loadTrades();
+            setupEventListeners();
+            setupTabs();
+            setupMobileMenu();
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        } finally {
+            hideLoading();
+        }
     } else {
         window.location.href = 'index.html';
     }
@@ -445,15 +231,12 @@ window.logout = async () => {
 };
 
 function setupEventListeners() {
+    // Trade form listener
     const tradeForm = document.getElementById('tradeForm');
     if (tradeForm) {
         tradeForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            if (editingTradeId) {
-                updateTrade(editingTradeId, e);
-            } else {
-                addTrade(e);
-            }
+            addTrade(e);
         });
     }
 
@@ -466,33 +249,28 @@ function setupEventListeners() {
                     parseFloat(e.target.value) : parseInt(e.target.value);
                 localStorage.setItem(id, value);
                 if (id === 'accountSize') {
-                    updateStats();
-                    renderCharts();
+                    updateStats(allTrades);
+                    renderCharts(allTrades);
                 }
                 updateRiskCalculation();
             });
         }
     });
 
-    // Currency change listener - this sets the base currency
+    // Currency change listener
     const accountCurrency = document.getElementById('accountCurrency');
     if (accountCurrency) {
         accountCurrency.addEventListener('change', (e) => {
             const newCurrency = e.target.value;
             localStorage.setItem('accountCurrency', newCurrency);
-            
-            // Update the account balance label to show the new currency
             updateCurrencyDisplay();
-            
-            // Refresh all displays with new currency
-            updateStats();
-            renderCharts();
+            updateStats(allTrades);
+            renderCharts(allTrades);
             updateRiskCalculation();
-            loadTrades();
         });
     }
 
-    // Trade form listeners
+    // Trade form listeners for real-time calculations
     ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -505,27 +283,412 @@ function setupEventListeners() {
     if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
     
     updateRiskCalculation();
+    setupAffirmationsEventListeners();
 }
 
-// Update currency display throughout the app
-function updateCurrencyDisplay() {
-    const selectedCurrency = getSelectedCurrency();
-    const currencySymbol = getCurrencySymbol();
-    
-    // Update account balance label
-    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
-    if (accountBalanceLabel) {
-        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
+// ========== AFFIRMATIONS FUNCTIONS ==========
+function setupAffirmationsEventListeners() {
+    const affirmationForm = document.getElementById('affirmationForm');
+    if (affirmationForm) {
+        affirmationForm.addEventListener('submit', handleAffirmationSubmit);
     }
-    
-    // Update stats labels if they exist
-    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
-    if (balanceStat) {
-        balanceStat.textContent = `Balance (${currencySymbol})`;
+
+    const affirmationText = document.getElementById('affirmationText');
+    if (affirmationText) {
+        affirmationText.addEventListener('input', updateCharCount);
     }
-    
-    console.log(`Currency updated to: ${selectedCurrency} (${currencySymbol})`);
+
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    categoryFilters.forEach(filter => {
+        filter.addEventListener('click', handleCategoryFilter);
+    });
+
+    const searchInput = document.getElementById('searchAffirmations');
+    if (searchInput) {
+        searchInput.addEventListener('input', handleSearchAffirmations);
+    }
+
+    const sortSelect = document.getElementById('sortAffirmations');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', handleSortAffirmations);
+    }
 }
+
+function loadAffirmations() {
+    allAffirmations = [...sampleAffirmations];
+    updateAffirmationStats();
+    renderAffirmationsGrid();
+    setupDailyAffirmation();
+}
+
+function updateAffirmationStats() {
+    const total = allAffirmations.length;
+    const active = allAffirmations.filter(a => a.isActive).length;
+    const favorites = allAffirmations.filter(a => a.isFavorite).length;
+    const usedThisWeek = allAffirmations.filter(a => {
+        const lastUsed = new Date(a.lastUsed);
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return lastUsed > weekAgo;
+    }).length;
+
+    document.getElementById('totalAffirmations').textContent = total;
+    document.getElementById('activeAffirmations').textContent = active;
+    document.getElementById('favoriteAffirmations').textContent = favorites;
+    document.getElementById('usedThisWeek').textContent = usedThisWeek;
+}
+
+function renderAffirmationsGrid(filteredAffirmations = null) {
+    const grid = document.getElementById('affirmationsGrid');
+    const emptyState = document.getElementById('emptyAffirmations');
+    const affirmations = filteredAffirmations || allAffirmations;
+
+    if (affirmations.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    
+    grid.innerHTML = affirmations.map(affirmation => `
+        <div class="affirmation-card bg-gradient-to-br from-white to-gray-50 border-l-4 border-${getCategoryColor(affirmation.category)}-500 p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <p class="text-lg font-semibold text-gray-800 leading-relaxed">"${affirmation.text}"</p>
+                    <div class="flex items-center mt-3 space-x-3">
+                        <span class="category-badge bg-${getCategoryColor(affirmation.category)}-100 text-${getCategoryColor(affirmation.category)}-800 px-3 py-1 rounded-full text-xs font-semibold">
+                            ${getCategoryDisplayName(affirmation.category)}
+                        </span>
+                        <div class="flex items-center text-xs text-gray-500">
+                            <span class="mr-1">🔥</span>
+                            <span>${affirmation.usageCount} uses</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex space-x-2 ml-4">
+                    <button onclick="toggleFavorite('${affirmation.id}')" class="favorite-btn ${affirmation.isFavorite ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-600 transition-transform duration-300 hover:scale-125" title="Favorite">
+                        ⭐
+                    </button>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                <div class="flex space-x-2">
+                    <button onclick="useAffirmation('${affirmation.id}')" class="use-btn bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
+                        ✅ Use Now
+                    </button>
+                    <button onclick="copyAffirmation('${affirmation.id}')" class="copy-btn bg-gray-50 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
+                        📋 Copy
+                    </button>
+                </div>
+                <span class="text-xs text-gray-400">${formatRelativeTime(affirmation.createdAt)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getCategoryColor(category) {
+    const colors = {
+        'confidence': 'green',
+        'discipline': 'purple',
+        'patience': 'yellow',
+        'risk-management': 'red',
+        'mindset': 'indigo',
+        'general': 'blue'
+    };
+    return colors[category] || 'blue';
+}
+
+function getCategoryDisplayName(category) {
+    const names = {
+        'confidence': 'Confidence',
+        'discipline': 'Discipline',
+        'patience': 'Patience',
+        'risk-management': 'Risk Management',
+        'mindset': 'Mindset',
+        'general': 'General'
+    };
+    return names[category] || 'General';
+}
+
+function formatRelativeTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    return `${Math.floor(diffInDays / 30)} months ago`;
+}
+
+function setupDailyAffirmation() {
+    const dailyAffirmation = getRandomAffirmation();
+    if (dailyAffirmation) {
+        document.getElementById('dailyAffirmation').textContent = `"${dailyAffirmation.text}"`;
+        document.getElementById('dailyAffirmationCategory').textContent = getCategoryDisplayName(dailyAffirmation.category);
+        document.getElementById('affirmationStrength').textContent = `${dailyAffirmation.strength}%`;
+    }
+}
+
+function getRandomAffirmation() {
+    const activeAffirmations = allAffirmations.filter(a => a.isActive);
+    if (activeAffirmations.length === 0) return null;
+    return activeAffirmations[Math.floor(Math.random() * activeAffirmations.length)];
+}
+
+// Affirmations Modal Functions
+window.addNewAffirmation = () => {
+    editingAffirmationId = null;
+    document.getElementById('modalTitle').textContent = 'Create New Affirmation';
+    document.getElementById('affirmationText').value = '';
+    document.getElementById('affirmationCategorySelect').value = 'confidence';
+    document.getElementById('isFavorite').checked = false;
+    document.getElementById('isActive').checked = true;
+    updateCharCount();
+    document.getElementById('affirmationModal').classList.remove('hidden');
+};
+
+window.closeAffirmationModal = () => {
+    document.getElementById('affirmationModal').classList.add('hidden');
+};
+
+function updateCharCount() {
+    const text = document.getElementById('affirmationText').value;
+    document.getElementById('charCount').textContent = text.length;
+}
+
+function handleAffirmationSubmit(e) {
+    e.preventDefault();
+    
+    const text = document.getElementById('affirmationText').value.trim();
+    const category = document.getElementById('affirmationCategorySelect').value;
+    const isFavorite = document.getElementById('isFavorite').checked;
+    const isActive = document.getElementById('isActive').checked;
+    
+    if (!text) {
+        alert('Please enter an affirmation text.');
+        return;
+    }
+    
+    if (text.length > 200) {
+        alert('Affirmation text must be 200 characters or less.');
+        return;
+    }
+    
+    const affirmationData = {
+        text,
+        category,
+        isFavorite,
+        isActive,
+        usageCount: 0,
+        lastUsed: null,
+        createdAt: new Date().toISOString(),
+        strength: Math.floor(Math.random() * 20) + 80,
+        userId: currentUser.uid
+    };
+    
+    if (editingAffirmationId) {
+        const index = allAffirmations.findIndex(a => a.id === editingAffirmationId);
+        if (index !== -1) {
+            allAffirmations[index] = { ...allAffirmations[index], ...affirmationData };
+        }
+    } else {
+        const newAffirmation = {
+            id: Date.now().toString(),
+            ...affirmationData
+        };
+        allAffirmations.unshift(newAffirmation);
+    }
+    
+    closeAffirmationModal();
+    updateAffirmationStats();
+    renderAffirmationsGrid();
+    showSuccessMessage(editingAffirmationId ? 'Affirmation updated successfully!' : 'Affirmation created successfully!');
+}
+
+// Affirmation Actions
+window.useAffirmation = (id) => {
+    const affirmation = allAffirmations.find(a => a.id === id);
+    if (affirmation) {
+        affirmation.usageCount++;
+        affirmation.lastUsed = new Date().toISOString();
+        updateAffirmationStats();
+        renderAffirmationsGrid();
+        showSuccessMessage('Affirmation marked as used! 💪');
+    }
+};
+
+window.copyAffirmation = (id) => {
+    const affirmation = allAffirmations.find(a => a.id === id);
+    if (affirmation) {
+        navigator.clipboard.writeText(affirmation.text)
+            .then(() => showSuccessMessage('Affirmation copied to clipboard! 📋'))
+            .catch(() => alert('Failed to copy affirmation.'));
+    }
+};
+
+window.toggleFavorite = (id) => {
+    const affirmation = allAffirmations.find(a => a.id === id);
+    if (affirmation) {
+        affirmation.isFavorite = !affirmation.isFavorite;
+        renderAffirmationsGrid();
+    }
+};
+
+// Random Affirmation Modal
+window.showRandomAffirmation = () => {
+    const randomAffirmation = getRandomAffirmation();
+    if (randomAffirmation) {
+        document.getElementById('randomAffirmationText').textContent = `"${randomAffirmation.text}"`;
+        document.getElementById('randomAffirmationModal').classList.remove('hidden');
+    } else {
+        alert('No active affirmations available.');
+    }
+};
+
+window.closeRandomModal = () => {
+    document.getElementById('randomAffirmationModal').classList.add('hidden');
+};
+
+window.showAnotherRandom = () => {
+    const randomAffirmation = getRandomAffirmation();
+    if (randomAffirmation) {
+        document.getElementById('randomAffirmationText').textContent = `"${randomAffirmation.text}"`;
+    }
+};
+
+window.useRandomAffirmation = () => {
+    const randomAffirmation = getRandomAffirmation();
+    if (randomAffirmation) {
+        randomAffirmation.usageCount++;
+        randomAffirmation.lastUsed = new Date().toISOString();
+        updateAffirmationStats();
+        closeRandomModal();
+        showSuccessMessage('Affirmation marked as used! 💪');
+    }
+};
+
+// Daily Affirmation Functions
+window.refreshDailyAffirmation = () => {
+    setupDailyAffirmation();
+    showSuccessMessage('Daily affirmation refreshed! 🔄');
+};
+
+window.markDailyAsUsed = () => {
+    const dailyAffirmationText = document.getElementById('dailyAffirmation').textContent.replace(/"/g, '').trim();
+    const affirmation = allAffirmations.find(a => a.text === dailyAffirmationText);
+    if (affirmation) {
+        affirmation.usageCount++;
+        affirmation.lastUsed = new Date().toISOString();
+        updateAffirmationStats();
+        showSuccessMessage('Daily affirmation marked as used! ✅');
+    }
+};
+
+window.speakAffirmation = () => {
+    const affirmationText = document.getElementById('dailyAffirmation').textContent;
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(affirmationText);
+        utterance.rate = 0.8;
+        utterance.pitch = 1;
+        speechSynthesis.speak(utterance);
+    } else {
+        alert('Text-to-speech is not supported in your browser.');
+    }
+};
+
+// Motivational Quotes
+window.showMotivationalQuote = () => {
+    const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    alert(`💡 Motivational Quote:\n\n"${randomQuote}"`);
+};
+
+// Export Affirmations
+window.exportAffirmations = () => {
+    const csv = convertAffirmationsToCSV(allAffirmations);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trading-affirmations-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    showSuccessMessage('Affirmations exported successfully! 📤');
+};
+
+function convertAffirmationsToCSV(affirmations) {
+    const headers = ['Text', 'Category', 'Favorite', 'Active', 'Usage Count', 'Last Used', 'Created At'];
+    const csvRows = [headers.join(',')];
+    
+    affirmations.forEach(affirmation => {
+        const row = [
+            `"${affirmation.text.replace(/"/g, '""')}"`,
+            affirmation.category,
+            affirmation.isFavorite ? 'Yes' : 'No',
+            affirmation.isActive ? 'Yes' : 'No',
+            affirmation.usageCount,
+            affirmation.lastUsed ? new Date(affirmation.lastUsed).toLocaleDateString() : '',
+            new Date(affirmation.createdAt).toLocaleDateString()
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+// Filter and Search Functions
+function handleCategoryFilter(e) {
+    const category = e.target.dataset.category;
+    
+    document.querySelectorAll('.category-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    e.target.classList.add('active');
+    
+    let filteredAffirmations;
+    if (category === 'all') {
+        filteredAffirmations = allAffirmations;
+    } else {
+        filteredAffirmations = allAffirmations.filter(a => a.category === category);
+    }
+    
+    renderAffirmationsGrid(filteredAffirmations);
+}
+
+function handleSearchAffirmations(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredAffirmations = allAffirmations.filter(a => 
+        a.text.toLowerCase().includes(searchTerm)
+    );
+    renderAffirmationsGrid(filteredAffirmations);
+}
+
+function handleSortAffirmations(e) {
+    const sortBy = e.target.value;
+    let sortedAffirmations = [...allAffirmations];
+    
+    switch (sortBy) {
+        case 'newest':
+            sortedAffirmations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            break;
+        case 'oldest':
+            sortedAffirmations.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            break;
+        case 'most-used':
+            sortedAffirmations.sort((a, b) => b.usageCount - a.usageCount);
+            break;
+        case 'favorites':
+            sortedAffirmations.sort((a, b) => b.isFavorite - a.isFavorite);
+            break;
+    }
+    
+    renderAffirmationsGrid(sortedAffirmations);
+}
+
+// ========== TRADING FUNCTIONS ==========
 
 // Trading calculation functions
 function getInstrumentType(symbol) {
@@ -699,70 +862,6 @@ async function addTrade(e) {
     }
 }
 
-async function updateTrade(tradeId, e) {
-    e.preventDefault();
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    const originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '<div class="loading-spinner"></div> Updating...';
-    submitButton.disabled = true;
-
-    try {
-        const symbol = document.getElementById('symbol')?.value;
-        const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
-        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
-        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
-        const lotSize = parseFloat(document.getElementById('lotSize')?.value);
-        const tradeType = document.getElementById('direction')?.value;
-        const mood = document.getElementById('mood')?.value || '';
-        const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
-
-        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
-            alert('Please fill all required fields');
-            return;
-        }
-
-        const instrumentType = getInstrumentType(symbol);
-        const exitPrice = takeProfit || entryPrice;
-        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
-        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-
-        const tradeData = {
-            symbol, 
-            type: tradeType, 
-            instrumentType, 
-            entryPrice, 
-            stopLoss, 
-            takeProfit, 
-            lotSize,
-            mood: mood,
-            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
-            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
-            notes: document.getElementById('notes')?.value || '', 
-            timestamp: new Date().toISOString(),
-            profit, 
-            pipsPoints: pipPointInfo.risk,
-            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
-            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-            accountSize, 
-            leverage, 
-            userId: currentUser.uid
-        };
-
-        await updateDoc(doc(db, 'trades', tradeId), tradeData);
-        e.target.reset();
-        cancelEdit();
-        await loadTrades();
-        alert('Trade updated successfully!');
-    } catch (error) {
-        console.error('Error updating trade:', error);
-        alert('Error updating trade.');
-    } finally {
-        submitButton.innerHTML = originalText;
-        submitButton.disabled = false;
-    }
-}
-
 async function loadTrades() {
     try {
         showLoading();
@@ -778,7 +877,7 @@ async function loadTrades() {
 
         trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
-        // Use pagination instead of direct display
+        allTrades = trades;
         setupPagination(trades);
         updateStats(trades);
         renderCharts(trades);
@@ -797,6 +896,54 @@ async function loadTrades() {
     } finally {
         hideLoading();
     }
+}
+
+// Pagination functions
+function setupPagination(trades) {
+    allTrades = trades;
+    currentPage = 1;
+    renderPagination();
+    displayTradesPage(currentPage);
+}
+
+function displayTradesPage(page) {
+    currentPage = page;
+    const startIndex = (page - 1) * tradesPerPage;
+    const endIndex = startIndex + tradesPerPage;
+    const pageTrades = allTrades.slice(startIndex, endIndex);
+    
+    displayTrades(pageTrades);
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(allTrades.length / tradesPerPage);
+    const paginationContainer = document.getElementById('pagination');
+    
+    if (!paginationContainer || totalPages <= 1) {
+        if (paginationContainer) paginationContainer.innerHTML = '';
+        return;
+    }
+
+    let paginationHTML = '';
+    
+    if (currentPage > 1) {
+        paginationHTML += `<button onclick="displayTradesPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">← Previous</button>`;
+    }
+    
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === currentPage) {
+            paginationHTML += `<span class="px-3 py-1 bg-blue-500 text-white rounded">${i}</span>`;
+        } else {
+            paginationHTML += `<button onclick="displayTradesPage(${i})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">${i}</button>`;
+        }
+    }
+    
+    if (currentPage < totalPages) {
+        paginationHTML += `<button onclick="displayTradesPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next →</button>`;
+    }
+    
+    paginationContainer.innerHTML = paginationHTML;
 }
 
 function displayTrades(trades) {
@@ -854,93 +1001,253 @@ function displayTrades(trades) {
     }).join('');
 }
 
-// Fixed screenshot viewer function
-window.viewScreenshot = (url) => {
-    // Validate and clean the URL
-    let cleanedUrl = url.trim();
+// Import/Export functions
+window.importTrades = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
     
-    // Add https:// if no protocol is specified
-    if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
-        cleanedUrl = 'https://' + cleanedUrl;
-    }
-    
-    // Validate it's a proper URL
-    try {
-        new URL(cleanedUrl);
-    } catch (e) {
-        alert('Invalid screenshot URL. Please check the URL format.');
-        return;
-    }
-
-    const modal = document.getElementById('screenshotModal');
-    const image = document.getElementById('screenshotImage');
-    
-    if (modal && image) {
-        // Show loading state
-        image.src = '';
-        image.alt = 'Loading screenshot...';
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
         
-        let hasLoaded = false;
-        let errorShown = false;
-        
-        // Set image source with better error handling
-        image.onload = function() {
-            console.log('Screenshot loaded successfully:', cleanedUrl);
-            hasLoaded = true;
-            // Clear any previous error state
-            image.alt = 'Trade Screenshot';
-        };
-        
-        image.onerror = function() {
-            console.error('Failed to load screenshot:', cleanedUrl);
+        try {
+            showLoading();
+            const text = await file.text();
+            const trades = parseCSV(text);
             
-            // Only show error if image hasn't loaded and we haven't shown an error yet
-            if (!hasLoaded && !errorShown) {
-                errorShown = true;
-                image.alt = 'Failed to load screenshot. The image may be blocked by CORS policy or the URL may be incorrect.';
-                
-                // Don't show alert if the image is from a known image hosting service
-                const knownDomains = ['images.unsplash.com', 'imgur.com', 'i.imgur.com', 'postimg.cc', 'prnt.sc', 'gyazo.com', 'ibb.co'];
-                const isKnownDomain = knownDomains.some(domain => cleanedUrl.includes(domain));
-                
-                if (!isKnownDomain) {
-                    setTimeout(() => {
-                        if (!hasLoaded) {
-                            alert('Failed to load screenshot. This could be due to:\n\n• CORS restrictions (common with some image hosts)\n• The image being deleted or moved\n• Network connectivity issues\n\nTry uploading to a different image hosting service like Imgur.');
-                        }
-                    }, 1000);
-                }
+            if (trades.length === 0) {
+                alert('No valid trades found in the CSV file. Please check the format.');
+                return;
             }
-        };
-        
-        // Set a timeout to handle cases where the image loads but has issues
-        setTimeout(() => {
-            if (!hasLoaded && !errorShown) {
-                console.log('Screenshot loading taking longer than expected:', cleanedUrl);
-                // Don't show error immediately, let the natural loading continue
+            
+            const previewText = trades.slice(0, 5).map((trade, i) => 
+                `${i + 1}. ${trade.symbol} ${trade.type} - Profit: ${formatCurrency(trade.profit)}`
+            ).join('\n');
+            
+            const extraTrades = trades.length > 5 ? `\n... and ${trades.length - 5} more trades` : '';
+            
+            if (confirm(`Found ${trades.length} trades:\n\n${previewText}${extraTrades}\n\nImport these trades?`)) {
+                await importTradesToFirestore(trades);
+                await loadTrades();
+                alert(`✅ Successfully imported ${trades.length} trades!\n\nAll trade calculations have been verified and updated.`);
             }
-        }, 3000);
-        
-        image.src = cleanedUrl;
-    }
+        } catch (error) {
+            console.error('Error importing trades:', error);
+            alert('❌ Error importing trades. Please check the CSV format and try again.');
+        } finally {
+            hideLoading();
+        }
+    };
+    
+    fileInput.click();
 };
 
-window.closeScreenshotModal = () => {
-    const modal = document.getElementById('screenshotModal');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-        // Clear the image source when closing
-        const image = document.getElementById('screenshotImage');
-        if (image) {
-            image.src = '';
-            image.alt = '';
+function parseCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim());
+    const trades = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length !== headers.length) continue;
+        
+        try {
+            const getValue = (possibleHeaders) => {
+                for (const header of possibleHeaders) {
+                    const index = headers.indexOf(header);
+                    if (index !== -1 && values[index] !== undefined) {
+                        return values[index];
+                    }
+                }
+                return '';
+            };
+
+            const symbol = getValue(['Symbol', 'symbol']);
+            const entryPrice = parseFloat(getValue(['Entry', 'entryPrice', 'Entry Price']));
+            const stopLoss = parseFloat(getValue(['SL', 'stopLoss', 'Stop Loss']));
+            const takeProfit = getValue(['TP', 'takeProfit', 'Take Profit']) ? 
+                parseFloat(getValue(['TP', 'takeProfit', 'Take Profit'])) : null;
+            const lotSize = parseFloat(getValue(['Lots', 'lotSize', 'Lot Size']) || '0.01');
+            const tradeType = getValue(['Type', 'type']) || 'long';
+            const instrumentType = getValue(['InstrumentType', 'instrumentType']) || getInstrumentType(symbol);
+            
+            let profit = parseFloat(getValue(['Profit', 'profit']) || '0');
+            
+            if (profit === 0 && symbol && entryPrice && stopLoss) {
+                const exitPrice = takeProfit || entryPrice;
+                profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+            }
+            
+            const trade = {
+                symbol: symbol,
+                type: tradeType,
+                instrumentType: instrumentType,
+                entryPrice: entryPrice,
+                stopLoss: stopLoss,
+                takeProfit: takeProfit,
+                lotSize: lotSize,
+                mood: getValue(['Mood', 'mood']) || '',
+                beforeScreenshot: getValue(['BeforeScreenshot', 'beforeScreenshot']) || '',
+                afterScreenshot: getValue(['AfterScreenshot', 'afterScreenshot']) || '',
+                notes: (getValue(['Notes', 'notes']) || '').replace(/""/g, '"'),
+                timestamp: getValue(['Timestamp', 'timestamp']) || new Date(getValue(['Date', 'date']) || new Date()).toISOString(),
+                profit: profit,
+                pipsPoints: parseFloat(getValue(['PipsPoints', 'pipsPoints']) || '0'),
+                riskAmount: parseFloat(getValue(['Risk Amount', 'riskAmount', 'RiskAmount']) || '0'),
+                riskPercent: parseFloat(getValue(['Risk %', 'riskPercent', 'RiskPercent']) || '0'),
+                accountSize: parseFloat(getValue(['AccountSize', 'accountSize']) || localStorage.getItem('accountSize') || 10000),
+                leverage: parseInt(getValue(['Leverage', 'leverage']) || localStorage.getItem('leverage') || 50),
+                userId: currentUser.uid
+            };
+            
+            if ((!trade.riskAmount || trade.riskAmount === 0) && symbol && entryPrice && stopLoss) {
+                trade.riskAmount = Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType));
+                trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
+                
+                const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+                trade.pipsPoints = pipPointInfo.risk;
+            }
+            
+            if (trade.symbol && !isNaN(trade.entryPrice) && !isNaN(trade.stopLoss)) {
+                trades.push(trade);
+            }
+        } catch (error) {
+            console.warn('Skipping invalid trade row:', error, values);
         }
     }
+    
+    return trades;
+}
+
+function parseCSVLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    values.push(current.trim());
+    return values;
+}
+
+async function importTradesToFirestore(trades) {
+    const importPromises = trades.map(async (trade) => {
+        if (trade.symbol && trade.entryPrice && trade.stopLoss) {
+            if (trade.profit === 0 && trade.takeProfit) {
+                trade.profit = calculateProfitLoss(
+                    trade.entryPrice, 
+                    trade.takeProfit, 
+                    trade.lotSize, 
+                    trade.symbol, 
+                    trade.type
+                );
+            }
+            
+            trade.riskAmount = Math.abs(calculateProfitLoss(
+                trade.entryPrice, 
+                trade.stopLoss, 
+                trade.lotSize, 
+                trade.symbol, 
+                trade.type
+            ));
+            
+            trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
+            
+            const pipPointInfo = calculatePipsPoints(
+                trade.entryPrice, 
+                trade.stopLoss, 
+                trade.takeProfit, 
+                trade.symbol, 
+                trade.type
+            );
+            trade.pipsPoints = pipPointInfo.risk;
+        }
+        
+        return addDoc(collection(db, 'trades'), trade);
+    });
+    
+    await Promise.all(importPromises);
+}
+
+window.exportTrades = async () => {
+    try {
+        if (!currentUser) return;
+        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const trades = [];
+        querySnapshot.forEach((doc) => trades.push({ id: doc.id, ...doc.data() }));
+        
+        const csv = convertToCSV(trades);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trading-journal-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error exporting trades:', error);
+        alert('Error exporting trades.');
+    }
 };
 
+function convertToCSV(trades) {
+    const selectedCurrency = getSelectedCurrency();
+    const currencyName = currencyNames[selectedCurrency] || 'US Dollar';
+    
+    const headers = [
+        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
+        'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
+        'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
+        'Notes', 'AccountSize', 'Leverage', 'Timestamp'
+    ];
+    const csvRows = [headers.join(',')];
+    
+    trades.forEach(trade => {
+        const row = [
+            new Date(trade.timestamp).toLocaleDateString(),
+            trade.symbol,
+            trade.type,
+            trade.instrumentType,
+            trade.entryPrice,
+            trade.stopLoss,
+            trade.takeProfit || '',
+            trade.lotSize,
+            trade.profit,
+            trade.riskAmount,
+            trade.riskPercent,
+            trade.pipsPoints,
+            trade.mood || '',
+            `"${(trade.beforeScreenshot || '').replace(/"/g, '""')}"`,
+            `"${(trade.afterScreenshot || '').replace(/"/g, '""')}"`,
+            `"${(trade.notes || '').replace(/"/g, '""')}"`,
+            trade.accountSize,
+            trade.leverage,
+            trade.timestamp
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+// Delete trade function
 window.deleteTrade = async (tradeId) => {
     if (confirm('Are you sure you want to delete this trade?')) {
         try {
@@ -956,7 +1263,121 @@ window.deleteTrade = async (tradeId) => {
     }
 };
 
-// Analytics and Metrics
+// Screenshot functions
+window.viewScreenshot = (url) => {
+    let cleanedUrl = url.trim();
+    
+    if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
+        cleanedUrl = 'https://' + cleanedUrl;
+    }
+    
+    try {
+        new URL(cleanedUrl);
+    } catch (e) {
+        alert('Invalid screenshot URL. Please check the URL format.');
+        return;
+    }
+
+    const modal = document.getElementById('screenshotModal');
+    const image = document.getElementById('screenshotImage');
+    
+    if (modal && image) {
+        image.src = '';
+        image.alt = 'Loading screenshot...';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        let hasLoaded = false;
+        let errorShown = false;
+        
+        image.onload = function() {
+            console.log('Screenshot loaded successfully:', cleanedUrl);
+            hasLoaded = true;
+            image.alt = 'Trade Screenshot';
+        };
+        
+        image.onerror = function() {
+            console.error('Failed to load screenshot:', cleanedUrl);
+            
+            if (!hasLoaded && !errorShown) {
+                errorShown = true;
+                image.alt = 'Failed to load screenshot. The image may be blocked by CORS policy or the URL may be incorrect.';
+                
+                const knownDomains = ['images.unsplash.com', 'imgur.com', 'i.imgur.com', 'postimg.cc', 'prnt.sc', 'gyazo.com', 'ibb.co'];
+                const isKnownDomain = knownDomains.some(domain => cleanedUrl.includes(domain));
+                
+                if (!isKnownDomain) {
+                    setTimeout(() => {
+                        if (!hasLoaded) {
+                            alert('Failed to load screenshot. This could be due to:\n\n• CORS restrictions (common with some image hosts)\n• The image being deleted or moved\n• Network connectivity issues\n\nTry uploading to a different image hosting service like Imgur.');
+                        }
+                    }, 1000);
+                }
+            }
+        };
+        
+        setTimeout(() => {
+            if (!hasLoaded && !errorShown) {
+                console.log('Screenshot loading taking longer than expected:', cleanedUrl);
+            }
+        }, 3000);
+        
+        image.src = cleanedUrl;
+    }
+};
+
+window.closeScreenshotModal = () => {
+    const modal = document.getElementById('screenshotModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        const image = document.getElementById('screenshotImage');
+        if (image) {
+            image.src = '';
+            image.alt = '';
+        }
+    }
+};
+
+// Analytics and stats functions
+function updateStats(trades) {
+    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const stats = {
+        'totalTrades': '0', 
+        'winRate': '0%', 
+        'totalPL': formatCurrency(0), 
+        'currentBalance': formatCurrency(accountSize)
+    };
+
+    if (trades && trades.length > 0) {
+        const totalTrades = trades.length;
+        const winningTrades = trades.filter(t => t.profit > 0).length;
+        const winRate = ((winningTrades / totalTrades) * 100).toFixed(1);
+        const totalPL = trades.reduce((sum, trade) => sum + trade.profit, 0);
+        const currentBalance = accountSize + totalPL;
+
+        stats.totalTrades = totalTrades;
+        stats.winRate = `${winRate}%`;
+        stats.totalPL = formatCurrency(totalPL);
+        stats.currentBalance = formatCurrency(currentBalance);
+    }
+
+    Object.entries(stats).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+            
+            if (id === 'totalPL') {
+                const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
+                element.className = `stat-value ${numericValue >= 0 ? 'profit' : 'loss'}`;
+            } else if (id === 'currentBalance') {
+                const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
+                element.className = `stat-value ${numericValue >= accountSize ? 'profit' : 'loss'}`;
+            }
+        }
+    });
+}
+
 function calculateAdvancedMetrics(trades) {
     if (!trades || trades.length === 0) {
         resetAdvancedMetrics();
@@ -1196,88 +1617,7 @@ function getTradingMonths(trades) {
     return (lastTrade - firstTrade) / (1000 * 60 * 60 * 24 * 30.44);
 }
 
-function updateStats(trades) {
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
-    const stats = {
-        'totalTrades': '0', 
-        'winRate': '0%', 
-        'totalPL': formatCurrency(0), 
-        'currentBalance': formatCurrency(accountSize), 
-        'recentStats': 'No trades yet', 
-        'symbolStats': 'No data'
-    };
-
-    if (trades && trades.length > 0) {
-        const totalTrades = trades.length;
-        const winningTrades = trades.filter(t => t.profit > 0).length;
-        const winRate = ((winningTrades / totalTrades) * 100).toFixed(1);
-        const totalPL = trades.reduce((sum, trade) => sum + trade.profit, 0);
-        const currentBalance = accountSize + totalPL;
-
-        stats.totalTrades = totalTrades;
-        stats.winRate = `${winRate}%`;
-        stats.totalPL = formatCurrency(totalPL);
-        stats.currentBalance = formatCurrency(currentBalance);
-
-        const recentTrades = trades.slice(0, 3);
-        const recentProfit = recentTrades.reduce((sum, trade) => sum + trade.profit, 0);
-        stats.recentStats = `Last 3: ${formatCurrency(recentProfit)}`;
-
-        const symbolStats = calculateSymbolStats(trades);
-        stats.symbolStats = symbolStats.slice(0, 3).map(stat => 
-            `${stat.symbol}: ${formatCurrency(stat.totalProfit)}`
-        ).join('<br>');
-    }
-
-    Object.entries(stats).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) {
-            if (id === 'symbolStats') {
-                element.innerHTML = value;
-            } else {
-                element.textContent = value;
-            }
-            
-            if (id === 'totalPL') {
-                const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
-                element.className = `stat-value ${numericValue >= 0 ? 'profit' : 'loss'}`;
-            } else if (id === 'currentBalance') {
-                const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, "")) || 0;
-                element.className = `stat-value ${numericValue >= accountSize ? 'profit' : 'loss'}`;
-            }
-        }
-    });
-}
-
-function calculateSymbolStats(trades) {
-    const symbolMap = {};
-    trades.forEach(trade => {
-        if (!symbolMap[trade.symbol]) symbolMap[trade.symbol] = { trades: [], totalProfit: 0 };
-        symbolMap[trade.symbol].trades.push(trade);
-        symbolMap[trade.symbol].totalProfit += trade.profit;
-    });
-    return Object.entries(symbolMap).map(([symbol, data]) => {
-        const winningTrades = data.trades.filter(t => t.profit > 0).length;
-        const winRate = data.trades.length > 0 ? ((winningTrades / data.trades.length) * 100).toFixed(1) : '0';
-        return { symbol, totalProfit: data.totalProfit, winRate };
-    }).sort((a, b) => b.totalProfit - a.totalProfit);
-}
-
-async function loadUserSettings() {
-    const accountSize = localStorage.getItem('accountSize') || 10000;
-    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
-    const accountCurrency = localStorage.getItem('accountCurrency') || 'USD';
-    const leverage = localStorage.getItem('leverage') || 50;
-
-    document.getElementById('accountSize').value = accountSize;
-    document.getElementById('riskPerTrade').value = riskPerTrade;
-    document.getElementById('accountCurrency').value = accountCurrency;
-    document.getElementById('leverage').value = leverage;
-    
-    // Update currency display when loading settings
-    updateCurrencyDisplay();
-}
-
+// Chart functions
 function renderCharts(trades = []) {
     renderPerformanceChart(trades);
     renderWinLossChart(trades);
@@ -1449,7 +1789,48 @@ function renderMarketTypeChart(trades) {
     });
 }
 
+// Utility functions
+async function loadUserSettings() {
+    const accountSize = localStorage.getItem('accountSize') || 10000;
+    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
+    const accountCurrency = localStorage.getItem('accountCurrency') || 'USD';
+    const leverage = localStorage.getItem('leverage') || 50;
+
+    document.getElementById('accountSize').value = accountSize;
+    document.getElementById('riskPerTrade').value = riskPerTrade;
+    document.getElementById('accountCurrency').value = accountCurrency;
+    document.getElementById('leverage').value = leverage;
+    
+    updateCurrencyDisplay();
+}
+
+function updateCurrencyDisplay() {
+    const selectedCurrency = getSelectedCurrency();
+    const currencySymbol = getCurrencySymbol();
+    
+    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
+    if (accountBalanceLabel) {
+        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
+    }
+    
+    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
+    if (balanceStat) {
+        balanceStat.textContent = `Balance (${currencySymbol})`;
+    }
+}
+
+function showSuccessMessage(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+    successDiv.textContent = message;
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.remove();
+    }, 3000);
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal initialized');
+    console.log('Trading Journal with Affirmations initialized');
 });
