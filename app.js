@@ -2866,43 +2866,6 @@ function renderMarketTypeChart(trades) {
     });
 }
 
-// Utility functions
-async function loadUserSettings() {
-    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
-    const leverage = localStorage.getItem('leverage') || 50;
-
-    document.getElementById('riskPerTrade').value = riskPerTrade;
-    document.getElementById('leverage').value = leverage;
-    
-    updateCurrencyDisplay();
-}
-
-function updateCurrencyDisplay() {
-    const selectedCurrency = getSelectedCurrency();
-    const currencySymbol = getCurrencySymbol();
-    
-    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
-    if (accountBalanceLabel) {
-        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
-    }
-    
-    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
-    if (balanceStat) {
-        balanceStat.textContent = `Balance (${currencySymbol})`;
-    }
-}
-
-function showSuccessMessage(message) {
-    const successDiv = document.createElement('div');
-    successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-    successDiv.textContent = message;
-    document.body.appendChild(successDiv);
-    
-    setTimeout(() => {
-        successDiv.remove();
-    }, 3000);
-}
-
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Multi-Account Support initialized');
