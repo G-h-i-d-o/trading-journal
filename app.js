@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH AFFIRMATIONS, IMPORT/EXPORT, PAGINATION
+// app.js - COMPLETE WORKING VERSION WITH AFFIRMATIONS, IMPORT/EXPORT, PAGINATION & FIRESTORE
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -41,7 +41,6 @@ const currencyNames = {
 // Sample affirmations data
 const sampleAffirmations = [
     {
-        id: '1',
         text: "I trust my trading strategy and execute it with precision and confidence.",
         category: "discipline",
         isFavorite: true,
@@ -52,7 +51,6 @@ const sampleAffirmations = [
         strength: 92
     },
     {
-        id: '2',
         text: "I am patient and wait for the perfect setups that align with my trading plan.",
         category: "patience",
         isFavorite: false,
@@ -63,7 +61,6 @@ const sampleAffirmations = [
         strength: 85
     },
     {
-        id: '3',
         text: "Every trade is an opportunity to learn and improve my skills as a trader.",
         category: "mindset",
         isFavorite: true,
@@ -287,6 +284,32 @@ function setupEventListeners() {
 }
 
 // ========== AFFIRMATIONS FUNCTIONS WITH FIRESTORE ==========
+function setupAffirmationsEventListeners() {
+    const affirmationForm = document.getElementById('affirmationForm');
+    if (affirmationForm) {
+        affirmationForm.addEventListener('submit', handleAffirmationSubmit);
+    }
+
+    const affirmationText = document.getElementById('affirmationText');
+    if (affirmationText) {
+        affirmationText.addEventListener('input', updateCharCount);
+    }
+
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    categoryFilters.forEach(filter => {
+        filter.addEventListener('click', handleCategoryFilter);
+    });
+
+    const searchInput = document.getElementById('searchAffirmations');
+    if (searchInput) {
+        searchInput.addEventListener('input', handleSearchAffirmations);
+    }
+
+    const sortSelect = document.getElementById('sortAffirmations');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', handleSortAffirmations);
+    }
+}
 
 async function loadAffirmations() {
     try {
@@ -327,6 +350,146 @@ async function loadAffirmations() {
         renderAffirmationsGrid();
         setupDailyAffirmation();
     }
+}
+
+function updateAffirmationStats() {
+    const total = allAffirmations.length;
+    const active = allAffirmations.filter(a => a.isActive).length;
+    const favorites = allAffirmations.filter(a => a.isFavorite).length;
+    const usedThisWeek = allAffirmations.filter(a => {
+        const lastUsed = new Date(a.lastUsed);
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return lastUsed > weekAgo;
+    }).length;
+
+    document.getElementById('totalAffirmations').textContent = total;
+    document.getElementById('activeAffirmations').textContent = active;
+    document.getElementById('favoriteAffirmations').textContent = favorites;
+    document.getElementById('usedThisWeek').textContent = usedThisWeek;
+}
+
+function renderAffirmationsGrid(filteredAffirmations = null) {
+    const grid = document.getElementById('affirmationsGrid');
+    const emptyState = document.getElementById('emptyAffirmations');
+    const affirmations = filteredAffirmations || allAffirmations;
+
+    if (affirmations.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    
+    grid.innerHTML = affirmations.map(affirmation => `
+        <div class="affirmation-card bg-gradient-to-br from-white to-gray-50 border-l-4 border-${getCategoryColor(affirmation.category)}-500 p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <p class="text-lg font-semibold text-gray-800 leading-relaxed">"${affirmation.text}"</p>
+                    <div class="flex items-center mt-3 space-x-3">
+                        <span class="category-badge bg-${getCategoryColor(affirmation.category)}-100 text-${getCategoryColor(affirmation.category)}-800 px-3 py-1 rounded-full text-xs font-semibold">
+                            ${getCategoryDisplayName(affirmation.category)}
+                        </span>
+                        <div class="flex items-center text-xs text-gray-500">
+                            <span class="mr-1">🔥</span>
+                            <span>${affirmation.usageCount} uses</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex space-x-2 ml-4">
+                    <button onclick="toggleFavorite('${affirmation.id}')" class="favorite-btn ${affirmation.isFavorite ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-600 transition-transform duration-300 hover:scale-125" title="Favorite">
+                        ⭐
+                    </button>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                <div class="flex space-x-2">
+                    <button onclick="useAffirmation('${affirmation.id}')" class="use-btn bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
+                        ✅ Use Now
+                    </button>
+                    <button onclick="copyAffirmation('${affirmation.id}')" class="copy-btn bg-gray-50 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
+                        📋 Copy
+                    </button>
+                    <button onclick="deleteAffirmation('${affirmation.id}')" class="delete-btn bg-red-50 text-red-600 hover:bg-red-100 px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
+                        🗑️ Delete
+                    </button>
+                </div>
+                <span class="text-xs text-gray-400">${formatRelativeTime(affirmation.createdAt)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getCategoryColor(category) {
+    const colors = {
+        'confidence': 'green',
+        'discipline': 'purple',
+        'patience': 'yellow',
+        'risk-management': 'red',
+        'mindset': 'indigo',
+        'general': 'blue'
+    };
+    return colors[category] || 'blue';
+}
+
+function getCategoryDisplayName(category) {
+    const names = {
+        'confidence': 'Confidence',
+        'discipline': 'Discipline',
+        'patience': 'Patience',
+        'risk-management': 'Risk Management',
+        'mindset': 'Mindset',
+        'general': 'General'
+    };
+    return names[category] || 'General';
+}
+
+function formatRelativeTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    return `${Math.floor(diffInDays / 30)} months ago`;
+}
+
+function setupDailyAffirmation() {
+    const dailyAffirmation = getRandomAffirmation();
+    if (dailyAffirmation) {
+        document.getElementById('dailyAffirmation').textContent = `"${dailyAffirmation.text}"`;
+        document.getElementById('dailyAffirmationCategory').textContent = getCategoryDisplayName(dailyAffirmation.category);
+        document.getElementById('affirmationStrength').textContent = `${dailyAffirmation.strength}%`;
+    }
+}
+
+function getRandomAffirmation() {
+    const activeAffirmations = allAffirmations.filter(a => a.isActive);
+    if (activeAffirmations.length === 0) return null;
+    return activeAffirmations[Math.floor(Math.random() * activeAffirmations.length)];
+}
+
+// Affirmations Modal Functions
+window.addNewAffirmation = () => {
+    editingAffirmationId = null;
+    document.getElementById('modalTitle').textContent = 'Create New Affirmation';
+    document.getElementById('affirmationText').value = '';
+    document.getElementById('affirmationCategorySelect').value = 'confidence';
+    document.getElementById('isFavorite').checked = false;
+    document.getElementById('isActive').checked = true;
+    updateCharCount();
+    document.getElementById('affirmationModal').classList.remove('hidden');
+};
+
+window.closeAffirmationModal = () => {
+    document.getElementById('affirmationModal').classList.add('hidden');
+};
+
+function updateCharCount() {
+    const text = document.getElementById('affirmationText').value;
+    document.getElementById('charCount').textContent = text.length;
 }
 
 async function handleAffirmationSubmit(e) {
@@ -392,7 +555,7 @@ async function handleAffirmationSubmit(e) {
     }
 }
 
-// Update affirmation actions to use Firestore
+// Affirmation Actions
 window.useAffirmation = async (id) => {
     try {
         const affirmation = allAffirmations.find(a => a.id === id);
@@ -420,6 +583,15 @@ window.useAffirmation = async (id) => {
     }
 };
 
+window.copyAffirmation = (id) => {
+    const affirmation = allAffirmations.find(a => a.id === id);
+    if (affirmation) {
+        navigator.clipboard.writeText(affirmation.text)
+            .then(() => showSuccessMessage('Affirmation copied to clipboard! 📋'))
+            .catch(() => alert('Failed to copy affirmation.'));
+    }
+};
+
 window.toggleFavorite = async (id) => {
     try {
         const affirmation = allAffirmations.find(a => a.id === id);
@@ -442,7 +614,48 @@ window.toggleFavorite = async (id) => {
     }
 };
 
-// Update random affirmation usage
+// Delete affirmation function
+window.deleteAffirmation = async (id) => {
+    if (confirm('Are you sure you want to delete this affirmation?')) {
+        try {
+            // Delete from Firestore
+            await deleteDoc(doc(db, 'affirmations', id));
+            
+            // Remove from local state
+            allAffirmations = allAffirmations.filter(a => a.id !== id);
+            
+            updateAffirmationStats();
+            renderAffirmationsGrid();
+            showSuccessMessage('Affirmation deleted successfully!');
+        } catch (error) {
+            console.error('Error deleting affirmation:', error);
+            alert('Error deleting affirmation.');
+        }
+    }
+};
+
+// Random Affirmation Modal
+window.showRandomAffirmation = () => {
+    const randomAffirmation = getRandomAffirmation();
+    if (randomAffirmation) {
+        document.getElementById('randomAffirmationText').textContent = `"${randomAffirmation.text}"`;
+        document.getElementById('randomAffirmationModal').classList.remove('hidden');
+    } else {
+        alert('No active affirmations available.');
+    }
+};
+
+window.closeRandomModal = () => {
+    document.getElementById('randomAffirmationModal').classList.add('hidden');
+};
+
+window.showAnotherRandom = () => {
+    const randomAffirmation = getRandomAffirmation();
+    if (randomAffirmation) {
+        document.getElementById('randomAffirmationText').textContent = `"${randomAffirmation.text}"`;
+    }
+};
+
 window.useRandomAffirmation = async () => {
     try {
         const randomAffirmation = getRandomAffirmation();
@@ -470,7 +683,12 @@ window.useRandomAffirmation = async () => {
     }
 };
 
-// Update daily affirmation usage
+// Daily Affirmation Functions
+window.refreshDailyAffirmation = () => {
+    setupDailyAffirmation();
+    showSuccessMessage('Daily affirmation refreshed! 🔄');
+};
+
 window.markDailyAsUsed = async () => {
     try {
         const dailyAffirmationText = document.getElementById('dailyAffirmation').textContent.replace(/"/g, '').trim();
@@ -498,31 +716,107 @@ window.markDailyAsUsed = async () => {
     }
 };
 
-// Add function to delete affirmations
-window.deleteAffirmation = async (id) => {
-    if (confirm('Are you sure you want to delete this affirmation?')) {
-        try {
-            // Delete from Firestore
-            await deleteDoc(doc(db, 'affirmations', id));
-            
-            // Remove from local state
-            allAffirmations = allAffirmations.filter(a => a.id !== id);
-            
-            updateAffirmationStats();
-            renderAffirmationsGrid();
-            showSuccessMessage('Affirmation deleted successfully!');
-        } catch (error) {
-            console.error('Error deleting affirmation:', error);
-            alert('Error deleting affirmation.');
-        }
+window.speakAffirmation = () => {
+    const affirmationText = document.getElementById('dailyAffirmation').textContent;
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(affirmationText);
+        utterance.rate = 0.8;
+        utterance.pitch = 1;
+        speechSynthesis.speak(utterance);
+    } else {
+        alert('Text-to-speech is not supported in your browser.');
     }
 };
 
-// Update the affirmation card to include delete button
-// In the renderAffirmationsGrid function, add this button to the actions:
-// <button onclick="deleteAffirmation('${affirmation.id}')" class="delete-btn bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg font-semibold text-xs transition-all duration-300 hover:scale-105">
-//     🗑️ Delete
-// </button>
+// Motivational Quotes
+window.showMotivationalQuote = () => {
+    const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    alert(`💡 Motivational Quote:\n\n"${randomQuote}"`);
+};
+
+// Export Affirmations
+window.exportAffirmations = () => {
+    const csv = convertAffirmationsToCSV(allAffirmations);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trading-affirmations-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    showSuccessMessage('Affirmations exported successfully! 📤');
+};
+
+function convertAffirmationsToCSV(affirmations) {
+    const headers = ['Text', 'Category', 'Favorite', 'Active', 'Usage Count', 'Last Used', 'Created At'];
+    const csvRows = [headers.join(',')];
+    
+    affirmations.forEach(affirmation => {
+        const row = [
+            `"${affirmation.text.replace(/"/g, '""')}"`,
+            affirmation.category,
+            affirmation.isFavorite ? 'Yes' : 'No',
+            affirmation.isActive ? 'Yes' : 'No',
+            affirmation.usageCount,
+            affirmation.lastUsed ? new Date(affirmation.lastUsed).toLocaleDateString() : '',
+            new Date(affirmation.createdAt).toLocaleDateString()
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+// Filter and Search Functions
+function handleCategoryFilter(e) {
+    const category = e.target.dataset.category;
+    
+    document.querySelectorAll('.category-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    e.target.classList.add('active');
+    
+    let filteredAffirmations;
+    if (category === 'all') {
+        filteredAffirmations = allAffirmations;
+    } else {
+        filteredAffirmations = allAffirmations.filter(a => a.category === category);
+    }
+    
+    renderAffirmationsGrid(filteredAffirmations);
+}
+
+function handleSearchAffirmations(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredAffirmations = allAffirmations.filter(a => 
+        a.text.toLowerCase().includes(searchTerm)
+    );
+    renderAffirmationsGrid(filteredAffirmations);
+}
+
+function handleSortAffirmations(e) {
+    const sortBy = e.target.value;
+    let sortedAffirmations = [...allAffirmations];
+    
+    switch (sortBy) {
+        case 'newest':
+            sortedAffirmations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            break;
+        case 'oldest':
+            sortedAffirmations.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            break;
+        case 'most-used':
+            sortedAffirmations.sort((a, b) => b.usageCount - a.usageCount);
+            break;
+        case 'favorites':
+            sortedAffirmations.sort((a, b) => b.isFavorite - a.isFavorite);
+            break;
+    }
+    
+    renderAffirmationsGrid(sortedAffirmations);
+}
 
 // ========== TRADING FUNCTIONS ==========
 
