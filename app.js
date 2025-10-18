@@ -38,6 +38,446 @@ const currencyNames = {
     CHF: 'Swiss Franc'
 };
 
+// Account Management System
+let currentAccountId = null;
+let userAccounts = [];
+
+// Initialize accounts system
+function initializeAccounts() {
+    loadUserAccounts();
+    setupAccountsDropdown();
+}
+
+// Load user accounts from localStorage
+function loadUserAccounts() {
+    const savedAccounts = localStorage.getItem('userAccounts');
+    if (savedAccounts) {
+        userAccounts = JSON.parse(savedAccounts);
+    } else {
+        // Create default main account
+        userAccounts = [{
+            id: 'main',
+            name: 'Main Account',
+            balance: 10000,
+            currency: 'USD',
+            createdAt: new Date().toISOString(),
+            isDefault: true
+        }];
+        saveUserAccounts();
+    }
+    
+    // Set current account
+    const savedCurrentAccount = localStorage.getItem('currentAccountId');
+    currentAccountId = savedCurrentAccount || userAccounts[0].id;
+    
+    updateCurrentAccountDisplay();
+}
+
+// Save user accounts to localStorage
+function saveUserAccounts() {
+    localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+}
+
+// Setup accounts dropdown functionality
+function setupAccountsDropdown() {
+    const accountsToggle = document.getElementById('accountsToggle');
+    const accountsMenu = document.getElementById('accountsMenu');
+    
+    if (accountsToggle && accountsMenu) {
+        accountsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            accountsMenu.classList.toggle('hidden');
+            renderAccountsList();
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', () => {
+            accountsMenu.classList.add('hidden');
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        accountsMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+}
+
+// Render accounts list in dropdown
+function renderAccountsList() {
+    const accountsList = document.getElementById('accountsList');
+    const mobileAccountsList = document.getElementById('mobileAccountsList');
+    
+    if (!accountsList && !mobileAccountsList) return;
+    
+    const accountsHTML = userAccounts.map(account => `
+        <div class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-200 ${account.id === currentAccountId ? 'bg-blue-50 border-blue-200' : ''}" 
+             onclick="switchAccount('${account.id}')">
+            <div class="flex justify-between items-center">
+                <div class="flex-1">
+                    <div class="font-semibold text-gray-800 text-sm">${account.name}</div>
+                    <div class="text-xs text-gray-600 mt-1">
+                        ${getCurrencySymbol(account.currency)}${account.balance.toLocaleString()} • ${account.currency}
+                    </div>
+                </div>
+                ${account.id === currentAccountId ? '<span class="text-blue-500 text-lg">✓</span>' : ''}
+                ${!account.isDefault ? `
+                    <button onclick="event.stopPropagation(); deleteAccount('${account.id}')" 
+                            class="ml-2 text-red-400 hover:text-red-600 transition-colors duration-200 p-1 rounded">
+                        🗑️
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    if (accountsList) accountsList.innerHTML = accountsHTML;
+    if (mobileAccountsList) mobileAccountsList.innerHTML = accountsHTML;
+}
+
+// Update current account display
+function updateCurrentAccountDisplay() {
+    const currentAccount = userAccounts.find(acc => acc.id === currentAccountId);
+    if (!currentAccount) return;
+    
+    const currentAccountName = document.getElementById('currentAccountName');
+    if (currentAccountName) {
+        currentAccountName.textContent = currentAccount.name;
+    }
+    
+    // Update account settings in the form
+    updateAccountSettingsForm(currentAccount);
+}
+
+// Update account settings form with current account data
+function updateAccountSettingsForm(account) {
+    const accountSizeInput = document.getElementById('accountSize');
+    const accountCurrencySelect = document.getElementById('accountCurrency');
+    
+    if (accountSizeInput) {
+        accountSizeInput.value = account.balance;
+    }
+    if (accountCurrencySelect) {
+        accountCurrencySelect.value = account.currency;
+    }
+    
+    // Update currency display
+    updateCurrencyDisplay();
+}
+
+// Switch to different account
+window.switchAccount = async (accountId) => {
+    if (accountId === currentAccountId) return;
+    
+    // Save current account data before switching
+    await saveCurrentAccountData();
+    
+    // Switch account
+    currentAccountId = accountId;
+    localStorage.setItem('currentAccountId', accountId);
+    
+    // Update display
+    updateCurrentAccountDisplay();
+    
+    // Load account-specific data
+    await loadAccountData();
+    
+    // Close dropdown
+    const accountsMenu = document.getElementById('accountsMenu');
+    if (accountsMenu) accountsMenu.classList.add('hidden');
+    
+    showSuccessMessage(`Switched to ${getCurrentAccount().name}`);
+};
+
+// Get current account object
+function getCurrentAccount() {
+    return userAccounts.find(acc => acc.id === currentAccountId) || userAccounts[0];
+}
+
+// Save current account data before switching
+async function saveCurrentAccountData() {
+    const currentAccount = getCurrentAccount();
+    
+    // Save account settings
+    const accountSizeInput = document.getElementById('accountSize');
+    if (accountSizeInput) {
+        currentAccount.balance = parseFloat(accountSizeInput.value) || 10000;
+    }
+    
+    const accountCurrencySelect = document.getElementById('accountCurrency');
+    if (accountCurrencySelect) {
+        currentAccount.currency = accountCurrencySelect.value;
+    }
+    
+    saveUserAccounts();
+}
+
+// Load account-specific data
+async function loadAccountData() {
+    showLoading();
+    
+    try {
+        // Load trades for current account
+        await loadTrades();
+        
+        // Load affirmations (shared across accounts)
+        await loadAffirmations();
+        
+        // Update all displays
+        updateStats(allTrades);
+        renderCharts(allTrades);
+        calculateAdvancedMetrics(allTrades);
+        
+    } catch (error) {
+        console.error('Error loading account data:', error);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Add Account Modal Functions
+window.showAddAccountModal = () => {
+    document.getElementById('addAccountModal').classList.remove('hidden');
+    document.getElementById('accountName').value = '';
+    document.getElementById('accountBalance').value = '10000';
+    document.getElementById('accountCurrencySelect').value = 'USD';
+    document.getElementById('accountNameCharCount').textContent = '0';
+    
+    // Close other dropdowns
+    document.getElementById('accountsMenu')?.classList.add('hidden');
+    document.getElementById('mobileMenu')?.classList.add('hidden');
+};
+
+window.closeAddAccountModal = () => {
+    document.getElementById('addAccountModal').classList.add('hidden');
+};
+
+// Handle add account form submission
+document.getElementById('addAccountForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const accountName = document.getElementById('accountName').value.trim();
+    const accountBalance = parseFloat(document.getElementById('accountBalance').value);
+    const accountCurrency = document.getElementById('accountCurrencySelect').value;
+    
+    if (!accountName) {
+        alert('Please enter an account name.');
+        return;
+    }
+    
+    if (accountName.length > 50) {
+        alert('Account name must be 50 characters or less.');
+        return;
+    }
+    
+    // Check if account name already exists
+    if (userAccounts.some(acc => acc.name.toLowerCase() === accountName.toLowerCase())) {
+        alert('An account with this name already exists. Please choose a different name.');
+        return;
+    }
+    
+    const newAccount = {
+        id: 'account_' + Date.now(),
+        name: accountName,
+        balance: accountBalance,
+        currency: accountCurrency,
+        createdAt: new Date().toISOString(),
+        isDefault: false
+    };
+    
+    userAccounts.push(newAccount);
+    saveUserAccounts();
+    
+    closeAddAccountModal();
+    renderAccountsList();
+    showSuccessMessage(`Account "${accountName}" created successfully!`);
+});
+
+// Delete account function
+window.deleteAccount = (accountId) => {
+    const account = userAccounts.find(acc => acc.id === accountId);
+    if (!account) return;
+    
+    if (account.isDefault) {
+        alert('Cannot delete the default main account.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete "${account.name}"? This will also delete all trades associated with this account.`)) {
+        // Delete account
+        userAccounts = userAccounts.filter(acc => acc.id !== accountId);
+        saveUserAccounts();
+        
+        // If deleting current account, switch to main account
+        if (currentAccountId === accountId) {
+            switchAccount(userAccounts[0].id);
+        }
+        
+        // Delete account-specific trades from Firestore
+        deleteAccountTrades(accountId);
+        
+        renderAccountsList();
+        showSuccessMessage(`Account "${account.name}" deleted successfully!`);
+    }
+};
+
+// Delete all trades for a specific account
+async function deleteAccountTrades(accountId) {
+    try {
+        const q = query(
+            collection(db, 'trades'), 
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', accountId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const deletePromises = [];
+        querySnapshot.forEach((doc) => {
+            deletePromises.push(deleteDoc(doc.ref));
+        });
+        
+        await Promise.all(deletePromises);
+        console.log(`Deleted ${deletePromises.length} trades for account ${accountId}`);
+    } catch (error) {
+        console.error('Error deleting account trades:', error);
+    }
+}
+
+// Update character count for account name
+document.getElementById('accountName')?.addEventListener('input', function() {
+    document.getElementById('accountNameCharCount').textContent = this.value.length;
+});
+
+// Modify the loadTrades function to be account-specific
+async function loadTrades() {
+    try {
+        showLoading();
+        if (!currentUser) return;
+
+        const q = query(
+            collection(db, 'trades'), 
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const trades = [];
+        querySnapshot.forEach((doc) => {
+            trades.push({ id: doc.id, ...doc.data() });
+        });
+
+        trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        allTrades = trades;
+        setupPagination(trades);
+        updateStats(trades);
+        renderCharts(trades);
+        calculateAdvancedMetrics(trades);
+    } catch (error) {
+        console.error('Error loading trades:', error);
+        const tradeHistory = document.getElementById('tradeHistory');
+        if (tradeHistory) {
+            tradeHistory.innerHTML = `
+                <div class="text-center text-red-500 py-4">
+                    <p>Error loading trades. Please refresh the page.</p>
+                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2">🔄 Refresh</button>
+                </div>
+            `;
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+// Modify the addTrade function to include accountId
+async function addTrade(e) {
+    e.preventDefault();
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<div class="loading-spinner"></div> Saving...';
+    submitButton.disabled = true;
+
+    try {
+        const symbol = document.getElementById('symbol')?.value;
+        const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
+        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
+        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+        const lotSize = parseFloat(document.getElementById('lotSize')?.value);
+        const tradeType = document.getElementById('direction')?.value;
+        const mood = document.getElementById('mood')?.value || '';
+        const currentAccount = getCurrentAccount();
+        const accountSize = currentAccount.balance;
+        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
+
+        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        const instrumentType = getInstrumentType(symbol);
+        const exitPrice = takeProfit || entryPrice;
+        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
+        const tradeData = {
+            symbol, 
+            type: tradeType, 
+            instrumentType, 
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            lotSize,
+            mood: mood,
+            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
+            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+            notes: document.getElementById('notes')?.value || '', 
+            timestamp: new Date().toISOString(),
+            profit, 
+            pipsPoints: pipPointInfo.risk,
+            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
+            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
+            accountSize, 
+            leverage, 
+            userId: currentUser.uid,
+            accountId: currentAccountId // Add account ID to trade
+        };
+
+        await addDoc(collection(db, 'trades'), tradeData);
+        e.target.reset();
+        await loadTrades();
+        alert('Trade added successfully!');
+    } catch (error) {
+        console.error('Error adding trade:', error);
+        alert('Error adding trade.');
+    } finally {
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// Update the authentication section to initialize accounts
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        document.getElementById('user-email').textContent = user.email;
+        showLoading();
+        
+        try {
+            initializeAccounts(); // Initialize accounts system
+            await loadUserSettings();
+            await loadAccountData(); // Load account-specific data
+            setupEventListeners();
+            setupTabs();
+            setupMobileMenu();
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        } finally {
+            hideLoading();
+        }
+    } else {
+        window.location.href = 'index.html';
+    }
+});
+
 // Sample affirmations data
 const sampleAffirmations = [
     {

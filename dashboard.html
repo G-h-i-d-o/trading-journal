@@ -534,6 +534,29 @@
                 
                 <!-- Desktop Menu -->
                 <div class="hidden sm:flex items-center space-x-4">
+                    <!-- Accounts Dropdown -->
+                    <div class="relative" id="accountsDropdown">
+                        <button id="accountsToggle" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center">
+                            <span id="currentAccountName">Main Account</span>
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="accountsMenu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
+                            <div class="p-3 border-b border-gray-200">
+                                <h3 class="font-semibold text-gray-800">Trading Accounts</h3>
+                            </div>
+                            <div id="accountsList" class="max-h-60 overflow-y-auto">
+                                <!-- Accounts will be loaded here -->
+                            </div>
+                            <div class="p-3 border-t border-gray-200">
+                                <button onclick="showAddAccountModal()" class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm flex items-center justify-center">
+                                    <span class="mr-2">+</span> Add New Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <span id="user-email" class="text-gray-300 text-sm">Loading...</span>
                     <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
                         Export
@@ -556,6 +579,17 @@
             <!-- Mobile Dropdown Menu -->
             <div id="mobileMenu" class="sm:hidden hidden bg-gray-700 border-t border-gray-600">
                 <div class="px-2 pt-2 pb-3 space-y-1">
+                    <!-- Mobile Accounts Section -->
+                    <div class="px-3 py-2">
+                        <h4 class="text-gray-300 text-sm font-semibold mb-2">Trading Accounts</h4>
+                        <div id="mobileAccountsList" class="space-y-1">
+                            <!-- Mobile accounts will be loaded here -->
+                        </div>
+                        <button onclick="showAddAccountModal()" class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mt-2 flex items-center justify-center">
+                            <span class="mr-2">+</span> Add New Account
+                        </button>
+                    </div>
+                    
                     <div class="text-gray-300 px-3 py-2 text-sm" id="mobile-user-email">Loading...</div>
                     <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">
                         Export Trades
@@ -1207,6 +1241,84 @@
                         Create Your First Affirmation
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Add Account Modal -->
+    <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Add Trading Account</h3>
+                    <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                        ×
+                    </button>
+                </div>
+                
+                <form id="addAccountForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Name</label>
+                        <input 
+                            type="text" 
+                            id="accountName" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                            placeholder="e.g., Prop Firm Challenge, Main Account, Demo"
+                            required
+                            maxlength="50"
+                        >
+                        <div class="text-right text-sm text-gray-500 mt-1">
+                            <span id="accountNameCharCount">0</span>/50 characters
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Balance</label>
+                        <input 
+                            type="number" 
+                            id="accountBalance" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                            placeholder="e.g., 10000"
+                            value="10000"
+                            required
+                            min="1"
+                            step="0.01"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Currency</label>
+                        <select 
+                            id="accountCurrencySelect" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
+                        >
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="ZAR">ZAR (R)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="CHF">CHF (Fr)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button 
+                            type="button" 
+                            onclick="closeAddAccountModal()" 
+                            class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                        >
+                            Create Account
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
