@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH AFFIRMATIONS, IMPORT/EXPORT, PAGINATION & FIRESTORE
+// app.js - COMPLETE WORKING VERSION WITH LOCKED ACCOUNT BALANCE & FIRESTORE AFFIRMATIONS
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -195,6 +195,82 @@ function setupMobileMenu() {
     }
 }
 
+// Account Balance Lock System
+function setupAccountBalanceLock() {
+    const accountSizeInput = document.getElementById('accountSize');
+    const lockToggle = document.getElementById('lockToggle');
+    const balanceHelp = document.getElementById('balanceHelp');
+    
+    if (!accountSizeInput || !lockToggle) return;
+    
+    let isLocked = localStorage.getItem('accountBalanceLocked') === 'true';
+    const hasBalance = localStorage.getItem('accountSize');
+    
+    // If balance is already set but not locked, lock it by default
+    if (hasBalance && !localStorage.getItem('accountBalanceLocked')) {
+        isLocked = true;
+        localStorage.setItem('accountBalanceLocked', 'true');
+    }
+    
+    function updateLockState() {
+        if (isLocked) {
+            accountSizeInput.readOnly = true;
+            accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔒 Locked';
+            lockToggle.classList.remove('bg-green-100', 'text-green-600', 'hover:bg-green-200');
+            lockToggle.classList.add('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
+            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
+        } else {
+            accountSizeInput.readOnly = false;
+            accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔓 Unlocked';
+            lockToggle.classList.remove('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
+            lockToggle.classList.add('bg-green-100', 'text-green-600', 'hover:bg-green-200');
+            balanceHelp.textContent = 'Set your initial trading capital - lock after setting';
+        }
+    }
+    
+    lockToggle.addEventListener('click', () => {
+        if (isLocked) {
+            // Show confirmation before unlocking
+            if (confirm('⚠️ Unlocking account balance may affect your performance metrics.\n\nAre you sure you want to unlock?')) {
+                isLocked = false;
+                localStorage.setItem('accountBalanceLocked', 'false');
+                updateLockState();
+                showSuccessMessage('Account balance unlocked. Remember to lock it after changes.');
+            }
+        } else {
+            // Lock the balance
+            isLocked = true;
+            localStorage.setItem('accountBalanceLocked', 'true');
+            
+            // Save the current value
+            const currentValue = accountSizeInput.value;
+            if (currentValue && currentValue !== '10000') {
+                localStorage.setItem('accountSize', currentValue);
+            }
+            
+            updateLockState();
+            showSuccessMessage('Account balance locked! 🔒');
+            
+            // Update stats with potentially new balance
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    // Save balance when input loses focus (only when unlocked)
+    accountSizeInput.addEventListener('blur', () => {
+        if (!isLocked && accountSizeInput.value && accountSizeInput.value !== '10000') {
+            localStorage.setItem('accountSize', accountSizeInput.value);
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    updateLockState();
+}
+
 // Authentication
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -237,18 +313,13 @@ function setupEventListeners() {
         });
     }
 
-    // Account settings listeners
-    ['accountSize', 'riskPerTrade', 'leverage'].forEach(id => {
+    // Account settings listeners (excluding accountSize which is handled by lock system)
+    ['riskPerTrade', 'leverage'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('change', (e) => {
-                const value = id === 'accountSize' || id === 'riskPerTrade' ? 
-                    parseFloat(e.target.value) : parseInt(e.target.value);
+                const value = id === 'riskPerTrade' ? parseFloat(e.target.value) : parseInt(e.target.value);
                 localStorage.setItem(id, value);
-                if (id === 'accountSize') {
-                    updateStats(allTrades);
-                    renderCharts(allTrades);
-                }
                 updateRiskCalculation();
             });
         }
@@ -281,6 +352,7 @@ function setupEventListeners() {
     
     updateRiskCalculation();
     setupAffirmationsEventListeners();
+    setupAccountBalanceLock();
 }
 
 // ========== AFFIRMATIONS FUNCTIONS WITH FIRESTORE ==========
@@ -1919,88 +1991,6 @@ function renderMarketTypeChart(trades) {
     });
 }
 
-function setupAccountBalanceLock() {
-    const accountSizeInput = document.getElementById('accountSize');
-    const lockToggle = document.getElementById('lockToggle');
-    const balanceHelp = document.getElementById('balanceHelp');
-    
-    let isLocked = localStorage.getItem('accountBalanceLocked') === 'true';
-    const hasBalance = localStorage.getItem('accountSize');
-    
-    // If balance is already set, lock it by default
-    if (hasBalance && !localStorage.getItem('accountBalanceLocked')) {
-        isLocked = true;
-        localStorage.setItem('accountBalanceLocked', 'true');
-    }
-    
-    function updateLockState() {
-        if (isLocked) {
-            accountSizeInput.readOnly = true;
-            accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
-            lockToggle.innerHTML = '🔒 Locked';
-            lockToggle.classList.remove('bg-green-100', 'text-green-600');
-            lockToggle.classList.add('bg-blue-100', 'text-blue-600');
-            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
-        } else {
-            accountSizeInput.readOnly = false;
-            accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
-            lockToggle.innerHTML = '🔓 Unlocked';
-            lockToggle.classList.remove('bg-blue-100', 'text-blue-600');
-            lockToggle.classList.add('bg-green-100', 'text-green-600');
-            balanceHelp.textContent = 'Set your initial trading capital';
-        }
-    }
-    
-    lockToggle.addEventListener('click', () => {
-        if (isLocked) {
-            // Show confirmation before unlocking
-            if (confirm('Unlocking account balance may affect your performance metrics. Are you sure you want to unlock?')) {
-                isLocked = false;
-                localStorage.setItem('accountBalanceLocked', 'false');
-                updateLockState();
-            }
-        } else {
-            // Lock the balance
-            isLocked = true;
-            localStorage.setItem('accountBalanceLocked', 'true');
-            
-            // Save the current value
-            const currentValue = accountSizeInput.value;
-            localStorage.setItem('accountSize', currentValue);
-            
-            updateLockState();
-            showSuccessMessage('Account balance locked! 🔒');
-        }
-    });
-    
-    // Save balance when input loses focus (only when unlocked)
-    accountSizeInput.addEventListener('blur', () => {
-        if (!isLocked && accountSizeInput.value) {
-            localStorage.setItem('accountSize', accountSizeInput.value);
-            updateStats(allTrades);
-            renderCharts(allTrades);
-        }
-    });
-    
-    updateLockState();
-}
-
-// Update loadUserSettings function
-async function loadUserSettings() {
-    const accountSize = localStorage.getItem('accountSize') || 10000;
-    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
-    const accountCurrency = localStorage.getItem('accountCurrency') || 'USD';
-    const leverage = localStorage.getItem('leverage') || 50;
-
-    document.getElementById('accountSize').value = accountSize;
-    document.getElementById('riskPerTrade').value = riskPerTrade;
-    document.getElementById('accountCurrency').value = accountCurrency;
-    document.getElementById('leverage').value = leverage;
-    
-    setupAccountBalanceLock();
-    updateCurrencyDisplay();
-}
-
 // Utility functions
 async function loadUserSettings() {
     const accountSize = localStorage.getItem('accountSize') || 10000;
@@ -2044,5 +2034,5 @@ function showSuccessMessage(message) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Affirmations initialized');
+    console.log('Trading Journal with Locked Account Balance initialized');
 });
