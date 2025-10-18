@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH MULTI-ACCOUNT SUPPORT & FIRESTORE
+// app.js - FIXED VERSION WITH MULTI-ACCOUNT SUPPORT
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -92,8 +92,10 @@ const motivationalQuotes = [
 
 // Initialize accounts system
 function initializeAccounts() {
+    console.log('🔄 Initializing accounts system...');
     loadUserAccounts();
     setupAccountsDropdown();
+    console.log('✅ Accounts system initialized');
 }
 
 // Load user accounts from localStorage
@@ -101,6 +103,7 @@ function loadUserAccounts() {
     const savedAccounts = localStorage.getItem('userAccounts');
     if (savedAccounts) {
         userAccounts = JSON.parse(savedAccounts);
+        console.log('📁 Loaded existing accounts:', userAccounts.length);
     } else {
         // Create default main account
         userAccounts = [{
@@ -112,11 +115,13 @@ function loadUserAccounts() {
             isDefault: true
         }];
         saveUserAccounts();
+        console.log('🆕 Created default account');
     }
     
     // Set current account
     const savedCurrentAccount = localStorage.getItem('currentAccountId');
     currentAccountId = savedCurrentAccount || userAccounts[0].id;
+    console.log('🎯 Current account:', currentAccountId);
     
     updateCurrentAccountDisplay();
 }
@@ -184,7 +189,7 @@ function renderAccountsList() {
 
 // Update current account display
 function updateCurrentAccountDisplay() {
-    const currentAccount = userAccounts.find(acc => acc.id === currentAccountId);
+    const currentAccount = getCurrentAccount();
     if (!currentAccount) return;
     
     const currentAccountName = document.getElementById('currentAccountName');
@@ -215,6 +220,8 @@ function updateAccountSettingsForm(account) {
 // Switch to different account
 window.switchAccount = async (accountId) => {
     if (accountId === currentAccountId) return;
+    
+    console.log('🔄 Switching to account:', accountId);
     
     // Save current account data before switching
     await saveCurrentAccountData();
@@ -262,6 +269,7 @@ async function saveCurrentAccountData() {
 // Load account-specific data
 async function loadAccountData() {
     showLoading();
+    console.log('📊 Loading account data for:', currentAccountId);
     
     try {
         // Load trades for current account
@@ -275,8 +283,11 @@ async function loadAccountData() {
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
         
+        console.log('✅ Account data loaded successfully');
+        
     } catch (error) {
-        console.error('Error loading account data:', error);
+        console.error('❌ Error loading account data:', error);
+        alert('Error loading account data. Please refresh the page.');
     } finally {
         hideLoading();
     }
@@ -300,7 +311,7 @@ window.closeAddAccountModal = () => {
 };
 
 // Handle add account form submission
-document.addEventListener('DOMContentLoaded', function() {
+function setupAccountModalListeners() {
     const addAccountForm = document.getElementById('addAccountForm');
     if (addAccountForm) {
         addAccountForm.addEventListener('submit', function(e) {
@@ -351,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('accountNameCharCount').textContent = this.value.length;
         });
     }
-});
+}
 
 // Delete account function
 window.deleteAccount = (accountId) => {
@@ -397,7 +408,7 @@ async function deleteAccountTrades(accountId) {
         });
         
         await Promise.all(deletePromises);
-        console.log(`Deleted ${deletePromises.length} trades for account ${accountId}`);
+        console.log(`🗑️ Deleted ${deletePromises.length} trades for account ${accountId}`);
     } catch (error) {
         console.error('Error deleting account trades:', error);
     }
@@ -422,12 +433,520 @@ function formatCurrency(amount, currencyCode = null) {
 
 function showLoading() {
     const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) loadingIndicator.style.display = 'flex';
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+        console.log('⏳ Showing loading indicator');
+    }
 }
 
 function hideLoading() {
     const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) loadingIndicator.style.display = 'none';
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+        console.log('✅ Hiding loading indicator');
+    }
+}
+
+// ========== AUTHENTICATION ==========
+
+onAuthStateChanged(auth, async (user) => {
+    console.log('🔐 Auth state changed:', user ? 'User logged in' : 'No user');
+    
+    if (user) {
+        currentUser = user;
+        const userEmailElement = document.getElementById('user-email');
+        const mobileUserEmailElement = document.getElementById('mobile-user-email');
+        
+        if (userEmailElement) userEmailElement.textContent = user.email;
+        if (mobileUserEmailElement) mobileUserEmailElement.textContent = user.email;
+        
+        showLoading();
+        console.log('👤 User authenticated:', user.email);
+        
+        try {
+            // Initialize accounts system FIRST
+            initializeAccounts();
+            
+            // Then load user settings and data
+            await loadUserSettings();
+            await loadAccountData(); // This will load trades and affirmations
+            
+            // Setup all event listeners
+            setupEventListeners();
+            setupTabs();
+            setupMobileMenu();
+            setupAccountModalListeners();
+            
+            console.log('✅ All systems initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Error during initialization:', error);
+            alert('Error initializing application. Please refresh the page.');
+        } finally {
+            hideLoading();
+        }
+    } else {
+        console.log('🚪 No user, redirecting to login');
+        window.location.href = 'index.html';
+    }
+});
+
+window.logout = async () => {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error('Logout error:', error);
+        alert('Error logging out.');
+    }
+};
+
+// ========== EVENT LISTENERS ==========
+
+function setupEventListeners() {
+    console.log('🔧 Setting up event listeners...');
+    
+    // Trade form listener
+    const tradeForm = document.getElementById('tradeForm');
+    if (tradeForm) {
+        tradeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addTrade(e);
+        });
+    }
+
+    // Account settings listeners
+    ['riskPerTrade', 'leverage'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', (e) => {
+                const value = id === 'riskPerTrade' ? parseFloat(e.target.value) : parseInt(e.target.value);
+                localStorage.setItem(id, value);
+                updateRiskCalculation();
+            });
+        }
+    });
+
+    // Currency change listener
+    const accountCurrency = document.getElementById('accountCurrency');
+    if (accountCurrency) {
+        accountCurrency.addEventListener('change', (e) => {
+            const newCurrency = e.target.value;
+            // Update current account currency
+            const currentAccount = getCurrentAccount();
+            currentAccount.currency = newCurrency;
+            saveUserAccounts();
+            
+            localStorage.setItem('accountCurrency', newCurrency);
+            updateCurrencyDisplay();
+            updateStats(allTrades);
+            renderCharts(allTrades);
+            updateRiskCalculation();
+        });
+    }
+
+    // Trade form listeners for real-time calculations
+    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', () => updateRiskCalculation());
+            element.addEventListener('change', () => updateRiskCalculation());
+        }
+    });
+
+    const symbolSelect = document.getElementById('symbol');
+    if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
+    
+    updateRiskCalculation();
+    setupAffirmationsEventListeners();
+    setupAccountBalanceLock();
+    
+    console.log('✅ Event listeners setup complete');
+}
+
+// ========== AFFIRMATIONS FUNCTIONS ==========
+
+function setupAffirmationsEventListeners() {
+    const affirmationForm = document.getElementById('affirmationForm');
+    if (affirmationForm) {
+        affirmationForm.addEventListener('submit', handleAffirmationSubmit);
+    }
+
+    const affirmationText = document.getElementById('affirmationText');
+    if (affirmationText) {
+        affirmationText.addEventListener('input', updateCharCount);
+    }
+
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    categoryFilters.forEach(filter => {
+        filter.addEventListener('click', handleCategoryFilter);
+    });
+
+    const searchInput = document.getElementById('searchAffirmations');
+    if (searchInput) {
+        searchInput.addEventListener('input', handleSearchAffirmations);
+    }
+
+    const sortSelect = document.getElementById('sortAffirmations');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', handleSortAffirmations);
+    }
+}
+
+async function loadAffirmations() {
+    try {
+        if (!currentUser) {
+            console.log('❌ No user for affirmations');
+            return;
+        }
+
+        console.log('📖 Loading affirmations...');
+        const q = query(collection(db, 'affirmations'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        
+        const affirmations = [];
+        querySnapshot.forEach((doc) => {
+            affirmations.push({ id: doc.id, ...doc.data() });
+        });
+
+        // If no affirmations found, initialize with sample data
+        if (affirmations.length === 0) {
+            console.log('📝 No affirmations found, creating sample data...');
+            // Add sample affirmations to Firestore
+            for (const sampleAffirmation of sampleAffirmations) {
+                const affirmationData = {
+                    ...sampleAffirmation,
+                    userId: currentUser.uid
+                };
+                await addDoc(collection(db, 'affirmations'), affirmationData);
+            }
+            // Reload affirmations after adding samples
+            await loadAffirmations();
+            return;
+        }
+
+        allAffirmations = affirmations;
+        updateAffirmationStats();
+        renderAffirmationsGrid();
+        setupDailyAffirmation();
+        console.log('✅ Affirmations loaded:', affirmations.length);
+    } catch (error) {
+        console.error('❌ Error loading affirmations:', error);
+        // Fallback to sample data if there's an error
+        allAffirmations = [...sampleAffirmations];
+        updateAffirmationStats();
+        renderAffirmationsGrid();
+        setupDailyAffirmation();
+    }
+}
+
+// ========== TRADING FUNCTIONS ==========
+
+// Modified loadTrades function to be account-specific
+async function loadTrades() {
+    try {
+        console.log('📊 Loading trades for account:', currentAccountId);
+        
+        if (!currentUser) {
+            console.log('❌ No user for trades');
+            return;
+        }
+
+        const q = query(
+            collection(db, 'trades'), 
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const trades = [];
+        querySnapshot.forEach((doc) => {
+            trades.push({ id: doc.id, ...doc.data() });
+        });
+
+        trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        allTrades = trades;
+        setupPagination(trades);
+        updateStats(trades);
+        renderCharts(trades);
+        calculateAdvancedMetrics(trades);
+        
+        console.log('✅ Trades loaded:', trades.length);
+        
+    } catch (error) {
+        console.error('❌ Error loading trades:', error);
+        const tradeHistory = document.getElementById('tradeHistory');
+        if (tradeHistory) {
+            tradeHistory.innerHTML = `
+                <div class="text-center text-red-500 py-4">
+                    <p>Error loading trades. Please refresh the page.</p>
+                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2">🔄 Refresh</button>
+                </div>
+            `;
+        }
+    }
+}
+
+// Trade CRUD operations
+async function addTrade(e) {
+    e.preventDefault();
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<div class="loading-spinner"></div> Saving...';
+    submitButton.disabled = true;
+
+    try {
+        const symbol = document.getElementById('symbol')?.value;
+        const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
+        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
+        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+        const lotSize = parseFloat(document.getElementById('lotSize')?.value);
+        const tradeType = document.getElementById('direction')?.value;
+        const mood = document.getElementById('mood')?.value || '';
+        const currentAccount = getCurrentAccount();
+        const accountSize = currentAccount.balance;
+        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
+
+        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        const instrumentType = getInstrumentType(symbol);
+        const exitPrice = takeProfit || entryPrice;
+        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
+        const tradeData = {
+            symbol, 
+            type: tradeType, 
+            instrumentType, 
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            lotSize,
+            mood: mood,
+            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
+            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+            notes: document.getElementById('notes')?.value || '', 
+            timestamp: new Date().toISOString(),
+            profit, 
+            pipsPoints: pipPointInfo.risk,
+            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
+            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
+            accountSize, 
+            leverage, 
+            userId: currentUser.uid,
+            accountId: currentAccountId
+        };
+
+        await addDoc(collection(db, 'trades'), tradeData);
+        e.target.reset();
+        await loadTrades();
+        alert('Trade added successfully!');
+    } catch (error) {
+        console.error('Error adding trade:', error);
+        alert('Error adding trade.');
+    } finally {
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// ========== TAB MANAGEMENT ==========
+
+function setupTabs() {
+    const dashboardTab = document.getElementById('dashboardTab');
+    const tradesTab = document.getElementById('tradesTab');
+    const affirmationsTab = document.getElementById('affirmationsTab');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const tradesContent = document.getElementById('tradesContent');
+    const affirmationsContent = document.getElementById('affirmationsContent');
+
+    function switchToTab(tabName) {
+        // Hide all content
+        [dashboardContent, tradesContent, affirmationsContent].forEach(content => {
+            if (content) {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            }
+        });
+
+        // Remove active class from all tabs
+        [dashboardTab, tradesTab, affirmationsTab].forEach(tab => {
+            if (tab) tab.classList.remove('active');
+        });
+
+        // Show selected content and activate tab
+        switch(tabName) {
+            case 'dashboard':
+                if (dashboardContent) {
+                    dashboardContent.classList.add('active');
+                    dashboardContent.style.display = 'block';
+                }
+                if (dashboardTab) dashboardTab.classList.add('active');
+                break;
+            case 'trades':
+                if (tradesContent) {
+                    tradesContent.classList.add('active');
+                    tradesContent.style.display = 'block';
+                }
+                if (tradesTab) tradesTab.classList.add('active');
+                break;
+            case 'affirmations':
+                if (affirmationsContent) {
+                    affirmationsContent.classList.add('active');
+                    affirmationsContent.style.display = 'block';
+                    loadAffirmations();
+                }
+                if (affirmationsTab) affirmationsTab.classList.add('active');
+                break;
+        }
+    }
+
+    // Add event listeners
+    if (dashboardTab) {
+        dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
+    }
+    if (tradesTab) {
+        tradesTab.addEventListener('click', () => switchToTab('trades'));
+    }
+    if (affirmationsTab) {
+        affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
+    }
+    
+    console.log('✅ Tabs setup complete');
+}
+
+// ========== MOBILE MENU ==========
+
+function setupMobileMenu() {
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            renderAccountsList();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
+                mobileMenu.classList.add('hidden');
+            }
+        });
+    }
+    
+    console.log('✅ Mobile menu setup complete');
+}
+
+// ========== ACCOUNT BALANCE LOCK SYSTEM ==========
+
+function setupAccountBalanceLock() {
+    const accountSizeInput = document.getElementById('accountSize');
+    const lockToggle = document.getElementById('lockToggle');
+    const balanceHelp = document.getElementById('balanceHelp');
+    
+    if (!accountSizeInput || !lockToggle) return;
+    
+    let isLocked = localStorage.getItem('accountBalanceLocked') === 'true';
+    
+    function updateLockState() {
+        if (isLocked) {
+            accountSizeInput.readOnly = true;
+            accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔒 Locked';
+            lockToggle.classList.remove('bg-green-100', 'text-green-600', 'hover:bg-green-200');
+            lockToggle.classList.add('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
+            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
+        } else {
+            accountSizeInput.readOnly = false;
+            accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔓 Unlocked';
+            lockToggle.classList.remove('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
+            lockToggle.classList.add('bg-green-100', 'text-green-600', 'hover:bg-green-200');
+            balanceHelp.textContent = 'Set your initial trading capital - lock after setting';
+        }
+    }
+    
+    lockToggle.addEventListener('click', () => {
+        if (isLocked) {
+            if (confirm('⚠️ Unlocking account balance may affect your performance metrics.\n\nAre you sure you want to unlock?')) {
+                isLocked = false;
+                localStorage.setItem('accountBalanceLocked', 'false');
+                updateLockState();
+                showSuccessMessage('Account balance unlocked. Remember to lock it after changes.');
+            }
+        } else {
+            isLocked = true;
+            localStorage.setItem('accountBalanceLocked', 'true');
+            
+            const currentValue = accountSizeInput.value;
+            if (currentValue && currentValue !== '10000') {
+                const currentAccount = getCurrentAccount();
+                currentAccount.balance = parseFloat(currentValue);
+                saveUserAccounts();
+            }
+            
+            updateLockState();
+            showSuccessMessage('Account balance locked! 🔒');
+            
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    accountSizeInput.addEventListener('blur', () => {
+        if (!isLocked && accountSizeInput.value && accountSizeInput.value !== '10000') {
+            const currentAccount = getCurrentAccount();
+            currentAccount.balance = parseFloat(accountSizeInput.value);
+            saveUserAccounts();
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    updateLockState();
+    console.log('✅ Account balance lock setup complete');
+}
+
+// ========== UTILITY FUNCTIONS ==========
+
+async function loadUserSettings() {
+    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
+    const leverage = localStorage.getItem('leverage') || 50;
+
+    document.getElementById('riskPerTrade').value = riskPerTrade;
+    document.getElementById('leverage').value = leverage;
+    
+    updateCurrencyDisplay();
+    console.log('✅ User settings loaded');
+}
+
+function updateCurrencyDisplay() {
+    const selectedCurrency = getSelectedCurrency();
+    const currencySymbol = getCurrencySymbol();
+    
+    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
+    if (accountBalanceLabel) {
+        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
+    }
+    
+    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
+    if (balanceStat) {
+        balanceStat.textContent = `Balance (${currencySymbol})`;
+    }
+}
+
+function showSuccessMessage(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+    successDiv.textContent = message;
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.remove();
+    }, 3000);
 }
 
 // ========== TAB MANAGEMENT ==========
