@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH LOCKED ACCOUNT BALANCE & FIRESTORE AFFIRMATIONS
+// app.js - COMPLETE WORKING VERSION WITH MULTI-ACCOUNT SUPPORT & FIRESTORE
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc
@@ -14,6 +14,10 @@ const tradesPerPage = 10;
 let allTrades = [];
 let allAffirmations = [];
 let editingAffirmationId = null;
+
+// Account Management System
+let currentAccountId = null;
+let userAccounts = [];
 
 // Currency configuration
 const currencySymbols = {
@@ -38,9 +42,53 @@ const currencyNames = {
     CHF: 'Swiss Franc'
 };
 
-// Account Management System
-let currentAccountId = null;
-let userAccounts = [];
+// Sample affirmations data
+const sampleAffirmations = [
+    {
+        text: "I trust my trading strategy and execute it with precision and confidence.",
+        category: "discipline",
+        isFavorite: true,
+        isActive: true,
+        usageCount: 12,
+        lastUsed: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        strength: 92
+    },
+    {
+        text: "I am patient and wait for the perfect setups that align with my trading plan.",
+        category: "patience",
+        isFavorite: false,
+        isActive: true,
+        usageCount: 8,
+        lastUsed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        strength: 85
+    },
+    {
+        text: "Every trade is an opportunity to learn and improve my skills as a trader.",
+        category: "mindset",
+        isFavorite: true,
+        isActive: true,
+        usageCount: 15,
+        lastUsed: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        strength: 88
+    }
+];
+
+// Motivational quotes
+const motivationalQuotes = [
+    "The stock market is a device for transferring money from the impatient to the patient. - Warren Buffett",
+    "Risk comes from not knowing what you're doing. - Warren Buffett",
+    "The most important quality for an investor is temperament, not intellect. - Warren Buffett",
+    "In trading and investing, it's not about being right; it's about making money.",
+    "The best investment you can make is in yourself. - Warren Buffett",
+    "Time in the market beats timing the market.",
+    "Emotion is the enemy of successful trading.",
+    "Plan your trade and trade your plan."
+];
+
+// ========== ACCOUNT MANAGEMENT SYSTEM ==========
 
 // Initialize accounts system
 function initializeAccounts() {
@@ -252,44 +300,57 @@ window.closeAddAccountModal = () => {
 };
 
 // Handle add account form submission
-document.getElementById('addAccountForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const accountName = document.getElementById('accountName').value.trim();
-    const accountBalance = parseFloat(document.getElementById('accountBalance').value);
-    const accountCurrency = document.getElementById('accountCurrencySelect').value;
-    
-    if (!accountName) {
-        alert('Please enter an account name.');
-        return;
+document.addEventListener('DOMContentLoaded', function() {
+    const addAccountForm = document.getElementById('addAccountForm');
+    if (addAccountForm) {
+        addAccountForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const accountName = document.getElementById('accountName').value.trim();
+            const accountBalance = parseFloat(document.getElementById('accountBalance').value);
+            const accountCurrency = document.getElementById('accountCurrencySelect').value;
+            
+            if (!accountName) {
+                alert('Please enter an account name.');
+                return;
+            }
+            
+            if (accountName.length > 50) {
+                alert('Account name must be 50 characters or less.');
+                return;
+            }
+            
+            // Check if account name already exists
+            if (userAccounts.some(acc => acc.name.toLowerCase() === accountName.toLowerCase())) {
+                alert('An account with this name already exists. Please choose a different name.');
+                return;
+            }
+            
+            const newAccount = {
+                id: 'account_' + Date.now(),
+                name: accountName,
+                balance: accountBalance,
+                currency: accountCurrency,
+                createdAt: new Date().toISOString(),
+                isDefault: false
+            };
+            
+            userAccounts.push(newAccount);
+            saveUserAccounts();
+            
+            closeAddAccountModal();
+            renderAccountsList();
+            showSuccessMessage(`Account "${accountName}" created successfully!`);
+        });
     }
-    
-    if (accountName.length > 50) {
-        alert('Account name must be 50 characters or less.');
-        return;
+
+    // Update character count for account name
+    const accountNameInput = document.getElementById('accountName');
+    if (accountNameInput) {
+        accountNameInput.addEventListener('input', function() {
+            document.getElementById('accountNameCharCount').textContent = this.value.length;
+        });
     }
-    
-    // Check if account name already exists
-    if (userAccounts.some(acc => acc.name.toLowerCase() === accountName.toLowerCase())) {
-        alert('An account with this name already exists. Please choose a different name.');
-        return;
-    }
-    
-    const newAccount = {
-        id: 'account_' + Date.now(),
-        name: accountName,
-        balance: accountBalance,
-        currency: accountCurrency,
-        createdAt: new Date().toISOString(),
-        isDefault: false
-    };
-    
-    userAccounts.push(newAccount);
-    saveUserAccounts();
-    
-    closeAddAccountModal();
-    renderAccountsList();
-    showSuccessMessage(`Account "${accountName}" created successfully!`);
 });
 
 // Delete account function
@@ -342,189 +403,8 @@ async function deleteAccountTrades(accountId) {
     }
 }
 
-// Update character count for account name
-document.getElementById('accountName')?.addEventListener('input', function() {
-    document.getElementById('accountNameCharCount').textContent = this.value.length;
-});
+// ========== UTILITY FUNCTIONS ==========
 
-// Modify the loadTrades function to be account-specific
-async function loadTrades() {
-    try {
-        showLoading();
-        if (!currentUser) return;
-
-        const q = query(
-            collection(db, 'trades'), 
-            where('userId', '==', currentUser.uid),
-            where('accountId', '==', currentAccountId)
-        );
-        const querySnapshot = await getDocs(q);
-        
-        const trades = [];
-        querySnapshot.forEach((doc) => {
-            trades.push({ id: doc.id, ...doc.data() });
-        });
-
-        trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        allTrades = trades;
-        setupPagination(trades);
-        updateStats(trades);
-        renderCharts(trades);
-        calculateAdvancedMetrics(trades);
-    } catch (error) {
-        console.error('Error loading trades:', error);
-        const tradeHistory = document.getElementById('tradeHistory');
-        if (tradeHistory) {
-            tradeHistory.innerHTML = `
-                <div class="text-center text-red-500 py-4">
-                    <p>Error loading trades. Please refresh the page.</p>
-                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2">🔄 Refresh</button>
-                </div>
-            `;
-        }
-    } finally {
-        hideLoading();
-    }
-}
-
-// Modify the addTrade function to include accountId
-async function addTrade(e) {
-    e.preventDefault();
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    const originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '<div class="loading-spinner"></div> Saving...';
-    submitButton.disabled = true;
-
-    try {
-        const symbol = document.getElementById('symbol')?.value;
-        const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
-        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
-        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
-        const lotSize = parseFloat(document.getElementById('lotSize')?.value);
-        const tradeType = document.getElementById('direction')?.value;
-        const mood = document.getElementById('mood')?.value || '';
-        const currentAccount = getCurrentAccount();
-        const accountSize = currentAccount.balance;
-        const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
-
-        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
-            alert('Please fill all required fields');
-            return;
-        }
-
-        const instrumentType = getInstrumentType(symbol);
-        const exitPrice = takeProfit || entryPrice;
-        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
-        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-
-        const tradeData = {
-            symbol, 
-            type: tradeType, 
-            instrumentType, 
-            entryPrice, 
-            stopLoss, 
-            takeProfit, 
-            lotSize,
-            mood: mood,
-            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
-            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
-            notes: document.getElementById('notes')?.value || '', 
-            timestamp: new Date().toISOString(),
-            profit, 
-            pipsPoints: pipPointInfo.risk,
-            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
-            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-            accountSize, 
-            leverage, 
-            userId: currentUser.uid,
-            accountId: currentAccountId // Add account ID to trade
-        };
-
-        await addDoc(collection(db, 'trades'), tradeData);
-        e.target.reset();
-        await loadTrades();
-        alert('Trade added successfully!');
-    } catch (error) {
-        console.error('Error adding trade:', error);
-        alert('Error adding trade.');
-    } finally {
-        submitButton.innerHTML = originalText;
-        submitButton.disabled = false;
-    }
-}
-
-// Update the authentication section to initialize accounts
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        currentUser = user;
-        document.getElementById('user-email').textContent = user.email;
-        showLoading();
-        
-        try {
-            initializeAccounts(); // Initialize accounts system
-            await loadUserSettings();
-            await loadAccountData(); // Load account-specific data
-            setupEventListeners();
-            setupTabs();
-            setupMobileMenu();
-        } catch (error) {
-            console.error('Error during initialization:', error);
-        } finally {
-            hideLoading();
-        }
-    } else {
-        window.location.href = 'index.html';
-    }
-});
-
-// Sample affirmations data
-const sampleAffirmations = [
-    {
-        text: "I trust my trading strategy and execute it with precision and confidence.",
-        category: "discipline",
-        isFavorite: true,
-        isActive: true,
-        usageCount: 12,
-        lastUsed: new Date().toISOString(),
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        strength: 92
-    },
-    {
-        text: "I am patient and wait for the perfect setups that align with my trading plan.",
-        category: "patience",
-        isFavorite: false,
-        isActive: true,
-        usageCount: 8,
-        lastUsed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        strength: 85
-    },
-    {
-        text: "Every trade is an opportunity to learn and improve my skills as a trader.",
-        category: "mindset",
-        isFavorite: true,
-        isActive: true,
-        usageCount: 15,
-        lastUsed: new Date().toISOString(),
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        strength: 88
-    }
-];
-
-// Motivational quotes
-const motivationalQuotes = [
-    "The stock market is a device for transferring money from the impatient to the patient. - Warren Buffett",
-    "Risk comes from not knowing what you're doing. - Warren Buffett",
-    "The most important quality for an investor is temperament, not intellect. - Warren Buffett",
-    "In trading and investing, it's not about being right; it's about making money.",
-    "The best investment you can make is in yourself. - Warren Buffett",
-    "Time in the market beats timing the market.",
-    "Emotion is the enemy of successful trading.",
-    "Plan your trade and trade your plan."
-];
-
-// Currency utility functions
 function getSelectedCurrency() {
     return document.getElementById('accountCurrency')?.value || 'USD';
 }
@@ -550,7 +430,8 @@ function hideLoading() {
     if (loadingIndicator) loadingIndicator.style.display = 'none';
 }
 
-// Tab Management
+// ========== TAB MANAGEMENT ==========
+
 function setupTabs() {
     const dashboardTab = document.getElementById('dashboardTab');
     const tradesTab = document.getElementById('tradesTab');
@@ -612,7 +493,8 @@ function setupTabs() {
     }
 }
 
-// Mobile Menu Toggle
+// ========== MOBILE MENU ==========
+
 function setupMobileMenu() {
     const mobileMenuButton = document.getElementById('mobileMenuButton');
     const mobileMenu = document.getElementById('mobileMenu');
@@ -621,6 +503,7 @@ function setupMobileMenu() {
     if (mobileMenuButton && mobileMenu) {
         mobileMenuButton.addEventListener('click', () => {
             mobileMenu.classList.toggle('hidden');
+            renderAccountsList(); // Refresh accounts list when mobile menu opens
         });
 
         document.addEventListener('click', (e) => {
@@ -635,7 +518,8 @@ function setupMobileMenu() {
     }
 }
 
-// Account Balance Lock System
+// ========== ACCOUNT BALANCE LOCK SYSTEM ==========
+
 function setupAccountBalanceLock() {
     const accountSizeInput = document.getElementById('accountSize');
     const lockToggle = document.getElementById('lockToggle');
@@ -684,10 +568,12 @@ function setupAccountBalanceLock() {
             isLocked = true;
             localStorage.setItem('accountBalanceLocked', 'true');
             
-            // Save the current value
+            // Save the current value to current account
             const currentValue = accountSizeInput.value;
             if (currentValue && currentValue !== '10000') {
-                localStorage.setItem('accountSize', currentValue);
+                const currentAccount = getCurrentAccount();
+                currentAccount.balance = parseFloat(currentValue);
+                saveUserAccounts();
             }
             
             updateLockState();
@@ -702,7 +588,9 @@ function setupAccountBalanceLock() {
     // Save balance when input loses focus (only when unlocked)
     accountSizeInput.addEventListener('blur', () => {
         if (!isLocked && accountSizeInput.value && accountSizeInput.value !== '10000') {
-            localStorage.setItem('accountSize', accountSizeInput.value);
+            const currentAccount = getCurrentAccount();
+            currentAccount.balance = parseFloat(accountSizeInput.value);
+            saveUserAccounts();
             updateStats(allTrades);
             renderCharts(allTrades);
         }
@@ -711,7 +599,8 @@ function setupAccountBalanceLock() {
     updateLockState();
 }
 
-// Authentication
+// ========== AUTHENTICATION ==========
+
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
@@ -719,8 +608,9 @@ onAuthStateChanged(auth, async (user) => {
         showLoading();
         
         try {
+            initializeAccounts(); // Initialize accounts system
             await loadUserSettings();
-            await loadTrades();
+            await loadAccountData(); // Load account-specific data
             setupEventListeners();
             setupTabs();
             setupMobileMenu();
@@ -742,6 +632,8 @@ window.logout = async () => {
         alert('Error logging out.');
     }
 };
+
+// ========== EVENT LISTENERS ==========
 
 function setupEventListeners() {
     // Trade form listener
@@ -770,6 +662,11 @@ function setupEventListeners() {
     if (accountCurrency) {
         accountCurrency.addEventListener('change', (e) => {
             const newCurrency = e.target.value;
+            // Update current account currency
+            const currentAccount = getCurrentAccount();
+            currentAccount.currency = newCurrency;
+            saveUserAccounts();
+            
             localStorage.setItem('accountCurrency', newCurrency);
             updateCurrencyDisplay();
             updateStats(allTrades);
@@ -796,6 +693,7 @@ function setupEventListeners() {
 }
 
 // ========== AFFIRMATIONS FUNCTIONS WITH FIRESTORE ==========
+
 function setupAffirmationsEventListeners() {
     const affirmationForm = document.getElementById('affirmationForm');
     if (affirmationForm) {
@@ -1388,7 +1286,8 @@ function updateRiskCalculation() {
     const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || 0;
     const lotSize = parseFloat(document.getElementById('lotSize')?.value) || 0.01;
     const tradeType = document.getElementById('direction')?.value;
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const currentAccount = getCurrentAccount();
+    const accountSize = currentAccount.balance;
     const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
 
     if (entryPrice > 0 && stopLoss > 0 && symbol) {
@@ -1456,7 +1355,8 @@ async function addTrade(e) {
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
         const mood = document.getElementById('mood')?.value || '';
-        const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+        const currentAccount = getCurrentAccount();
+        const accountSize = currentAccount.balance;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
 
         if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
@@ -1488,7 +1388,8 @@ async function addTrade(e) {
             riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
             accountSize, 
             leverage, 
-            userId: currentUser.uid
+            userId: currentUser.uid,
+            accountId: currentAccountId // Add account ID to trade
         };
 
         await addDoc(collection(db, 'trades'), tradeData);
@@ -1504,12 +1405,17 @@ async function addTrade(e) {
     }
 }
 
+// Modified loadTrades function to be account-specific
 async function loadTrades() {
     try {
         showLoading();
         if (!currentUser) return;
 
-        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
+        const q = query(
+            collection(db, 'trades'), 
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
         const querySnapshot = await getDocs(q);
         
         const trades = [];
@@ -1723,6 +1629,8 @@ function parseCSV(csvText) {
                 profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
             }
             
+            const currentAccount = getCurrentAccount();
+            
             const trade = {
                 symbol: symbol,
                 type: tradeType,
@@ -1740,9 +1648,10 @@ function parseCSV(csvText) {
                 pipsPoints: parseFloat(getValue(['PipsPoints', 'pipsPoints']) || '0'),
                 riskAmount: parseFloat(getValue(['Risk Amount', 'riskAmount', 'RiskAmount']) || '0'),
                 riskPercent: parseFloat(getValue(['Risk %', 'riskPercent', 'RiskPercent']) || '0'),
-                accountSize: parseFloat(getValue(['AccountSize', 'accountSize']) || localStorage.getItem('accountSize') || 10000),
+                accountSize: currentAccount.balance,
                 leverage: parseInt(getValue(['Leverage', 'leverage']) || localStorage.getItem('leverage') || 50),
-                userId: currentUser.uid
+                userId: currentUser.uid,
+                accountId: currentAccountId
             };
             
             if ((!trade.riskAmount || trade.riskAmount === 0) && symbol && entryPrice && stopLoss) {
@@ -1828,7 +1737,11 @@ async function importTradesToFirestore(trades) {
 window.exportTrades = async () => {
     try {
         if (!currentUser) return;
-        const q = query(collection(db, 'trades'), where('userId', '==', currentUser.uid));
+        const q = query(
+            collection(db, 'trades'), 
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
         const querySnapshot = await getDocs(q);
         const trades = [];
         querySnapshot.forEach((doc) => trades.push({ id: doc.id, ...doc.data() }));
@@ -1857,7 +1770,7 @@ function convertToCSV(trades) {
         'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
         'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
         'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
-        'Notes', 'AccountSize', 'Leverage', 'Timestamp'
+        'Notes', 'AccountSize', 'Leverage', 'Timestamp', 'AccountId'
     ];
     const csvRows = [headers.join(',')];
     
@@ -1881,7 +1794,8 @@ function convertToCSV(trades) {
             `"${(trade.notes || '').replace(/"/g, '""')}"`,
             trade.accountSize,
             trade.leverage,
-            trade.timestamp
+            trade.timestamp,
+            trade.accountId || ''
         ];
         csvRows.push(row.join(','));
     });
@@ -1983,7 +1897,8 @@ window.closeScreenshotModal = () => {
 
 // Analytics and stats functions
 function updateStats(trades) {
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const currentAccount = getCurrentAccount();
+    const accountSize = currentAccount.balance;
     const stats = {
         'totalTrades': '0', 
         'winRate': '0%', 
@@ -2290,7 +2205,8 @@ function renderPerformanceChart(trades) {
 
     const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
-    const accountSize = parseFloat(document.getElementById('accountSize')?.value) || 10000;
+    const currentAccount = getCurrentAccount();
+    const accountSize = currentAccount.balance;
     let balance = accountSize;
     const balanceData = [balance];
     const labels = ['Start'];
@@ -2433,14 +2349,10 @@ function renderMarketTypeChart(trades) {
 
 // Utility functions
 async function loadUserSettings() {
-    const accountSize = localStorage.getItem('accountSize') || 10000;
     const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
-    const accountCurrency = localStorage.getItem('accountCurrency') || 'USD';
     const leverage = localStorage.getItem('leverage') || 50;
 
-    document.getElementById('accountSize').value = accountSize;
     document.getElementById('riskPerTrade').value = riskPerTrade;
-    document.getElementById('accountCurrency').value = accountCurrency;
     document.getElementById('leverage').value = leverage;
     
     updateCurrencyDisplay();
@@ -2474,5 +2386,5 @@ function showSuccessMessage(message) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Locked Account Balance initialized');
+    console.log('Trading Journal with Multi-Account Support initialized');
 });
