@@ -1919,6 +1919,88 @@ function renderMarketTypeChart(trades) {
     });
 }
 
+function setupAccountBalanceLock() {
+    const accountSizeInput = document.getElementById('accountSize');
+    const lockToggle = document.getElementById('lockToggle');
+    const balanceHelp = document.getElementById('balanceHelp');
+    
+    let isLocked = localStorage.getItem('accountBalanceLocked') === 'true';
+    const hasBalance = localStorage.getItem('accountSize');
+    
+    // If balance is already set, lock it by default
+    if (hasBalance && !localStorage.getItem('accountBalanceLocked')) {
+        isLocked = true;
+        localStorage.setItem('accountBalanceLocked', 'true');
+    }
+    
+    function updateLockState() {
+        if (isLocked) {
+            accountSizeInput.readOnly = true;
+            accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔒 Locked';
+            lockToggle.classList.remove('bg-green-100', 'text-green-600');
+            lockToggle.classList.add('bg-blue-100', 'text-blue-600');
+            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
+        } else {
+            accountSizeInput.readOnly = false;
+            accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔓 Unlocked';
+            lockToggle.classList.remove('bg-blue-100', 'text-blue-600');
+            lockToggle.classList.add('bg-green-100', 'text-green-600');
+            balanceHelp.textContent = 'Set your initial trading capital';
+        }
+    }
+    
+    lockToggle.addEventListener('click', () => {
+        if (isLocked) {
+            // Show confirmation before unlocking
+            if (confirm('Unlocking account balance may affect your performance metrics. Are you sure you want to unlock?')) {
+                isLocked = false;
+                localStorage.setItem('accountBalanceLocked', 'false');
+                updateLockState();
+            }
+        } else {
+            // Lock the balance
+            isLocked = true;
+            localStorage.setItem('accountBalanceLocked', 'true');
+            
+            // Save the current value
+            const currentValue = accountSizeInput.value;
+            localStorage.setItem('accountSize', currentValue);
+            
+            updateLockState();
+            showSuccessMessage('Account balance locked! 🔒');
+        }
+    });
+    
+    // Save balance when input loses focus (only when unlocked)
+    accountSizeInput.addEventListener('blur', () => {
+        if (!isLocked && accountSizeInput.value) {
+            localStorage.setItem('accountSize', accountSizeInput.value);
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    updateLockState();
+}
+
+// Update loadUserSettings function
+async function loadUserSettings() {
+    const accountSize = localStorage.getItem('accountSize') || 10000;
+    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
+    const accountCurrency = localStorage.getItem('accountCurrency') || 'USD';
+    const leverage = localStorage.getItem('leverage') || 50;
+
+    document.getElementById('accountSize').value = accountSize;
+    document.getElementById('riskPerTrade').value = riskPerTrade;
+    document.getElementById('accountCurrency').value = accountCurrency;
+    document.getElementById('leverage').value = leverage;
+    
+    setupAccountBalanceLock();
+    updateCurrencyDisplay();
+}
+
 // Utility functions
 async function loadUserSettings() {
     const accountSize = localStorage.getItem('accountSize') || 10000;
