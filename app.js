@@ -224,38 +224,46 @@ async function loadAccountsFromLocalStorageFallback() {
 // Save user accounts to Firestore
 async function saveUserAccounts() {
     try {
+        console.log('💾 Saving accounts to Firestore...');
+        
+        // If no user, save to localStorage only
         if (!currentUser) {
             console.log('❌ No user, saving to localStorage only');
             localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
             return;
         }
 
-        console.log('💾 Saving accounts to Firestore...');
-        
         // Update each account in Firestore
         const savePromises = userAccounts.map(async (account) => {
-            if (account.id && !account.id.startsWith('local_')) {
-                // Update existing account in Firestore
-                const accountRef = doc(db, 'accounts', account.id);
-                const accountData = { ...account };
-                delete accountData.id; // Remove ID from data to be stored
-                await setDoc(accountRef, accountData, { merge: true });
-            } else {
-                // Create new account in Firestore
-                const accountData = { ...account };
-                if (account.id?.startsWith('local_')) {
-                    delete accountData.id; // Remove local ID
+            try {
+                if (account.id && !account.id.startsWith('local_') && !account.id.startsWith('main_')) {
+                    // Update existing account in Firestore
+                    const accountRef = doc(db, 'accounts', account.id);
+                    const accountData = { ...account };
+                    delete accountData.id; // Remove ID from data to be stored
+                    await setDoc(accountRef, accountData, { merge: true });
+                    console.log('✅ Updated account in Firestore:', account.id);
+                } else if (!account.id || account.id.startsWith('local_') || account.id.startsWith('main_')) {
+                    // Create new account in Firestore (for local/main accounts that need to be synced)
+                    const accountData = { ...account };
+                    if (account.id?.startsWith('local_') || account.id?.startsWith('main_')) {
+                        delete accountData.id; // Remove local ID
+                    }
+                    accountData.userId = currentUser.uid;
+                    
+                    const docRef = await addDoc(collection(db, 'accounts'), accountData);
+                    // Update local ID with Firestore ID
+                    account.id = docRef.id;
+                    console.log('✅ Created new account in Firestore:', docRef.id);
                 }
-                accountData.userId = currentUser.uid;
-                
-                const docRef = await addDoc(collection(db, 'accounts'), accountData);
-                // Update local ID with Firestore ID
-                account.id = docRef.id;
+            } catch (error) {
+                console.error('❌ Error saving individual account:', account.name, error);
+                throw error; // Re-throw to be caught by the main catch block
             }
         });
         
         await Promise.all(savePromises);
-        console.log('✅ Accounts saved to Firestore');
+        console.log('✅ All accounts saved to Firestore');
         
         // Also save to localStorage as backup
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
@@ -471,7 +479,7 @@ window.closeAddAccountModal = () => {
     document.getElementById('addAccountModal').classList.add('hidden');
 };
 
-// Handle add account form submission
+// Handle add account form submission - FIXED VERSION
 function setupAccountModalListeners() {
     const addAccountForm = document.getElementById('addAccountForm');
     if (addAccountForm) {
@@ -498,25 +506,36 @@ function setupAccountModalListeners() {
                 return;
             }
             
-            const newAccount = {
-                name: accountName,
-                balance: accountBalance,
-                currency: accountCurrency,
-                createdAt: new Date().toISOString(),
-                isDefault: false,
-                userId: currentUser.uid
-            };
+            // Show loading state
+            const submitButton = addAccountForm.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<div class="loading-spinner"></div> Creating...';
+            submitButton.disabled = true;
             
             try {
+                const newAccount = {
+                    name: accountName,
+                    balance: accountBalance,
+                    currency: accountCurrency,
+                    createdAt: new Date().toISOString(),
+                    isDefault: false,
+                    userId: currentUser.uid
+                };
+                
+                console.log('🆕 Creating new account:', newAccount);
+                
                 // Add to Firestore first
                 const docRef = await addDoc(collection(db, 'accounts'), newAccount);
+                console.log('✅ Account created in Firestore with ID:', docRef.id);
                 
                 // Add to local state with Firestore ID
-                userAccounts.push({
+                const accountWithId = {
                     id: docRef.id,
                     ...newAccount
-                });
+                };
+                userAccounts.push(accountWithId);
                 
+                // Save to localStorage as backup
                 await saveUserAccounts();
                 
                 closeAddAccountModal();
@@ -524,8 +543,23 @@ function setupAccountModalListeners() {
                 showSuccessMessage(`Account "${accountName}" created successfully!`);
                 
             } catch (error) {
-                console.error('Error creating account:', error);
-                alert('Error creating account. Please try again.');
+                console.error('❌ Error creating account:', error);
+                
+                // More detailed error message
+                let errorMessage = 'Error creating account. ';
+                if (error.code === 'permission-denied') {
+                    errorMessage += 'Firestore permission denied. Please check your Firestore rules.';
+                } else if (error.code === 'unavailable') {
+                    errorMessage += 'Network error. Please check your internet connection.';
+                } else {
+                    errorMessage += `Technical issue: ${error.message}`;
+                }
+                
+                alert(errorMessage);
+            } finally {
+                // Restore button state
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
             }
         });
     }
@@ -599,6 +633,28 @@ async function deleteAccountTrades(accountId) {
         console.error('Error deleting account trades:', error);
     }
 }
+
+// Debug Firestore connection
+window.debugFirestore = async () => {
+    console.log('=== FIRESTORE DEBUG ===');
+    console.log('Current User:', currentUser);
+    console.log('Firestore DB:', db);
+    
+    try {
+        // Test Firestore connection by trying to read accounts
+        const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        console.log('✅ Firestore connection successful');
+        console.log('Accounts in Firestore:', querySnapshot.size);
+        
+        querySnapshot.forEach((doc) => {
+            console.log('Account:', doc.id, doc.data());
+        });
+    } catch (error) {
+        console.error('❌ Firestore connection failed:', error);
+    }
+    console.log('=== END DEBUG ===');
+};
 
 // ========== UTILITY FUNCTIONS ==========
 
