@@ -88,6 +88,52 @@ const motivationalQuotes = [
     "Plan your trade and trade your plan."
 ];
 
+// Debug initialization state
+function debugInitializationState() {
+    console.log('=== DEBUG INITIALIZATION STATE ===');
+    console.log('Current User:', currentUser);
+    console.log('Current Account ID:', currentAccountId);
+    console.log('User Accounts:', userAccounts);
+    console.log('All Trades Count:', allTrades.length);
+    console.log('Current Account:', getCurrentAccount());
+    console.log('=== END DEBUG ===');
+}
+
+// Make it available globally for debugging
+window.debugApp = debugInitializationState;
+
+// Loading timeout safety (10 seconds)
+let loadingTimeout;
+const MAX_LOADING_TIME = 10000; // 10 seconds
+
+function showLoading() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+        console.log('⏳ Showing loading indicator');
+        
+        // Set timeout to automatically hide loading after max time
+        loadingTimeout = setTimeout(() => {
+            console.warn('⚠️ Loading timeout reached, forcing hide');
+            hideLoading();
+            alert('Loading is taking longer than expected. The app may continue loading in the background.');
+        }, MAX_LOADING_TIME);
+    }
+}
+
+function hideLoading() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+        console.log('✅ Hiding loading indicator');
+        
+        // Clear the timeout if loading completes normally
+        if (loadingTimeout) {
+            clearTimeout(loadingTimeout);
+        }
+    }
+}
+
 // ========== ACCOUNT MANAGEMENT SYSTEM (FIRESTORE SYNC) ==========
 
 // Initialize accounts system
@@ -103,10 +149,10 @@ async function loadUserAccounts() {
     try {
         if (!currentUser) {
             console.log('❌ No user for accounts');
-            return;
+            throw new Error('No authenticated user');
         }
 
-        console.log('📁 Loading accounts from Firestore...');
+        console.log('📁 Loading accounts from Firestore for user:', currentUser.uid);
         const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
         
@@ -114,6 +160,8 @@ async function loadUserAccounts() {
         querySnapshot.forEach((doc) => {
             accounts.push({ id: doc.id, ...doc.data() });
         });
+
+        console.log('📊 Accounts found in Firestore:', accounts.length);
 
         // If no accounts found, create default main account
         if (accounts.length === 0) {
@@ -138,14 +186,97 @@ async function loadUserAccounts() {
         // Set current account
         const savedCurrentAccount = localStorage.getItem('currentAccountId');
         currentAccountId = savedCurrentAccount || userAccounts[0].id;
-        console.log('🎯 Current account:', currentAccountId);
         
+        // Validate that currentAccountId exists in userAccounts
+        if (!userAccounts.some(acc => acc.id === currentAccountId)) {
+            console.warn('⚠️ Current account ID not found in accounts, using first account');
+            currentAccountId = userAccounts[0].id;
+            localStorage.setItem('currentAccountId', currentAccountId);
+        }
+        
+        console.log('🎯 Current account set to:', currentAccountId);
         updateCurrentAccountDisplay();
         
     } catch (error) {
-        console.error('❌ Error loading accounts:', error);
+        console.error('❌ Error loading accounts from Firestore:', error);
         // Fallback to localStorage if Firestore fails
         await loadAccountsFromLocalStorageFallback();
+    }
+}
+
+// Fallback to localStorage if Firestore fails
+async function loadAccountsFromLocalStorageFallback() {
+    console.log('🔄 Falling back to localStorage for accounts...');
+    const savedAccounts = localStorage.getItem('userAccounts');
+    if (savedAccounts) {
+        userAccounts = JSON.parse(savedAccounts);
+        console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
+    } else {
+        // Create default main account
+        userAccounts = [{
+            id: 'main_' + Date.now(),
+            name: 'Main Account',
+            balance: 10000,
+            currency: 'USD',
+            createdAt: new Date().toISOString(),
+            isDefault: true
+        }];
+        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        console.log('🆕 Created default account in localStorage');
+    }
+    
+    // Set current account
+    const savedCurrentAccount = localStorage.getItem('currentAccountId');
+    currentAccountId = savedCurrentAccount || userAccounts[0].id;
+    console.log('🎯 Current account:', currentAccountId);
+    
+    updateCurrentAccountDisplay();
+}
+
+// Save user accounts to Firestore
+async function saveUserAccounts() {
+    try {
+        if (!currentUser) {
+            console.log('❌ No user, saving to localStorage only');
+            localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+            return;
+        }
+
+        console.log('💾 Saving accounts to Firestore...');
+        
+        // Update each account in Firestore
+        const savePromises = userAccounts.map(async (account) => {
+            if (account.id && !account.id.startsWith('local_')) {
+                // Update existing account in Firestore
+                const accountRef = doc(db, 'accounts', account.id);
+                const accountData = { ...account };
+                delete accountData.id; // Remove ID from data to be stored
+                await setDoc(accountRef, accountData, { merge: true });
+            } else {
+                // Create new account in Firestore
+                const accountData = { ...account };
+                if (account.id?.startsWith('local_')) {
+                    delete accountData.id; // Remove local ID
+                }
+                accountData.userId = currentUser.uid;
+                
+                const docRef = await addDoc(collection(db, 'accounts'), accountData);
+                // Update local ID with Firestore ID
+                account.id = docRef.id;
+            }
+        });
+        
+        await Promise.all(savePromises);
+        console.log('✅ Accounts saved to Firestore');
+        
+        // Also save to localStorage as backup
+        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        
+    } catch (error) {
+        console.error('❌ Error saving accounts to Firestore:', error);
+        // Fallback to localStorage
+        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        console.log('📁 Accounts saved to localStorage as fallback');
     }
 }
 
@@ -366,6 +497,17 @@ async function loadAccountData() {
     console.log('📊 Loading account data for:', currentAccountId);
     
     try {
+        // Validate current account
+        if (!currentAccountId || !userAccounts.some(acc => acc.id === currentAccountId)) {
+            console.warn('⚠️ Invalid current account, resetting to first account');
+            currentAccountId = userAccounts[0]?.id;
+            localStorage.setItem('currentAccountId', currentAccountId);
+            
+            if (!currentAccountId) {
+                throw new Error('No valid accounts available');
+            }
+        }
+
         // Load trades for current account
         await loadTrades();
         
@@ -381,7 +523,20 @@ async function loadAccountData() {
         
     } catch (error) {
         console.error('❌ Error loading account data:', error);
-        alert('Error loading account data. Please check console and refresh the page.');
+        
+        // Provide more specific error messages
+        let errorMessage = 'Error loading account data. ';
+        
+        if (error.message.includes('No valid accounts')) {
+            errorMessage += 'No trading accounts found. Please create an account first.';
+        } else if (error.message.includes('network') || error.message.includes('Firestore')) {
+            errorMessage += 'Network or database error. Please check your connection.';
+        } else {
+            errorMessage += `Technical issue: ${error.message}`;
+        }
+        
+        alert(errorMessage);
+        throw error; // Re-throw to be caught by the calling function
     } finally {
         hideLoading();
     }
@@ -853,12 +1008,19 @@ onAuthStateChanged(auth, async (user) => {
         console.log('👤 User authenticated:', user.email);
         
         try {
-            // Initialize accounts system FIRST (now loads from Firestore)
+            // Initialize accounts system FIRST
+            console.log('🔄 Starting account initialization...');
             await initializeAccounts();
+            console.log('✅ Account initialization complete');
             
-            // Then load user settings and data
+            // Then load user settings
             await loadUserSettings();
-            await loadAccountData(); // This will load trades and affirmations
+            console.log('✅ User settings loaded');
+            
+            // Then load account data (trades and affirmations)
+            console.log('🔄 Loading account data...');
+            await loadAccountData();
+            console.log('✅ Account data loaded');
             
             // Setup all event listeners
             setupEventListeners();
@@ -870,9 +1032,12 @@ onAuthStateChanged(auth, async (user) => {
             
         } catch (error) {
             console.error('❌ Error during initialization:', error);
-            alert('Error initializing application. Please check console and refresh the page.');
+            // Show user-friendly error message
+            const errorMessage = `Error initializing application: ${error.message}. Please refresh the page.`;
+            alert(errorMessage);
         } finally {
             hideLoading();
+            console.log('🏁 Initialization process completed');
         }
     } else {
         console.log('🚪 No user, redirecting to login');
@@ -1031,6 +1196,15 @@ async function loadTrades() {
             throw new Error('No authenticated user');
         }
 
+        // Ensure currentAccountId is valid
+        if (!currentAccountId) {
+            console.warn('⚠️ No currentAccountId, using first account');
+            currentAccountId = userAccounts[0]?.id;
+            if (!currentAccountId) {
+                throw new Error('No accounts available');
+            }
+        }
+
         const q = query(
             collection(db, 'trades'), 
             where('userId', '==', currentUser.uid),
@@ -1051,19 +1225,23 @@ async function loadTrades() {
         renderCharts(trades);
         calculateAdvancedMetrics(trades);
         
-        console.log('✅ Trades loaded:', trades.length);
+        console.log('✅ Trades loaded successfully:', trades.length);
         
     } catch (error) {
         console.error('❌ Error loading trades:', error);
+        
+        // Show user-friendly error in trade history
         const tradeHistory = document.getElementById('tradeHistory');
         if (tradeHistory) {
             tradeHistory.innerHTML = `
                 <div class="text-center text-red-500 py-4">
                     <p>Error loading trades: ${error.message}</p>
-                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2">🔄 Refresh</button>
+                    <p class="text-sm text-gray-500 mt-2">This might be due to network issues or missing account data.</p>
+                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2 px-4 py-2 rounded">🔄 Refresh Page</button>
                 </div>
             `;
         }
+        
         // Re-throw to be caught by the calling function
         throw error;
     }

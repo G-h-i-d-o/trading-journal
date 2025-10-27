@@ -22,7 +22,7 @@ import {
     setDoc
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-// Your Firebase configuration remains the same
+// Your Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDXDmeDAkd9Z7PsquQFpn-9uOu6ycHWS7k",
     authDomain: "trading-journal-5410f.firebaseapp.com",
@@ -44,9 +44,9 @@ console.log('✅ Firebase auth initialized');
 const db = getFirestore(app);
 console.log('✅ Firebase Firestore initialized');
 
-// ✅ EXPORT updateDoc and all other necessary functions
+// Export all necessary functions
 export { 
     auth, db, 
-    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,sendPasswordResetEmail,
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail,
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc 
 };
