@@ -88,22 +88,74 @@ const motivationalQuotes = [
     "Plan your trade and trade your plan."
 ];
 
-// ========== ACCOUNT MANAGEMENT SYSTEM ==========
+// ========== ACCOUNT MANAGEMENT SYSTEM (FIRESTORE SYNC) ==========
 
 // Initialize accounts system
-function initializeAccounts() {
+async function initializeAccounts() {
     console.log('🔄 Initializing accounts system...');
-    loadUserAccounts();
+    await loadUserAccounts();
     setupAccountsDropdown();
     console.log('✅ Accounts system initialized');
 }
 
-// Load user accounts from localStorage
-function loadUserAccounts() {
+// Load user accounts from Firestore
+async function loadUserAccounts() {
+    try {
+        if (!currentUser) {
+            console.log('❌ No user for accounts');
+            return;
+        }
+
+        console.log('📁 Loading accounts from Firestore...');
+        const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        
+        const accounts = [];
+        querySnapshot.forEach((doc) => {
+            accounts.push({ id: doc.id, ...doc.data() });
+        });
+
+        // If no accounts found, create default main account
+        if (accounts.length === 0) {
+            console.log('🆕 Creating default account...');
+            const defaultAccount = {
+                name: 'Main Account',
+                balance: 10000,
+                currency: 'USD',
+                createdAt: new Date().toISOString(),
+                isDefault: true,
+                userId: currentUser.uid
+            };
+            
+            const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
+            userAccounts = [{ id: docRef.id, ...defaultAccount }];
+            console.log('✅ Default account created with ID:', docRef.id);
+        } else {
+            userAccounts = accounts;
+            console.log('✅ Accounts loaded from Firestore:', userAccounts.length);
+        }
+        
+        // Set current account
+        const savedCurrentAccount = localStorage.getItem('currentAccountId');
+        currentAccountId = savedCurrentAccount || userAccounts[0].id;
+        console.log('🎯 Current account:', currentAccountId);
+        
+        updateCurrentAccountDisplay();
+        
+    } catch (error) {
+        console.error('❌ Error loading accounts:', error);
+        // Fallback to localStorage if Firestore fails
+        await loadAccountsFromLocalStorageFallback();
+    }
+}
+
+// Fallback to localStorage if Firestore fails
+async function loadAccountsFromLocalStorageFallback() {
+    console.log('🔄 Falling back to localStorage for accounts...');
     const savedAccounts = localStorage.getItem('userAccounts');
     if (savedAccounts) {
         userAccounts = JSON.parse(savedAccounts);
-        console.log('📁 Loaded existing accounts:', userAccounts.length);
+        console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
     } else {
         // Create default main account
         userAccounts = [{
@@ -114,8 +166,8 @@ function loadUserAccounts() {
             createdAt: new Date().toISOString(),
             isDefault: true
         }];
-        saveUserAccounts();
-        console.log('🆕 Created default account');
+        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        console.log('🆕 Created default account in localStorage');
     }
     
     // Set current account
@@ -126,9 +178,51 @@ function loadUserAccounts() {
     updateCurrentAccountDisplay();
 }
 
-// Save user accounts to localStorage
-function saveUserAccounts() {
-    localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+// Save user accounts to Firestore
+async function saveUserAccounts() {
+    try {
+        if (!currentUser) {
+            console.log('❌ No user, saving to localStorage only');
+            localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+            return;
+        }
+
+        console.log('💾 Saving accounts to Firestore...');
+        
+        // Update each account in Firestore
+        const savePromises = userAccounts.map(async (account) => {
+            if (account.id && !account.id.startsWith('local_')) {
+                // Update existing account in Firestore
+                const accountRef = doc(db, 'accounts', account.id);
+                const accountData = { ...account };
+                delete accountData.id; // Remove ID from data to be stored
+                await setDoc(accountRef, accountData, { merge: true });
+            } else {
+                // Create new account in Firestore
+                const accountData = { ...account };
+                if (account.id?.startsWith('local_')) {
+                    delete accountData.id; // Remove local ID
+                }
+                accountData.userId = currentUser.uid;
+                
+                const docRef = await addDoc(collection(db, 'accounts'), accountData);
+                // Update local ID with Firestore ID
+                account.id = docRef.id;
+            }
+        });
+        
+        await Promise.all(savePromises);
+        console.log('✅ Accounts saved to Firestore');
+        
+        // Also save to localStorage as backup
+        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        
+    } catch (error) {
+        console.error('❌ Error saving accounts to Firestore:', error);
+        // Fallback to localStorage
+        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        console.log('📁 Accounts saved to localStorage as fallback');
+    }
 }
 
 // Setup accounts dropdown functionality
@@ -152,6 +246,290 @@ function setupAccountsDropdown() {
         accountsMenu.addEventListener('click', (e) => {
             e.stopPropagation();
         });
+    }
+}
+
+// Render accounts list in dropdown
+function renderAccountsList() {
+    const accountsList = document.getElementById('accountsList');
+    const mobileAccountsList = document.getElementById('mobileAccountsList');
+    
+    if (!accountsList && !mobileAccountsList) return;
+    
+    const accountsHTML = userAccounts.map(account => `
+        <div class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-200 ${account.id === currentAccountId ? 'bg-blue-50 border-blue-200' : ''}" 
+             onclick="switchAccount('${account.id}')">
+            <div class="flex justify-between items-center">
+                <div class="flex-1">
+                    <div class="font-semibold text-gray-800 text-sm">${account.name}</div>
+                    <div class="text-xs text-gray-600 mt-1">
+                        ${getCurrencySymbol(account.currency)}${account.balance.toLocaleString()} • ${account.currency}
+                    </div>
+                </div>
+                ${account.id === currentAccountId ? '<span class="text-blue-500 text-lg">✓</span>' : ''}
+                ${!account.isDefault ? `
+                    <button onclick="event.stopPropagation(); deleteAccount('${account.id}')" 
+                            class="ml-2 text-red-400 hover:text-red-600 transition-colors duration-200 p-1 rounded">
+                        🗑️
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    if (accountsList) accountsList.innerHTML = accountsHTML;
+    if (mobileAccountsList) mobileAccountsList.innerHTML = accountsHTML;
+}
+
+// Update current account display
+function updateCurrentAccountDisplay() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+    
+    const currentAccountName = document.getElementById('currentAccountName');
+    if (currentAccountName) {
+        currentAccountName.textContent = currentAccount.name;
+    }
+    
+    // Update account settings in the form
+    updateAccountSettingsForm(currentAccount);
+}
+
+// Update account settings form with current account data
+function updateAccountSettingsForm(account) {
+    const accountSizeInput = document.getElementById('accountSize');
+    const accountCurrencySelect = document.getElementById('accountCurrency');
+    
+    if (accountSizeInput) {
+        accountSizeInput.value = account.balance;
+    }
+    if (accountCurrencySelect) {
+        accountCurrencySelect.value = account.currency;
+    }
+    
+    // Update currency display
+    updateCurrencyDisplay();
+}
+
+// Switch to different account
+window.switchAccount = async (accountId) => {
+    if (accountId === currentAccountId) return;
+    
+    console.log('🔄 Switching to account:', accountId);
+    
+    // Save current account data before switching
+    await saveCurrentAccountData();
+    
+    // Switch account
+    currentAccountId = accountId;
+    localStorage.setItem('currentAccountId', accountId);
+    
+    // Update display
+    updateCurrentAccountDisplay();
+    
+    // Load account-specific data
+    await loadAccountData();
+    
+    // Close dropdown
+    const accountsMenu = document.getElementById('accountsMenu');
+    if (accountsMenu) accountsMenu.classList.add('hidden');
+    
+    showSuccessMessage(`Switched to ${getCurrentAccount().name}`);
+};
+
+// Get current account object
+function getCurrentAccount() {
+    return userAccounts.find(acc => acc.id === currentAccountId) || userAccounts[0];
+}
+
+// Save current account data before switching
+async function saveCurrentAccountData() {
+    const currentAccount = getCurrentAccount();
+    
+    // Save account settings
+    const accountSizeInput = document.getElementById('accountSize');
+    if (accountSizeInput) {
+        currentAccount.balance = parseFloat(accountSizeInput.value) || 10000;
+    }
+    
+    const accountCurrencySelect = document.getElementById('accountCurrency');
+    if (accountCurrencySelect) {
+        currentAccount.currency = accountCurrencySelect.value;
+    }
+    
+    await saveUserAccounts();
+}
+
+// Load account-specific data
+async function loadAccountData() {
+    showLoading();
+    console.log('📊 Loading account data for:', currentAccountId);
+    
+    try {
+        // Load trades for current account
+        await loadTrades();
+        
+        // Load affirmations (shared across accounts)
+        await loadAffirmations();
+        
+        // Update all displays
+        updateStats(allTrades);
+        renderCharts(allTrades);
+        calculateAdvancedMetrics(allTrades);
+        
+        console.log('✅ Account data loaded successfully');
+        
+    } catch (error) {
+        console.error('❌ Error loading account data:', error);
+        alert('Error loading account data. Please check console and refresh the page.');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Add Account Modal Functions
+window.showAddAccountModal = () => {
+    document.getElementById('addAccountModal').classList.remove('hidden');
+    document.getElementById('accountName').value = '';
+    document.getElementById('accountBalance').value = '10000';
+    document.getElementById('accountCurrencySelect').value = 'USD';
+    document.getElementById('accountNameCharCount').textContent = '0';
+    
+    // Close other dropdowns
+    document.getElementById('accountsMenu')?.classList.add('hidden');
+    document.getElementById('mobileMenu')?.classList.add('hidden');
+};
+
+window.closeAddAccountModal = () => {
+    document.getElementById('addAccountModal').classList.add('hidden');
+};
+
+// Handle add account form submission
+function setupAccountModalListeners() {
+    const addAccountForm = document.getElementById('addAccountForm');
+    if (addAccountForm) {
+        addAccountForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const accountName = document.getElementById('accountName').value.trim();
+            const accountBalance = parseFloat(document.getElementById('accountBalance').value);
+            const accountCurrency = document.getElementById('accountCurrencySelect').value;
+            
+            if (!accountName) {
+                alert('Please enter an account name.');
+                return;
+            }
+            
+            if (accountName.length > 50) {
+                alert('Account name must be 50 characters or less.');
+                return;
+            }
+            
+            // Check if account name already exists
+            if (userAccounts.some(acc => acc.name.toLowerCase() === accountName.toLowerCase())) {
+                alert('An account with this name already exists. Please choose a different name.');
+                return;
+            }
+            
+            const newAccount = {
+                name: accountName,
+                balance: accountBalance,
+                currency: accountCurrency,
+                createdAt: new Date().toISOString(),
+                isDefault: false,
+                userId: currentUser.uid
+            };
+            
+            try {
+                // Add to Firestore first
+                const docRef = await addDoc(collection(db, 'accounts'), newAccount);
+                
+                // Add to local state with Firestore ID
+                userAccounts.push({
+                    id: docRef.id,
+                    ...newAccount
+                });
+                
+                await saveUserAccounts();
+                
+                closeAddAccountModal();
+                renderAccountsList();
+                showSuccessMessage(`Account "${accountName}" created successfully!`);
+                
+            } catch (error) {
+                console.error('Error creating account:', error);
+                alert('Error creating account. Please try again.');
+            }
+        });
+    }
+
+    // Update character count for account name
+    const accountNameInput = document.getElementById('accountName');
+    if (accountNameInput) {
+        accountNameInput.addEventListener('input', function() {
+            document.getElementById('accountNameCharCount').textContent = this.value.length;
+        });
+    }
+}
+
+// Delete account function
+window.deleteAccount = async (accountId) => {
+    const account = userAccounts.find(acc => acc.id === accountId);
+    if (!account) return;
+    
+    if (account.isDefault) {
+        alert('Cannot delete the default main account.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete "${account.name}"? This will also delete all trades associated with this account.`)) {
+        try {
+            // Delete account from Firestore
+            if (!accountId.startsWith('local_')) {
+                await deleteDoc(doc(db, 'accounts', accountId));
+            }
+            
+            // Delete account from local state
+            userAccounts = userAccounts.filter(acc => acc.id !== accountId);
+            await saveUserAccounts();
+            
+            // If deleting current account, switch to main account
+            if (currentAccountId === accountId) {
+                await switchAccount(userAccounts[0].id);
+            }
+            
+            // Delete account-specific trades from Firestore
+            await deleteAccountTrades(accountId);
+            
+            renderAccountsList();
+            showSuccessMessage(`Account "${account.name}" deleted successfully!`);
+            
+        } catch (error) {
+            console.error('Error deleting account:', error);
+            alert('Error deleting account. Please try again.');
+        }
+    }
+};
+
+// Delete all trades for a specific account
+async function deleteAccountTrades(accountId) {
+    try {
+        const q = query(
+            collection(db, 'trades'), 
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', accountId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const deletePromises = [];
+        querySnapshot.forEach((doc) => {
+            deletePromises.push(deleteDoc(doc.ref));
+        });
+        
+        await Promise.all(deletePromises);
+        console.log(`🗑️ Deleted ${deletePromises.length} trades for account ${accountId}`);
+    } catch (error) {
+        console.error('Error deleting account trades:', error);
     }
 }
 
@@ -475,8 +853,8 @@ onAuthStateChanged(auth, async (user) => {
         console.log('👤 User authenticated:', user.email);
         
         try {
-            // Initialize accounts system FIRST
-            initializeAccounts();
+            // Initialize accounts system FIRST (now loads from Firestore)
+            await initializeAccounts();
             
             // Then load user settings and data
             await loadUserSettings();
@@ -501,15 +879,6 @@ onAuthStateChanged(auth, async (user) => {
         window.location.href = 'index.html';
     }
 });
-
-window.logout = async () => {
-    try {
-        await signOut(auth);
-    } catch (error) {
-        console.error('Logout error:', error);
-        alert('Error logging out.');
-    }
-};
 
 // ========== EVENT LISTENERS ==========
 
@@ -882,7 +1251,7 @@ function setupAccountBalanceLock() {
         }
     }
     
-    lockToggle.addEventListener('click', () => {
+    lockToggle.addEventListener('click', async () => {
         if (isLocked) {
             if (confirm('⚠️ Unlocking account balance may affect your performance metrics.\n\nAre you sure you want to unlock?')) {
                 isLocked = false;
@@ -898,7 +1267,7 @@ function setupAccountBalanceLock() {
             if (currentValue && currentValue !== '10000') {
                 const currentAccount = getCurrentAccount();
                 currentAccount.balance = parseFloat(currentValue);
-                saveUserAccounts();
+                await saveUserAccounts(); // Save to Firestore
             }
             
             updateLockState();
@@ -909,11 +1278,11 @@ function setupAccountBalanceLock() {
         }
     });
     
-    accountSizeInput.addEventListener('blur', () => {
+    accountSizeInput.addEventListener('blur', async () => {
         if (!isLocked && accountSizeInput.value && accountSizeInput.value !== '10000') {
             const currentAccount = getCurrentAccount();
             currentAccount.balance = parseFloat(accountSizeInput.value);
-            saveUserAccounts();
+            await saveUserAccounts(); // Save to Firestore
             updateStats(allTrades);
             renderCharts(allTrades);
         }

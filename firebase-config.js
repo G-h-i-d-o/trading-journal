@@ -1,4 +1,4 @@
-// firebase-config.js - FIXED VERSION
+// firebase-config.js - UPDATED VERSION
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import { 
     getAuth, 
@@ -19,10 +19,10 @@ import {
     deleteDoc,
     updateDoc,
     getDoc,
-    setDoc // Add this import
+    setDoc
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-// Your Firebase configuration
+// Your Firebase configuration remains the same
 const firebaseConfig = {
     apiKey: "AIzaSyDXDmeDAkd9Z7PsquQFpn-9uOu6ycHWS7k",
     authDomain: "trading-journal-5410f.firebaseapp.com",
@@ -44,7 +44,7 @@ console.log('✅ Firebase auth initialized');
 const db = getFirestore(app);
 console.log('✅ Firebase Firestore initialized');
 
-// ✅ EXPORT updateDoc
+// ✅ EXPORT updateDoc and all other necessary functions
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,sendPasswordResetEmail,
