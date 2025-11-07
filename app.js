@@ -1301,6 +1301,7 @@ function setupPagination(trades) {
 }
 
 function displayTradesPage(page) {
+    console.log('🔄 Displaying page:', page);
     currentPage = page;
     const startIndex = (page - 1) * tradesPerPage;
     const endIndex = startIndex + tradesPerPage;
@@ -1314,8 +1315,15 @@ function renderPagination() {
     const totalPages = Math.ceil(allTrades.length / tradesPerPage);
     const paginationContainer = document.getElementById('pagination');
     
-    if (!paginationContainer || totalPages <= 1) {
-        if (paginationContainer) paginationContainer.innerHTML = '';
+    console.log('📄 Rendering pagination:', { totalPages, currentPage, totalTrades: allTrades.length });
+    
+    if (!paginationContainer) {
+        console.error('❌ Pagination container not found');
+        return;
+    }
+
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
         return;
     }
 
@@ -1323,67 +1331,122 @@ function renderPagination() {
     
     // Previous button
     if (currentPage > 1) {
-        paginationHTML += `<button onclick="displayTradesPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">← Previous</button>`;
+        paginationHTML += `
+            <button type="button" class="pagination-btn pagination-prev" data-page="${currentPage - 1}">
+                ← Previous
+            </button>
+        `;
     } else {
-        paginationHTML += `<button disabled class="px-3 py-1 bg-gray-100 text-gray-400 rounded cursor-not-allowed">← Previous</button>`;
+        paginationHTML += `
+            <button type="button" class="pagination-btn pagination-disabled" disabled>
+                ← Previous
+            </button>
+        `;
     }
     
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    // Page numbers - show limited set for better UX
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
     
-    // Adjust start page if we're near the end
-    if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    // Adjust if we're at the end
+    if (endPage - startPage + 1 < maxPagesToShow) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
     
-    // First page and ellipsis
+    // First page + ellipsis
     if (startPage > 1) {
-        paginationHTML += `<button onclick="displayTradesPage(1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">1</button>`;
+        paginationHTML += `
+            <button type="button" class="pagination-btn" data-page="1">1</button>
+        `;
         if (startPage > 2) {
-            paginationHTML += `<span class="px-2 py-1">...</span>`;
+            paginationHTML += `<span class="pagination-ellipsis">...</span>`;
         }
     }
     
     // Page numbers
     for (let i = startPage; i <= endPage; i++) {
         if (i === currentPage) {
-            paginationHTML += `<span class="px-3 py-1 bg-blue-500 text-white rounded">${i}</span>`;
+            paginationHTML += `
+                <span class="pagination-current">${i}</span>
+            `;
         } else {
-            paginationHTML += `<button onclick="displayTradesPage(${i})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">${i}</button>`;
+            paginationHTML += `
+                <button type="button" class="pagination-btn" data-page="${i}">${i}</button>
+            `;
         }
     }
     
-    // Last page and ellipsis
+    // Last page + ellipsis
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
-            paginationHTML += `<span class="px-2 py-1">...</span>`;
+            paginationHTML += `<span class="pagination-ellipsis">...</span>`;
         }
-        paginationHTML += `<button onclick="displayTradesPage(${totalPages})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">${totalPages}</button>`;
+        paginationHTML += `
+            <button type="button" class="pagination-btn" data-page="${totalPages}">${totalPages}</button>
+        `;
     }
     
     // Next button
     if (currentPage < totalPages) {
-        paginationHTML += `<button onclick="displayTradesPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">Next →</button>`;
+        paginationHTML += `
+            <button type="button" class="pagination-btn pagination-next" data-page="${currentPage + 1}">
+                Next →
+            </button>
+        `;
     } else {
-        paginationHTML += `<button disabled class="px-3 py-1 bg-gray-100 text-gray-400 rounded cursor-not-allowed">Next →</button>`;
+        paginationHTML += `
+            <button type="button" class="pagination-btn pagination-disabled" disabled>
+                Next →
+            </button>
+        `;
     }
     
     paginationContainer.innerHTML = paginationHTML;
+    
+    // Add event listeners to the new buttons
+    attachPaginationEventListeners();
+}
+
+function attachPaginationEventListeners() {
+    const paginationButtons = document.querySelectorAll('.pagination-btn');
+    
+    paginationButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (this.disabled) return;
+            
+            const page = parseInt(this.getAttribute('data-page'));
+            console.log('🎯 Pagination button clicked, going to page:', page);
+            
+            if (page && page !== currentPage) {
+                displayTradesPage(page);
+            }
+        });
+    });
 }
 
 function displayTrades(trades) {
     const container = document.getElementById('tradeHistory');
     const tradeCount = document.getElementById('tradeCount');
-    if (!container) return;
+    
+    if (!container) {
+        console.error('❌ Trade history container not found');
+        return;
+    }
 
     if (trades.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 py-4">No trades recorded yet.</p>';
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-8">
+                <div class="text-4xl mb-4">📊</div>
+                <p class="text-lg">No trades recorded yet.</p>
+                <p class="text-sm mt-2">Start by adding your first trade in the Dashboard tab!</p>
+            </div>
+        `;
         if (tradeCount) tradeCount.textContent = '0 trades';
         return;
     }
 
+    // Update trade count
     if (tradeCount) {
         const totalTrades = allTrades.length;
         const startIndex = (currentPage - 1) * tradesPerPage + 1;
@@ -1391,45 +1454,75 @@ function displayTrades(trades) {
         tradeCount.textContent = `Showing ${startIndex}-${endIndex} of ${totalTrades} trades`;
     }
 
+    // Render trades
     container.innerHTML = trades.map(trade => {
         const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
         const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
         const profitClass = trade.profit >= 0 ? 'profit' : 'loss';
         const moodEmoji = getMoodEmoji(trade.mood);
+        const tradeDate = new Date(trade.timestamp);
+        const dateString = tradeDate.toLocaleDateString();
+        const timeString = tradeDate.toLocaleTimeString();
         
         return `
         <div class="trade-item">
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                 <div class="flex-1 min-w-0">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2">
-                        <div class="font-semibold text-sm sm:text-base">
-                            ${trade.symbol} <span class="market-type-badge ${badgeClass}">${badgeText}</span>
-                            ${moodEmoji ? `<span class="ml-1">${moodEmoji}</span>` : ''}
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                        <div class="flex items-center flex-wrap gap-2">
+                            <div class="font-semibold text-base">${trade.symbol}</div>
+                            <span class="market-type-badge ${badgeClass}">${badgeText}</span>
+                            ${moodEmoji ? `<span class="text-lg">${moodEmoji}</span>` : ''}
                         </div>
-                        <div class="${profitClass} font-bold text-sm sm:text-base">
+                        <div class="${profitClass} font-bold text-lg">
                             ${formatCurrency(trade.profit)}
                         </div>
                     </div>
-                    <div class="text-xs text-gray-600 space-y-1">
-                        <div>${trade.type.toUpperCase()} | ${trade.lotSize} lots | Entry: ${trade.entryPrice}</div>
-                        <div>SL: ${trade.stopLoss}${trade.takeProfit ? ` | TP: ${trade.takeProfit}` : ''}</div>
-                        <div>Risk: ${formatCurrency(trade.riskAmount)} (${trade.riskPercent.toFixed(1)}%)</div>
-                        <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()} ${new Date(trade.timestamp).toLocaleTimeString()}</div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                        <div><strong>Type:</strong> ${trade.type.toUpperCase()} | ${trade.lotSize} lots</div>
+                        <div><strong>Entry:</strong> ${trade.entryPrice}</div>
+                        <div><strong>Stop Loss:</strong> ${trade.stopLoss}</div>
+                        <div><strong>Take Profit:</strong> ${trade.takeProfit || 'N/A'}</div>
+                        <div><strong>Risk:</strong> ${formatCurrency(trade.riskAmount)} (${trade.riskPercent.toFixed(1)}%)</div>
+                        <div><strong>Date:</strong> ${dateString} ${timeString}</div>
                     </div>
-                    ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
+                    
+                    ${trade.notes ? `
+                        <div class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="text-xs font-semibold text-gray-700 mb-1">Notes:</div>
+                            <div class="text-sm text-gray-600">${trade.notes}</div>
+                        </div>
+                    ` : ''}
                 </div>
-                <div class="trade-actions">
-                    ${trade.beforeScreenshot ? `<button onclick="viewScreenshot('${trade.beforeScreenshot}')" class="btn-sm bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors">📸 Before</button>` : ''}
-                    ${trade.afterScreenshot ? `<button onclick="viewScreenshot('${trade.afterScreenshot}')" class="btn-sm bg-green-500 text-white text-xs hover:bg-green-600 transition-colors">📸 After</button>` : ''}
-                    <button onclick="deleteTrade('${trade.id}')" class="btn-sm bg-red-500 text-white text-xs hover:bg-red-600 transition-colors">🗑️ Delete</button>
+                
+                <div class="trade-actions flex flex-wrap gap-2 justify-end">
+                    ${trade.beforeScreenshot ? `
+                        <button onclick="viewScreenshot('${trade.beforeScreenshot}')" 
+                                class="btn-sm bg-blue-500 text-white hover:bg-blue-600 transition-colors flex items-center gap-1">
+                            <span>📸</span> Before
+                        </button>
+                    ` : ''}
+                    ${trade.afterScreenshot ? `
+                        <button onclick="viewScreenshot('${trade.afterScreenshot}')" 
+                                class="btn-sm bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1">
+                            <span>📸</span> After
+                        </button>
+                    ` : ''}
+                    <button onclick="deleteTrade('${trade.id}')" 
+                            class="btn-sm bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-1">
+                        <span>🗑️</span> Delete
+                    </button>
                 </div>
             </div>
         </div>`;
     }).join('');
 }
 
-// Make displayTradesPage globally accessible
+// Make functions globally accessible
 window.displayTradesPage = displayTradesPage;
+window.deleteTrade = deleteTrade;
+window.viewScreenshot = viewScreenshot;
 
 // ========== AFFIRMATIONS FUNCTIONS ==========
 
