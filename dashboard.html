@@ -367,27 +367,63 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+            padding: 16px 0;
         }
 
-        #pagination button, #pagination span {
-            padding: 6px 12px;
+        .pagination-btn {
+            padding: 8px 16px;
+            border: 1px solid #d1d5db;
+            background: white;
+            color: #374151;
             border-radius: 6px;
+            cursor: pointer;
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
-            border: 1px solid #d1d5db;
         }
 
-        #pagination button:hover {
-            background-color: #3b82f6;
+        .pagination-btn:hover:not(.pagination-disabled) {
+            background: #3b82f6;
             color: white;
             border-color: #3b82f6;
         }
 
-        #pagination span {
-            background-color: #3b82f6;
+        .pagination-btn:active:not(.pagination-disabled) {
+            transform: scale(0.95);
+        }
+
+        .pagination-disabled {
+            background: #f3f4f6;
+            color: #9ca3af;
+            border-color: #e5e7eb;
+            cursor: not-allowed;
+        }
+
+        .pagination-current {
+            padding: 8px 16px;
+            background: #3b82f6;
             color: white;
-            border-color: #3b82f6;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .pagination-ellipsis {
+            padding: 8px 4px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        /* Ensure buttons are properly sized on mobile */
+        @media (max-width: 640px) {
+            .pagination-btn, .pagination-current {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            #pagination {
+                gap: 4px;
+            }
         }
 
         /* Affirmations Styles */

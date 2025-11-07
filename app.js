@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION WITH MULTI-ACCOUNT SUPPORT AND DATE FEATURE
+// app.js - COMPLETE WORKING VERSION WITH FIXED PAGINATION AND DATE FEATURE
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
@@ -100,11 +100,9 @@ function showLoading() {
         loadingIndicator.style.display = 'flex';
         console.log('⏳ Showing loading indicator');
         
-        // Set timeout to automatically hide loading after max time
         loadingTimeout = setTimeout(() => {
             console.warn('⚠️ Loading timeout reached, forcing hide');
             hideLoading();
-            alert('Loading is taking longer than expected. The app may continue loading in the background.');
         }, MAX_LOADING_TIME);
     }
 }
@@ -115,7 +113,6 @@ function hideLoading() {
         loadingIndicator.style.display = 'none';
         console.log('✅ Hiding loading indicator');
         
-        // Clear the timeout if loading completes normally
         if (loadingTimeout) {
             clearTimeout(loadingTimeout);
         }
@@ -124,11 +121,8 @@ function hideLoading() {
 
 // ========== DATE HELPER FUNCTIONS ==========
 
-// Helper function to get current date/time in the format needed for datetime-local input
 function getCurrentDateTimeString() {
     const now = new Date();
-    
-    // Format: YYYY-MM-DDTHH:MM
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -140,7 +134,6 @@ function getCurrentDateTimeString() {
 
 // ========== ACCOUNT MANAGEMENT SYSTEM ==========
 
-// Initialize accounts system
 async function initializeAccounts() {
     console.log('🔄 Initializing accounts system...');
     await loadUserAccounts();
@@ -148,7 +141,6 @@ async function initializeAccounts() {
     console.log('✅ Accounts system initialized');
 }
 
-// Load user accounts from Firestore
 async function loadUserAccounts() {
     try {
         if (!currentUser) {
@@ -167,7 +159,6 @@ async function loadUserAccounts() {
 
         console.log('📊 Accounts found in Firestore:', accounts.length);
 
-        // If no accounts found, create default main account
         if (accounts.length === 0) {
             console.log('🆕 Creating default account...');
             const defaultAccount = {
@@ -187,11 +178,9 @@ async function loadUserAccounts() {
             console.log('✅ Accounts loaded from Firestore:', userAccounts.length);
         }
         
-        // Set current account
         const savedCurrentAccount = localStorage.getItem('currentAccountId');
         currentAccountId = savedCurrentAccount || userAccounts[0].id;
         
-        // Validate that currentAccountId exists in userAccounts
         if (!userAccounts.some(acc => acc.id === currentAccountId)) {
             console.warn('⚠️ Current account ID not found in accounts, using first account');
             currentAccountId = userAccounts[0].id;
@@ -203,12 +192,10 @@ async function loadUserAccounts() {
         
     } catch (error) {
         console.error('❌ Error loading accounts from Firestore:', error);
-        // Fallback to localStorage if Firestore fails
         await loadAccountsFromLocalStorageFallback();
     }
 }
 
-// Fallback to localStorage if Firestore fails
 async function loadAccountsFromLocalStorageFallback() {
     console.log('🔄 Falling back to localStorage for accounts...');
     const savedAccounts = localStorage.getItem('userAccounts');
@@ -216,7 +203,6 @@ async function loadAccountsFromLocalStorageFallback() {
         userAccounts = JSON.parse(savedAccounts);
         console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
     } else {
-        // Create default main account
         userAccounts = [{
             id: 'main_' + Date.now(),
             name: 'Main Account',
@@ -229,7 +215,6 @@ async function loadAccountsFromLocalStorageFallback() {
         console.log('🆕 Created default account in localStorage');
     }
     
-    // Set current account
     const savedCurrentAccount = localStorage.getItem('currentAccountId');
     currentAccountId = savedCurrentAccount || userAccounts[0].id;
     console.log('🎯 Current account:', currentAccountId);
@@ -237,62 +222,53 @@ async function loadAccountsFromLocalStorageFallback() {
     updateCurrentAccountDisplay();
 }
 
-// Save user accounts to Firestore
 async function saveUserAccounts() {
     try {
         console.log('💾 Saving accounts to Firestore...');
         
-        // If no user, save to localStorage only
         if (!currentUser) {
             console.log('❌ No user, saving to localStorage only');
             localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
             return;
         }
 
-        // Update each account in Firestore
         const savePromises = userAccounts.map(async (account) => {
             try {
                 if (account.id && !account.id.startsWith('local_') && !account.id.startsWith('main_')) {
-                    // Update existing account in Firestore
                     const accountRef = doc(db, 'accounts', account.id);
                     const accountData = { ...account };
-                    delete accountData.id; // Remove ID from data to be stored
+                    delete accountData.id;
                     await setDoc(accountRef, accountData, { merge: true });
                     console.log('✅ Updated account in Firestore:', account.id);
                 } else if (!account.id || account.id.startsWith('local_') || account.id.startsWith('main_')) {
-                    // Create new account in Firestore (for local/main accounts that need to be synced)
                     const accountData = { ...account };
                     if (account.id?.startsWith('local_') || account.id?.startsWith('main_')) {
-                        delete accountData.id; // Remove local ID
+                        delete accountData.id;
                     }
                     accountData.userId = currentUser.uid;
                     
                     const docRef = await addDoc(collection(db, 'accounts'), accountData);
-                    // Update local ID with Firestore ID
                     account.id = docRef.id;
                     console.log('✅ Created new account in Firestore:', docRef.id);
                 }
             } catch (error) {
                 console.error('❌ Error saving individual account:', account.name, error);
-                throw error; // Re-throw to be caught by the main catch block
+                throw error;
             }
         });
         
         await Promise.all(savePromises);
         console.log('✅ All accounts saved to Firestore');
         
-        // Also save to localStorage as backup
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         
     } catch (error) {
         console.error('❌ Error saving accounts to Firestore:', error);
-        // Fallback to localStorage
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         console.log('📁 Accounts saved to localStorage as fallback');
     }
 }
 
-// Setup accounts dropdown functionality
 function setupAccountsDropdown() {
     const accountsToggle = document.getElementById('accountsToggle');
     const accountsMenu = document.getElementById('accountsMenu');
@@ -304,19 +280,16 @@ function setupAccountsDropdown() {
             renderAccountsList();
         });
         
-        // Close dropdown when clicking outside
         document.addEventListener('click', () => {
             accountsMenu.classList.add('hidden');
         });
         
-        // Prevent dropdown from closing when clicking inside
         accountsMenu.addEventListener('click', (e) => {
             e.stopPropagation();
         });
     }
 }
 
-// Render accounts list in dropdown
 function renderAccountsList() {
     const accountsList = document.getElementById('accountsList');
     const mobileAccountsList = document.getElementById('mobileAccountsList');
@@ -348,7 +321,6 @@ function renderAccountsList() {
     if (mobileAccountsList) mobileAccountsList.innerHTML = accountsHTML;
 }
 
-// Update current account display
 function updateCurrentAccountDisplay() {
     const currentAccount = getCurrentAccount();
     if (!currentAccount) return;
@@ -358,11 +330,9 @@ function updateCurrentAccountDisplay() {
         currentAccountName.textContent = currentAccount.name;
     }
     
-    // Update account settings in the form
     updateAccountSettingsForm(currentAccount);
 }
 
-// Update account settings form with current account data
 function updateAccountSettingsForm(account) {
     const accountSizeInput = document.getElementById('accountSize');
     const accountCurrencySelect = document.getElementById('accountCurrency');
@@ -374,46 +344,36 @@ function updateAccountSettingsForm(account) {
         accountCurrencySelect.value = account.currency;
     }
     
-    // Update currency display
     updateCurrencyDisplay();
 }
 
-// Switch to different account
 window.switchAccount = async (accountId) => {
     if (accountId === currentAccountId) return;
     
     console.log('🔄 Switching to account:', accountId);
     
-    // Save current account data before switching
     await saveCurrentAccountData();
     
-    // Switch account
     currentAccountId = accountId;
     localStorage.setItem('currentAccountId', accountId);
     
-    // Update display
     updateCurrentAccountDisplay();
     
-    // Load account-specific data
     await loadAccountData();
     
-    // Close dropdown
     const accountsMenu = document.getElementById('accountsMenu');
     if (accountsMenu) accountsMenu.classList.add('hidden');
     
     showSuccessMessage(`Switched to ${getCurrentAccount().name}`);
 };
 
-// Get current account object
 function getCurrentAccount() {
     return userAccounts.find(acc => acc.id === currentAccountId) || userAccounts[0];
 }
 
-// Save current account data before switching
 async function saveCurrentAccountData() {
     const currentAccount = getCurrentAccount();
     
-    // Save account settings
     const accountSizeInput = document.getElementById('accountSize');
     if (accountSizeInput) {
         currentAccount.balance = parseFloat(accountSizeInput.value) || 10000;
@@ -427,13 +387,11 @@ async function saveCurrentAccountData() {
     await saveUserAccounts();
 }
 
-// Load account-specific data
 async function loadAccountData() {
     showLoading();
     console.log('📊 Loading account data for:', currentAccountId);
     
     try {
-        // Validate current account
         if (!currentAccountId || !userAccounts.some(acc => acc.id === currentAccountId)) {
             console.warn('⚠️ Invalid current account, resetting to first account');
             currentAccountId = userAccounts[0]?.id;
@@ -444,13 +402,10 @@ async function loadAccountData() {
             }
         }
 
-        // Load trades for current account
         await loadTrades();
         
-        // Load affirmations (shared across accounts)
         await loadAffirmations();
         
-        // Update all displays
         updateStats(allTrades);
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
@@ -460,7 +415,6 @@ async function loadAccountData() {
     } catch (error) {
         console.error('❌ Error loading account data:', error);
         
-        // Provide more specific error messages
         let errorMessage = 'Error loading account data. ';
         
         if (error.message.includes('No valid accounts')) {
@@ -472,13 +426,12 @@ async function loadAccountData() {
         }
         
         alert(errorMessage);
-        throw error; // Re-throw to be caught by the calling function
+        throw error;
     } finally {
         hideLoading();
     }
 }
 
-// Add Account Modal Functions
 window.showAddAccountModal = () => {
     document.getElementById('addAccountModal').classList.remove('hidden');
     document.getElementById('accountName').value = '';
@@ -486,7 +439,6 @@ window.showAddAccountModal = () => {
     document.getElementById('accountCurrencySelect').value = 'USD';
     document.getElementById('accountNameCharCount').textContent = '0';
     
-    // Close other dropdowns
     document.getElementById('accountsMenu')?.classList.add('hidden');
     document.getElementById('mobileMenu')?.classList.add('hidden');
 };
@@ -495,7 +447,6 @@ window.closeAddAccountModal = () => {
     document.getElementById('addAccountModal').classList.add('hidden');
 };
 
-// Handle add account form submission - FIXED VERSION
 function setupAccountModalListeners() {
     const addAccountForm = document.getElementById('addAccountForm');
     if (addAccountForm) {
@@ -516,13 +467,11 @@ function setupAccountModalListeners() {
                 return;
             }
             
-            // Check if account name already exists
             if (userAccounts.some(acc => acc.name.toLowerCase() === accountName.toLowerCase())) {
                 alert('An account with this name already exists. Please choose a different name.');
                 return;
             }
             
-            // Show loading state
             const submitButton = addAccountForm.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;
             submitButton.innerHTML = '<div class="loading-spinner"></div> Creating...';
@@ -540,18 +489,15 @@ function setupAccountModalListeners() {
                 
                 console.log('🆕 Creating new account:', newAccount);
                 
-                // Add to Firestore first
                 const docRef = await addDoc(collection(db, 'accounts'), newAccount);
                 console.log('✅ Account created in Firestore with ID:', docRef.id);
                 
-                // Add to local state with Firestore ID
                 const accountWithId = {
                     id: docRef.id,
                     ...newAccount
                 };
                 userAccounts.push(accountWithId);
                 
-                // Save to localStorage as backup
                 await saveUserAccounts();
                 
                 closeAddAccountModal();
@@ -561,7 +507,6 @@ function setupAccountModalListeners() {
             } catch (error) {
                 console.error('❌ Error creating account:', error);
                 
-                // More detailed error message
                 let errorMessage = 'Error creating account. ';
                 if (error.code === 'permission-denied') {
                     errorMessage += 'Firestore permission denied. Please check your Firestore rules.';
@@ -573,14 +518,12 @@ function setupAccountModalListeners() {
                 
                 alert(errorMessage);
             } finally {
-                // Restore button state
                 submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
             }
         });
     }
 
-    // Update character count for account name
     const accountNameInput = document.getElementById('accountName');
     if (accountNameInput) {
         accountNameInput.addEventListener('input', function() {
@@ -589,7 +532,6 @@ function setupAccountModalListeners() {
     }
 }
 
-// Delete account function
 window.deleteAccount = async (accountId) => {
     const account = userAccounts.find(acc => acc.id === accountId);
     if (!account) return;
@@ -601,21 +543,17 @@ window.deleteAccount = async (accountId) => {
     
     if (confirm(`Are you sure you want to delete "${account.name}"? This will also delete all trades associated with this account.`)) {
         try {
-            // Delete account from Firestore
             if (!accountId.startsWith('local_')) {
                 await deleteDoc(doc(db, 'accounts', accountId));
             }
             
-            // Delete account from local state
             userAccounts = userAccounts.filter(acc => acc.id !== accountId);
             await saveUserAccounts();
             
-            // If deleting current account, switch to main account
             if (currentAccountId === accountId) {
                 await switchAccount(userAccounts[0].id);
             }
             
-            // Delete account-specific trades from Firestore
             await deleteAccountTrades(accountId);
             
             renderAccountsList();
@@ -628,7 +566,6 @@ window.deleteAccount = async (accountId) => {
     }
 };
 
-// Delete all trades for a specific account
 async function deleteAccountTrades(accountId) {
     try {
         const q = query(
@@ -650,28 +587,6 @@ async function deleteAccountTrades(accountId) {
     }
 }
 
-// Debug Firestore connection
-window.debugFirestore = async () => {
-    console.log('=== FIRESTORE DEBUG ===');
-    console.log('Current User:', currentUser);
-    console.log('Firestore DB:', db);
-    
-    try {
-        // Test Firestore connection by trying to read accounts
-        const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        console.log('✅ Firestore connection successful');
-        console.log('Accounts in Firestore:', querySnapshot.size);
-        
-        querySnapshot.forEach((doc) => {
-            console.log('Account:', doc.id, doc.data());
-        });
-    } catch (error) {
-        console.error('❌ Firestore connection failed:', error);
-    }
-    console.log('=== END DEBUG ===');
-};
-
 // ========== UTILITY FUNCTIONS ==========
 
 function getSelectedCurrency() {
@@ -688,28 +603,6 @@ function formatCurrency(amount, currencyCode = null) {
     const symbol = getCurrencySymbol(currencyCode);
     return `${symbol}${amount.toFixed(2)}`;
 }
-
-// Debug function to check current state
-window.debugState = () => {
-    console.log('=== DEBUG STATE ===');
-    console.log('Current User:', currentUser);
-    console.log('Current Account ID:', currentAccountId);
-    console.log('All Trades:', allTrades);
-    console.log('User Accounts:', userAccounts);
-    console.log('Current Account:', getCurrentAccount());
-    console.log('=== END DEBUG ===');
-};
-
-// Debug initialization state
-window.debugApp = () => {
-    console.log('=== DEBUG INITIALIZATION STATE ===');
-    console.log('Current User:', currentUser);
-    console.log('Current Account ID:', currentAccountId);
-    console.log('User Accounts:', userAccounts);
-    console.log('All Trades Count:', allTrades.length);
-    console.log('Current Account:', getCurrentAccount());
-    console.log('=== END DEBUG ===');
-};
 
 function showSuccessMessage(message) {
     const successDiv = document.createElement('div');
@@ -739,21 +632,17 @@ onAuthStateChanged(auth, async (user) => {
         console.log('👤 User authenticated:', user.email);
         
         try {
-            // Initialize accounts system FIRST
             console.log('🔄 Starting account initialization...');
             await initializeAccounts();
             console.log('✅ Account initialization complete');
             
-            // Then load user settings
             await loadUserSettings();
             console.log('✅ User settings loaded');
             
-            // Then load account data (trades and affirmations)
             console.log('🔄 Loading account data...');
             await loadAccountData();
             console.log('✅ Account data loaded');
             
-            // Setup all event listeners
             setupEventListeners();
             setupTabs();
             setupMobileMenu();
@@ -763,7 +652,6 @@ onAuthStateChanged(auth, async (user) => {
             
         } catch (error) {
             console.error('❌ Error during initialization:', error);
-            // Show user-friendly error message
             const errorMessage = `Error initializing application: ${error.message}. Please refresh the page.`;
             alert(errorMessage);
         } finally {
@@ -790,10 +678,8 @@ window.logout = async () => {
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
     
-    // Set default date/time when page loads
     document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
     
-    // Trade form listener
     const tradeForm = document.getElementById('tradeForm');
     if (tradeForm) {
         tradeForm.addEventListener('submit', (e) => {
@@ -801,7 +687,6 @@ function setupEventListeners() {
             addTrade(e);
         });
         
-        // Reset date to current when form is reset
         tradeForm.addEventListener('reset', () => {
             setTimeout(() => {
                 document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
@@ -809,7 +694,6 @@ function setupEventListeners() {
         });
     }
 
-    // Account settings listeners
     ['riskPerTrade', 'leverage'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -821,12 +705,10 @@ function setupEventListeners() {
         }
     });
 
-    // Currency change listener
     const accountCurrency = document.getElementById('accountCurrency');
     if (accountCurrency) {
         accountCurrency.addEventListener('change', async (e) => {
             const newCurrency = e.target.value;
-            // Update current account currency
             const currentAccount = getCurrentAccount();
             currentAccount.currency = newCurrency;
             await saveUserAccounts();
@@ -839,7 +721,6 @@ function setupEventListeners() {
         });
     }
 
-    // Trade form listeners for real-time calculations
     ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -860,7 +741,6 @@ function setupEventListeners() {
 
 // ========== TRADING FUNCTIONS ==========
 
-// Modified loadTrades function to be account-specific
 async function loadTrades() {
     try {
         console.log('📊 Loading trades for account:', currentAccountId);
@@ -870,7 +750,6 @@ async function loadTrades() {
             throw new Error('No authenticated user');
         }
 
-        // Ensure currentAccountId is valid
         if (!currentAccountId) {
             console.warn('⚠️ No currentAccountId, using first account');
             currentAccountId = userAccounts[0]?.id;
@@ -904,7 +783,6 @@ async function loadTrades() {
     } catch (error) {
         console.error('❌ Error loading trades:', error);
         
-        // Show user-friendly error in trade history
         const tradeHistory = document.getElementById('tradeHistory');
         if (tradeHistory) {
             tradeHistory.innerHTML = `
@@ -916,12 +794,10 @@ async function loadTrades() {
             `;
         }
         
-        // Re-throw to be caught by the calling function
         throw error;
     }
 }
 
-// Trade CRUD operations - UPDATED WITH DATE FEATURE
 async function addTrade(e) {
     e.preventDefault();
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -938,7 +814,6 @@ async function addTrade(e) {
         const tradeType = document.getElementById('direction')?.value;
         const mood = document.getElementById('mood')?.value || '';
         
-        // Get the selected date and time
         const tradeDateTimeInput = document.getElementById('tradeDateTime');
         const selectedDateTime = tradeDateTimeInput.value;
         const tradeTimestamp = selectedDateTime ? new Date(selectedDateTime).toISOString() : new Date().toISOString();
@@ -969,7 +844,7 @@ async function addTrade(e) {
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '', 
-            timestamp: tradeTimestamp, // Use selected date instead of current time
+            timestamp: tradeTimestamp,
             profit, 
             pipsPoints: pipPointInfo.risk,
             riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
@@ -983,7 +858,6 @@ async function addTrade(e) {
         await addDoc(collection(db, 'trades'), tradeData);
         e.target.reset();
         
-        // Reset date to current date/time after successful submission
         document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
         
         await loadTrades();
@@ -997,7 +871,6 @@ async function addTrade(e) {
     }
 }
 
-// Trading calculation functions
 function getInstrumentType(symbol) {
     const forexPairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'];
     const indices = ['US30', 'SPX500', 'NAS100', 'GE30', 'FTSE100', 'NIKKEI225'];
@@ -1106,191 +979,6 @@ window.updateInstrumentType = () => {
     }
 };
 
-// ========== ACCOUNT BALANCE LOCK SYSTEM ==========
-
-function setupAccountBalanceLock() {
-    const accountSizeInput = document.getElementById('accountSize');
-    const lockToggle = document.getElementById('lockToggle');
-    const balanceHelp = document.getElementById('balanceHelp');
-    
-    if (!accountSizeInput || !lockToggle) return;
-    
-    let isLocked = localStorage.getItem('accountBalanceLocked') === 'true';
-    
-    function updateLockState() {
-        if (isLocked) {
-            accountSizeInput.readOnly = true;
-            accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
-            lockToggle.innerHTML = '🔒 Locked';
-            lockToggle.classList.remove('bg-green-100', 'text-green-600', 'hover:bg-green-200');
-            lockToggle.classList.add('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
-            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
-        } else {
-            accountSizeInput.readOnly = false;
-            accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
-            lockToggle.innerHTML = '🔓 Unlocked';
-            lockToggle.classList.remove('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
-            lockToggle.classList.add('bg-green-100', 'text-green-600', 'hover:bg-green-200');
-            balanceHelp.textContent = 'Set your initial trading capital - lock after setting';
-        }
-    }
-    
-    lockToggle.addEventListener('click', async () => {
-        if (isLocked) {
-            if (confirm('⚠️ Unlocking account balance may affect your performance metrics.\n\nAre you sure you want to unlock?')) {
-                isLocked = false;
-                localStorage.setItem('accountBalanceLocked', 'false');
-                updateLockState();
-                showSuccessMessage('Account balance unlocked. Remember to lock it after changes.');
-            }
-        } else {
-            isLocked = true;
-            localStorage.setItem('accountBalanceLocked', 'true');
-            
-            const currentValue = accountSizeInput.value;
-            if (currentValue && currentValue !== '10000') {
-                const currentAccount = getCurrentAccount();
-                currentAccount.balance = parseFloat(currentValue);
-                await saveUserAccounts(); // Save to Firestore
-            }
-            
-            updateLockState();
-            showSuccessMessage('Account balance locked! 🔒');
-            
-            updateStats(allTrades);
-            renderCharts(allTrades);
-        }
-    });
-    
-    accountSizeInput.addEventListener('blur', async () => {
-        if (!isLocked && accountSizeInput.value && accountSizeInput.value !== '10000') {
-            const currentAccount = getCurrentAccount();
-            currentAccount.balance = parseFloat(accountSizeInput.value);
-            await saveUserAccounts(); // Save to Firestore
-            updateStats(allTrades);
-            renderCharts(allTrades);
-        }
-    });
-    
-    updateLockState();
-    console.log('✅ Account balance lock setup complete');
-}
-
-// ========== USER SETTINGS ==========
-
-async function loadUserSettings() {
-    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
-    const leverage = localStorage.getItem('leverage') || 50;
-
-    document.getElementById('riskPerTrade').value = riskPerTrade;
-    document.getElementById('leverage').value = leverage;
-    
-    updateCurrencyDisplay();
-    console.log('✅ User settings loaded');
-}
-
-function updateCurrencyDisplay() {
-    const selectedCurrency = getSelectedCurrency();
-    const currencySymbol = getCurrencySymbol();
-    
-    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
-    if (accountBalanceLabel) {
-        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
-    }
-    
-    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
-    if (balanceStat) {
-        balanceStat.textContent = `Balance (${currencySymbol})`;
-    }
-}
-
-// ========== TAB MANAGEMENT ==========
-
-function setupTabs() {
-    const dashboardTab = document.getElementById('dashboardTab');
-    const tradesTab = document.getElementById('tradesTab');
-    const affirmationsTab = document.getElementById('affirmationsTab');
-    const dashboardContent = document.getElementById('dashboardContent');
-    const tradesContent = document.getElementById('tradesContent');
-    const affirmationsContent = document.getElementById('affirmationsContent');
-
-    function switchToTab(tabName) {
-        // Hide all content
-        [dashboardContent, tradesContent, affirmationsContent].forEach(content => {
-            if (content) {
-                content.classList.remove('active');
-                content.style.display = 'none';
-            }
-        });
-
-        // Remove active class from all tabs
-        [dashboardTab, tradesTab, affirmationsTab].forEach(tab => {
-            if (tab) tab.classList.remove('active');
-        });
-
-        // Show selected content and activate tab
-        switch(tabName) {
-            case 'dashboard':
-                if (dashboardContent) {
-                    dashboardContent.classList.add('active');
-                    dashboardContent.style.display = 'block';
-                }
-                if (dashboardTab) dashboardTab.classList.add('active');
-                break;
-            case 'trades':
-                if (tradesContent) {
-                    tradesContent.classList.add('active');
-                    tradesContent.style.display = 'block';
-                }
-                if (tradesTab) tradesTab.classList.add('active');
-                break;
-            case 'affirmations':
-                if (affirmationsContent) {
-                    affirmationsContent.classList.add('active');
-                    affirmationsContent.style.display = 'block';
-                    loadAffirmations();
-                }
-                if (affirmationsTab) affirmationsTab.classList.add('active');
-                break;
-        }
-    }
-
-    // Add event listeners
-    if (dashboardTab) {
-        dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
-    }
-    if (tradesTab) {
-        tradesTab.addEventListener('click', () => switchToTab('trades'));
-    }
-    if (affirmationsTab) {
-        affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
-    }
-    
-    console.log('✅ Tabs setup complete');
-}
-
-// ========== MOBILE MENU ==========
-
-function setupMobileMenu() {
-    const mobileMenuButton = document.getElementById('mobileMenuButton');
-    const mobileMenu = document.getElementById('mobileMenu');
-
-    if (mobileMenuButton && mobileMenu) {
-        mobileMenuButton.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-            renderAccountsList();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
-                mobileMenu.classList.add('hidden');
-            }
-        });
-    }
-    
-    console.log('✅ Mobile menu setup complete');
-}
-
 // ========== PAGINATION FUNCTIONS ==========
 
 function setupPagination(trades) {
@@ -1344,12 +1032,11 @@ function renderPagination() {
         `;
     }
     
-    // Page numbers - show limited set for better UX
+    // Page numbers
     const maxPagesToShow = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
     
-    // Adjust if we're at the end
     if (endPage - startPage + 1 < maxPagesToShow) {
         startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
@@ -1446,7 +1133,6 @@ function displayTrades(trades) {
         return;
     }
 
-    // Update trade count
     if (tradeCount) {
         const totalTrades = allTrades.length;
         const startIndex = (currentPage - 1) * tradesPerPage + 1;
@@ -1454,7 +1140,6 @@ function displayTrades(trades) {
         tradeCount.textContent = `Showing ${startIndex}-${endIndex} of ${totalTrades} trades`;
     }
 
-    // Render trades
     container.innerHTML = trades.map(trade => {
         const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
         const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
@@ -1521,8 +1206,187 @@ function displayTrades(trades) {
 
 // Make functions globally accessible
 window.displayTradesPage = displayTradesPage;
-window.deleteTrade = deleteTrade;
-window.viewScreenshot = viewScreenshot;
+
+// ========== ACCOUNT BALANCE LOCK SYSTEM ==========
+
+function setupAccountBalanceLock() {
+    const accountSizeInput = document.getElementById('accountSize');
+    const lockToggle = document.getElementById('lockToggle');
+    const balanceHelp = document.getElementById('balanceHelp');
+    
+    if (!accountSizeInput || !lockToggle) return;
+    
+    let isLocked = localStorage.getItem('accountBalanceLocked') === 'true';
+    
+    function updateLockState() {
+        if (isLocked) {
+            accountSizeInput.readOnly = true;
+            accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔒 Locked';
+            lockToggle.classList.remove('bg-green-100', 'text-green-600', 'hover:bg-green-200');
+            lockToggle.classList.add('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
+            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
+        } else {
+            accountSizeInput.readOnly = false;
+            accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+            lockToggle.innerHTML = '🔓 Unlocked';
+            lockToggle.classList.remove('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
+            lockToggle.classList.add('bg-green-100', 'text-green-600', 'hover:bg-green-200');
+            balanceHelp.textContent = 'Set your initial trading capital - lock after setting';
+        }
+    }
+    
+    lockToggle.addEventListener('click', async () => {
+        if (isLocked) {
+            if (confirm('⚠️ Unlocking account balance may affect your performance metrics.\n\nAre you sure you want to unlock?')) {
+                isLocked = false;
+                localStorage.setItem('accountBalanceLocked', 'false');
+                updateLockState();
+                showSuccessMessage('Account balance unlocked. Remember to lock it after changes.');
+            }
+        } else {
+            isLocked = true;
+            localStorage.setItem('accountBalanceLocked', 'true');
+            
+            const currentValue = accountSizeInput.value;
+            if (currentValue && currentValue !== '10000') {
+                const currentAccount = getCurrentAccount();
+                currentAccount.balance = parseFloat(currentValue);
+                await saveUserAccounts();
+            }
+            
+            updateLockState();
+            showSuccessMessage('Account balance locked! 🔒');
+            
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    accountSizeInput.addEventListener('blur', async () => {
+        if (!isLocked && accountSizeInput.value && accountSizeInput.value !== '10000') {
+            const currentAccount = getCurrentAccount();
+            currentAccount.balance = parseFloat(accountSizeInput.value);
+            await saveUserAccounts();
+            updateStats(allTrades);
+            renderCharts(allTrades);
+        }
+    });
+    
+    updateLockState();
+    console.log('✅ Account balance lock setup complete');
+}
+
+// ========== USER SETTINGS ==========
+
+async function loadUserSettings() {
+    const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
+    const leverage = localStorage.getItem('leverage') || 50;
+
+    document.getElementById('riskPerTrade').value = riskPerTrade;
+    document.getElementById('leverage').value = leverage;
+    
+    updateCurrencyDisplay();
+    console.log('✅ User settings loaded');
+}
+
+function updateCurrencyDisplay() {
+    const selectedCurrency = getSelectedCurrency();
+    const currencySymbol = getCurrencySymbol();
+    
+    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
+    if (accountBalanceLabel) {
+        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
+    }
+    
+    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
+    if (balanceStat) {
+        balanceStat.textContent = `Balance (${currencySymbol})`;
+    }
+}
+
+// ========== TAB MANAGEMENT ==========
+
+function setupTabs() {
+    const dashboardTab = document.getElementById('dashboardTab');
+    const tradesTab = document.getElementById('tradesTab');
+    const affirmationsTab = document.getElementById('affirmationsTab');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const tradesContent = document.getElementById('tradesContent');
+    const affirmationsContent = document.getElementById('affirmationsContent');
+
+    function switchToTab(tabName) {
+        [dashboardContent, tradesContent, affirmationsContent].forEach(content => {
+            if (content) {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            }
+        });
+
+        [dashboardTab, tradesTab, affirmationsTab].forEach(tab => {
+            if (tab) tab.classList.remove('active');
+        });
+
+        switch(tabName) {
+            case 'dashboard':
+                if (dashboardContent) {
+                    dashboardContent.classList.add('active');
+                    dashboardContent.style.display = 'block';
+                }
+                if (dashboardTab) dashboardTab.classList.add('active');
+                break;
+            case 'trades':
+                if (tradesContent) {
+                    tradesContent.classList.add('active');
+                    tradesContent.style.display = 'block';
+                }
+                if (tradesTab) tradesTab.classList.add('active');
+                break;
+            case 'affirmations':
+                if (affirmationsContent) {
+                    affirmationsContent.classList.add('active');
+                    affirmationsContent.style.display = 'block';
+                    loadAffirmations();
+                }
+                if (affirmationsTab) affirmationsTab.classList.add('active');
+                break;
+        }
+    }
+
+    if (dashboardTab) {
+        dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
+    }
+    if (tradesTab) {
+        tradesTab.addEventListener('click', () => switchToTab('trades'));
+    }
+    if (affirmationsTab) {
+        affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
+    }
+    
+    console.log('✅ Tabs setup complete');
+}
+
+// ========== MOBILE MENU ==========
+
+function setupMobileMenu() {
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            renderAccountsList();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
+                mobileMenu.classList.add('hidden');
+            }
+        });
+    }
+    
+    console.log('✅ Mobile menu setup complete');
+}
 
 // ========== AFFIRMATIONS FUNCTIONS ==========
 
@@ -1569,10 +1433,8 @@ async function loadAffirmations() {
             affirmations.push({ id: doc.id, ...doc.data() });
         });
 
-        // If no affirmations found, initialize with sample data
         if (affirmations.length === 0) {
             console.log('📝 No affirmations found, creating sample data...');
-            // Add sample affirmations to Firestore
             for (const sampleAffirmation of sampleAffirmations) {
                 const affirmationData = {
                     ...sampleAffirmation,
@@ -1580,7 +1442,6 @@ async function loadAffirmations() {
                 };
                 await addDoc(collection(db, 'affirmations'), affirmationData);
             }
-            // Reload affirmations after adding samples
             await loadAffirmations();
             return;
         }
@@ -1592,7 +1453,6 @@ async function loadAffirmations() {
         console.log('✅ Affirmations loaded:', affirmations.length);
     } catch (error) {
         console.error('❌ Error loading affirmations:', error);
-        // Fallback to sample data if there's an error
         allAffirmations = [...sampleAffirmations];
         updateAffirmationStats();
         renderAffirmationsGrid();
@@ -1719,7 +1579,6 @@ function getRandomAffirmation() {
     return activeAffirmations[Math.floor(Math.random() * activeAffirmations.length)];
 }
 
-// Affirmations Modal Functions
 window.addNewAffirmation = () => {
     editingAffirmationId = null;
     document.getElementById('modalTitle').textContent = 'Create New Affirmation';
@@ -1772,20 +1631,16 @@ async function handleAffirmationSubmit(e) {
     
     try {
         if (editingAffirmationId) {
-            // Update existing affirmation in Firestore
             const affirmationRef = doc(db, 'affirmations', editingAffirmationId);
             await updateDoc(affirmationRef, affirmationData);
             
-            // Update local state
             const index = allAffirmations.findIndex(a => a.id === editingAffirmationId);
             if (index !== -1) {
                 allAffirmations[index] = { ...allAffirmations[index], ...affirmationData };
             }
         } else {
-            // Add new affirmation to Firestore
             const docRef = await addDoc(collection(db, 'affirmations'), affirmationData);
             
-            // Add to local state with Firestore ID
             const newAffirmation = {
                 id: docRef.id,
                 ...affirmationData
@@ -1803,7 +1658,6 @@ async function handleAffirmationSubmit(e) {
     }
 }
 
-// Affirmation Actions
 window.useAffirmation = async (id) => {
     try {
         const affirmation = allAffirmations.find(a => a.id === id);
@@ -1813,11 +1667,9 @@ window.useAffirmation = async (id) => {
                 lastUsed: new Date().toISOString()
             };
             
-            // Update in Firestore
             const affirmationRef = doc(db, 'affirmations', id);
             await updateDoc(affirmationRef, updatedData);
             
-            // Update local state
             affirmation.usageCount = updatedData.usageCount;
             affirmation.lastUsed = updatedData.lastUsed;
             
@@ -1848,11 +1700,9 @@ window.toggleFavorite = async (id) => {
                 isFavorite: !affirmation.isFavorite
             };
             
-            // Update in Firestore
             const affirmationRef = doc(db, 'affirmations', id);
             await updateDoc(affirmationRef, updatedData);
             
-            // Update local state
             affirmation.isFavorite = updatedData.isFavorite;
             renderAffirmationsGrid();
         }
@@ -1862,14 +1712,11 @@ window.toggleFavorite = async (id) => {
     }
 };
 
-// Delete affirmation function
 window.deleteAffirmation = async (id) => {
     if (confirm('Are you sure you want to delete this affirmation?')) {
         try {
-            // Delete from Firestore
             await deleteDoc(doc(db, 'affirmations', id));
             
-            // Remove from local state
             allAffirmations = allAffirmations.filter(a => a.id !== id);
             
             updateAffirmationStats();
@@ -1882,7 +1729,6 @@ window.deleteAffirmation = async (id) => {
     }
 };
 
-// Random Affirmation Modal
 window.showRandomAffirmation = () => {
     const randomAffirmation = getRandomAffirmation();
     if (randomAffirmation) {
@@ -1913,11 +1759,9 @@ window.useRandomAffirmation = async () => {
                 lastUsed: new Date().toISOString()
             };
             
-            // Update in Firestore
             const affirmationRef = doc(db, 'affirmations', randomAffirmation.id);
             await updateDoc(affirmationRef, updatedData);
             
-            // Update local state
             randomAffirmation.usageCount = updatedData.usageCount;
             randomAffirmation.lastUsed = updatedData.lastUsed;
             
@@ -1931,7 +1775,6 @@ window.useRandomAffirmation = async () => {
     }
 };
 
-// Daily Affirmation Functions
 window.refreshDailyAffirmation = () => {
     setupDailyAffirmation();
     showSuccessMessage('Daily affirmation refreshed! 🔄');
@@ -1947,11 +1790,9 @@ window.markDailyAsUsed = async () => {
                 lastUsed: new Date().toISOString()
             };
             
-            // Update in Firestore
             const affirmationRef = doc(db, 'affirmations', affirmation.id);
             await updateDoc(affirmationRef, updatedData);
             
-            // Update local state
             affirmation.usageCount = updatedData.usageCount;
             affirmation.lastUsed = updatedData.lastUsed;
             
@@ -1976,13 +1817,11 @@ window.speakAffirmation = () => {
     }
 };
 
-// Motivational Quotes
 window.showMotivationalQuote = () => {
     const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
     alert(`💡 Motivational Quote:\n\n"${randomQuote}"`);
 };
 
-// Export Affirmations
 window.exportAffirmations = () => {
     const csv = convertAffirmationsToCSV(allAffirmations);
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -2017,7 +1856,6 @@ function convertAffirmationsToCSV(affirmations) {
     return csvRows.join('\n');
 }
 
-// Filter and Search Functions
 function handleCategoryFilter(e) {
     const category = e.target.dataset.category;
     
@@ -2321,7 +2159,6 @@ function convertToCSV(trades) {
     return csvRows.join('\n');
 }
 
-// Delete trade function
 window.deleteTrade = async (tradeId) => {
     if (confirm('Are you sure you want to delete this trade?')) {
         try {
@@ -2870,9 +2707,7 @@ function renderMarketTypeChart(trades) {
 
 // ========== INITIALIZATION ==========
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Multi-Account Support and Date Feature initialized');
-    // Hide loading indicator initially
+    console.log('Trading Journal with Multi-Account Support, Date Feature, and Fixed Pagination initialized');
     hideLoading();
 });
