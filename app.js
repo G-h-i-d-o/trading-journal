@@ -1,4 +1,4 @@
-// app.js - COMPLETE FIXED VERSION WITH MULTI-ACCOUNT SUPPORT
+// app.js - COMPLETE FIXED VERSION WITH MULTI-ACCOUNT SUPPORT AND DATE FEATURE
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
@@ -120,6 +120,22 @@ function hideLoading() {
             clearTimeout(loadingTimeout);
         }
     }
+}
+
+// ========== DATE HELPER FUNCTIONS ==========
+
+// Helper function to get current date/time in the format needed for datetime-local input
+function getCurrentDateTimeString() {
+    const now = new Date();
+    
+    // Format: YYYY-MM-DDTHH:MM
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 // ========== ACCOUNT MANAGEMENT SYSTEM ==========
@@ -774,12 +790,22 @@ window.logout = async () => {
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
     
+    // Set default date/time when page loads
+    document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+    
     // Trade form listener
     const tradeForm = document.getElementById('tradeForm');
     if (tradeForm) {
         tradeForm.addEventListener('submit', (e) => {
             e.preventDefault();
             addTrade(e);
+        });
+        
+        // Reset date to current when form is reset
+        tradeForm.addEventListener('reset', () => {
+            setTimeout(() => {
+                document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+            }, 0);
         });
     }
 
@@ -895,7 +921,7 @@ async function loadTrades() {
     }
 }
 
-// Trade CRUD operations
+// Trade CRUD operations - UPDATED WITH DATE FEATURE
 async function addTrade(e) {
     e.preventDefault();
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -911,6 +937,12 @@ async function addTrade(e) {
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
         const mood = document.getElementById('mood')?.value || '';
+        
+        // Get the selected date and time
+        const tradeDateTimeInput = document.getElementById('tradeDateTime');
+        const selectedDateTime = tradeDateTimeInput.value;
+        const tradeTimestamp = selectedDateTime ? new Date(selectedDateTime).toISOString() : new Date().toISOString();
+        
         const currentAccount = getCurrentAccount();
         const accountSize = currentAccount.balance;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
@@ -937,7 +969,7 @@ async function addTrade(e) {
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '', 
-            timestamp: new Date().toISOString(),
+            timestamp: tradeTimestamp, // Use selected date instead of current time
             profit, 
             pipsPoints: pipPointInfo.risk,
             riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
@@ -950,6 +982,10 @@ async function addTrade(e) {
 
         await addDoc(collection(db, 'trades'), tradeData);
         e.target.reset();
+        
+        // Reset date to current date/time after successful submission
+        document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+        
         await loadTrades();
         alert('Trade added successfully!');
     } catch (error) {
@@ -2707,7 +2743,7 @@ function renderMarketTypeChart(trades) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Multi-Account Support initialized');
+    console.log('Trading Journal with Multi-Account Support and Date Feature initialized');
     // Hide loading indicator initially
     hideLoading();
 });

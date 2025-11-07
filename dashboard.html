@@ -521,6 +521,22 @@
         .category-risk-management { --card-color: #ef4444; }
         .category-mindset { --card-color: #6366f1; }
         .category-general { --card-color: #6b7280; }
+
+        /* Date input styling */
+        input[type="datetime-local"] {
+            font-family: inherit;
+        }
+
+        /* Ensure consistent styling across browsers */
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        input[type="datetime-local"]::-webkit-datetime-edit {
+            padding: 0;
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -831,6 +847,13 @@
                                 <option value="disciplined">🎯 Disciplined</option>
                                 <option value="impulsive">⚡ Impulsive</option>
                             </select>
+                        </div>
+
+                        <!-- DATE FEATURE ADDED HERE -->
+                        <div class="form-group">
+                            <label>Trade Date & Time</label>
+                            <input type="datetime-local" id="tradeDateTime" required>
+                            <small class="text-gray-500 text-xs">Select the date and time when the trade was executed</small>
                         </div>
 
                         <div class="form-section">
