@@ -1321,20 +1321,53 @@ function renderPagination() {
 
     let paginationHTML = '';
     
+    // Previous button
     if (currentPage > 1) {
-        paginationHTML += `<button onclick="displayTradesPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">← Previous</button>`;
+        paginationHTML += `<button onclick="displayTradesPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">← Previous</button>`;
+    } else {
+        paginationHTML += `<button disabled class="px-3 py-1 bg-gray-100 text-gray-400 rounded cursor-not-allowed">← Previous</button>`;
     }
     
-    for (let i = 1; i <= totalPages; i++) {
-        if (i === currentPage) {
-            paginationHTML += `<span class="px-3 py-1 bg-blue-500 text-white rounded">${i}</span>`;
-        } else {
-            paginationHTML += `<button onclick="displayTradesPage(${i})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">${i}</button>`;
+    // Page numbers
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    // Adjust start page if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // First page and ellipsis
+    if (startPage > 1) {
+        paginationHTML += `<button onclick="displayTradesPage(1)" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">1</button>`;
+        if (startPage > 2) {
+            paginationHTML += `<span class="px-2 py-1">...</span>`;
         }
     }
     
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === currentPage) {
+            paginationHTML += `<span class="px-3 py-1 bg-blue-500 text-white rounded">${i}</span>`;
+        } else {
+            paginationHTML += `<button onclick="displayTradesPage(${i})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">${i}</button>`;
+        }
+    }
+    
+    // Last page and ellipsis
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHTML += `<span class="px-2 py-1">...</span>`;
+        }
+        paginationHTML += `<button onclick="displayTradesPage(${totalPages})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">${totalPages}</button>`;
+    }
+    
+    // Next button
     if (currentPage < totalPages) {
-        paginationHTML += `<button onclick="displayTradesPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next →</button>`;
+        paginationHTML += `<button onclick="displayTradesPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors">Next →</button>`;
+    } else {
+        paginationHTML += `<button disabled class="px-3 py-1 bg-gray-100 text-gray-400 rounded cursor-not-allowed">Next →</button>`;
     }
     
     paginationContainer.innerHTML = paginationHTML;
@@ -1381,7 +1414,7 @@ function displayTrades(trades) {
                         <div>${trade.type.toUpperCase()} | ${trade.lotSize} lots | Entry: ${trade.entryPrice}</div>
                         <div>SL: ${trade.stopLoss}${trade.takeProfit ? ` | TP: ${trade.takeProfit}` : ''}</div>
                         <div>Risk: ${formatCurrency(trade.riskAmount)} (${trade.riskPercent.toFixed(1)}%)</div>
-                        <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()}</div>
+                        <div class="text-gray-500">${new Date(trade.timestamp).toLocaleDateString()} ${new Date(trade.timestamp).toLocaleTimeString()}</div>
                     </div>
                     ${trade.notes ? `<div class="mt-2 text-xs italic text-gray-700 bg-gray-50 p-2 rounded">${trade.notes}</div>` : ''}
                 </div>
@@ -1394,6 +1427,9 @@ function displayTrades(trades) {
         </div>`;
     }).join('');
 }
+
+// Make displayTradesPage globally accessible
+window.displayTradesPage = displayTradesPage;
 
 // ========== AFFIRMATIONS FUNCTIONS ==========
 
