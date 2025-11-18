@@ -840,16 +840,17 @@ async function loadAccountData() {
 
         await loadTrades();
         
-        await loadAffirmations();
+        // Don't load affirmations here - they'll load when the tab is activated
+        // await loadAffirmations();
         
         updateStats(allTrades);
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
         
-        // Update calendar when account data changes
-        if (document.getElementById('calendarContent').classList.contains('active')) {
-            renderCalendar();
-        }
+        // Don't render calendar here - it'll render when the tab is activated
+        // if (document.getElementById('calendarContent').classList.contains('active')) {
+        //     renderCalendar();
+        // }
         
         console.log('✅ Account data loaded successfully');
         
@@ -1760,7 +1761,16 @@ function setupTabs() {
     const affirmationsContent = document.getElementById('affirmationsContent');
     const calendarContent = document.getElementById('calendarContent');
 
+    // Hide all tab contents first
+    [dashboardContent, tradesContent, affirmationsContent, calendarContent].forEach(content => {
+        if (content) {
+            content.classList.remove('active');
+            content.style.display = 'none';
+        }
+    });
+
     function switchToTab(tabName) {
+        // Hide all tab contents
         [dashboardContent, tradesContent, affirmationsContent, calendarContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
@@ -1768,10 +1778,12 @@ function setupTabs() {
             }
         });
 
+        // Remove active class from all tabs
         [dashboardTab, tradesTab, affirmationsTab, calendarTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
+        // Show the selected tab content and activate the tab
         switch(tabName) {
             case 'dashboard':
                 if (dashboardContent) {
@@ -1791,6 +1803,7 @@ function setupTabs() {
                 if (affirmationsContent) {
                     affirmationsContent.classList.add('active');
                     affirmationsContent.style.display = 'block';
+                    // Only load affirmations when the tab is activated
                     loadAffirmations();
                 }
                 if (affirmationsTab) affirmationsTab.classList.add('active');
@@ -1799,6 +1812,7 @@ function setupTabs() {
                 if (calendarContent) {
                     calendarContent.classList.add('active');
                     calendarContent.style.display = 'block';
+                    // Only render calendar when the tab is activated
                     renderCalendar();
                 }
                 if (calendarTab) calendarTab.classList.add('active');
@@ -1806,6 +1820,7 @@ function setupTabs() {
         }
     }
 
+    // Set up event listeners
     if (dashboardTab) {
         dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
     }
@@ -1818,6 +1833,9 @@ function setupTabs() {
     if (calendarTab) {
         calendarTab.addEventListener('click', () => switchToTab('calendar'));
     }
+    
+    // Start with dashboard tab active
+    switchToTab('dashboard');
     
     console.log('✅ Tabs setup complete');
 }
