@@ -172,6 +172,7 @@ function setupCalendar() {
     const nextMonthBtn = document.getElementById('nextMonth');
     const viewTypeSelect = document.getElementById('viewType');
     const quickNavSelect = document.getElementById('quickNav');
+    const applyCustomRangeBtn = document.getElementById('applyCustomRange');
     
     if (prevMonthBtn) {
         prevMonthBtn.addEventListener('click', () => navigateCalendar(-1));
@@ -192,18 +193,53 @@ function setupCalendar() {
         quickNavSelect.addEventListener('change', handleQuickNavigation);
     }
     
+    if (applyCustomRangeBtn) {
+        applyCustomRangeBtn.addEventListener('click', handleCustomRangeApply);
+    }
+    
     // Initialize calendar
     renderCalendar();
     console.log('✅ Calendar setup complete');
 }
 
-function navigateCalendar(direction) {
-    if (calendarViewType === 'month') {
-        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
-    } else {
-        currentCalendarDate.setDate(currentCalendarDate.getDate() + (direction * 7));
+function handleCustomRangeApply() {
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    
+    if (!startDateInput || !endDateInput) return;
+    
+    const startDate = new Date(startDateInput.value);
+    const endDate = new Date(endDateInput.value);
+    
+    if (!startDateInput.value || !endDateInput.value) {
+        alert('Please select both start and end dates.');
+        return;
     }
+    
+    if (startDate > endDate) {
+        alert('Start date cannot be after end date.');
+        return;
+    }
+    
+    // Set current calendar date to the start of the range
+    currentCalendarDate = new Date(startDate);
+    
+    // Hide custom range inputs
+    document.getElementById('customRangeContainer').classList.add('hidden');
+    
+    // Reset quick nav to current
+    const quickNavSelect = document.getElementById('quickNav');
+    if (quickNavSelect) {
+        quickNavSelect.value = 'current';
+    }
+    
+    // Render calendar with custom range
     renderCalendar();
+    
+    // Show success message
+    const startFormatted = startDate.toLocaleDateString();
+    const endFormatted = endDate.toLocaleDateString();
+    showSuccessMessage(`Calendar showing custom range: ${startFormatted} to ${endFormatted}`);
 }
 
 function handleQuickNavigation(e) {
@@ -213,19 +249,41 @@ function handleQuickNavigation(e) {
     switch (value) {
         case 'current':
             currentCalendarDate = new Date();
+            document.getElementById('customRangeContainer').classList.add('hidden');
             break;
         case 'lastMonth':
             currentCalendarDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            document.getElementById('customRangeContainer').classList.add('hidden');
             break;
         case 'last3Months':
             currentCalendarDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+            document.getElementById('customRangeContainer').classList.add('hidden');
             break;
         case 'custom':
             document.getElementById('customRangeContainer').classList.remove('hidden');
+            
+            // Set default dates for custom range (last 30 days)
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            if (startDateInput && endDateInput) {
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                
+                startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
+                endDateInput.value = new Date().toISOString().split('T')[0];
+            }
             return;
     }
     
-    document.getElementById('customRangeContainer').classList.add('hidden');
+    renderCalendar();
+}
+
+function navigateCalendar(direction) {
+    if (calendarViewType === 'month') {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+    } else {
+        currentCalendarDate.setDate(currentCalendarDate.getDate() + (direction * 7));
+    }
     renderCalendar();
 }
 
@@ -407,6 +465,14 @@ function getTradesForWeek(startDate) {
         return tradeDate >= startDate && tradeDate < endDate;
     });
 }
+
+// Add this function to handle viewing trade details
+window.viewTradeDetails = (tradeId) => {
+    const trade = allTrades.find(t => t.id === tradeId);
+    if (trade) {
+        alert(`Trade Details:\n\nSymbol: ${trade.symbol}\nType: ${trade.type}\nProfit: ${formatCurrency(trade.profit)}\nDate: ${new Date(trade.timestamp).toLocaleString()}\nNotes: ${trade.notes || 'No notes'}`);
+    }
+};
 
 function handleDayClick(e) {
     const dayElement = e.currentTarget;
