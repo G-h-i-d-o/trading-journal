@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH FIXED PAGINATION AND DATE FEATURE
+// app.js - UPDATED VERSION WITH CALENDAR FUNCTIONALITY
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
@@ -18,6 +18,10 @@ let editingAffirmationId = null;
 // Account Management System
 let currentAccountId = null;
 let userAccounts = [];
+
+// Calendar state
+let currentCalendarDate = new Date();
+let calendarViewType = 'month';
 
 // Loading timeout safety (10 seconds)
 let loadingTimeout;
@@ -130,6 +134,346 @@ function getCurrentDateTimeString() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// ========== CALENDAR FUNCTIONS ==========
+
+function setupCalendar() {
+    console.log('📅 Setting up calendar functionality...');
+    
+    // Event listeners for calendar navigation
+    const prevMonthBtn = document.getElementById('prevMonth');
+    const nextMonthBtn = document.getElementById('nextMonth');
+    const viewTypeSelect = document.getElementById('viewType');
+    const quickNavSelect = document.getElementById('quickNav');
+    
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener('click', () => navigateCalendar(-1));
+    }
+    
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener('click', () => navigateCalendar(1));
+    }
+    
+    if (viewTypeSelect) {
+        viewTypeSelect.addEventListener('change', (e) => {
+            calendarViewType = e.target.value;
+            renderCalendar();
+        });
+    }
+    
+    if (quickNavSelect) {
+        quickNavSelect.addEventListener('change', handleQuickNavigation);
+    }
+    
+    // Initialize calendar
+    renderCalendar();
+    console.log('✅ Calendar setup complete');
+}
+
+function navigateCalendar(direction) {
+    if (calendarViewType === 'month') {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+    } else {
+        currentCalendarDate.setDate(currentCalendarDate.getDate() + (direction * 7));
+    }
+    renderCalendar();
+}
+
+function handleQuickNavigation(e) {
+    const value = e.target.value;
+    const today = new Date();
+    
+    switch (value) {
+        case 'current':
+            currentCalendarDate = new Date();
+            break;
+        case 'lastMonth':
+            currentCalendarDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            break;
+        case 'last3Months':
+            currentCalendarDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+            break;
+        case 'custom':
+            document.getElementById('customRangeContainer').classList.remove('hidden');
+            return;
+    }
+    
+    document.getElementById('customRangeContainer').classList.add('hidden');
+    renderCalendar();
+}
+
+function renderCalendar() {
+    if (calendarViewType === 'month') {
+        renderMonthView();
+    } else {
+        renderWeekView();
+    }
+    updateCalendarStats();
+}
+
+function renderMonthView() {
+    const monthGrid = document.getElementById('monthGrid');
+    const currentMonthYear = document.getElementById('currentMonthYear');
+    
+    if (!monthGrid || !currentMonthYear) return;
+    
+    // Update header
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    currentMonthYear.textContent = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+    
+    // Get first day of month and number of days
+    const firstDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1);
+    const lastDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Get trades for this month
+    const monthTrades = getTradesForMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
+    
+    // Generate calendar grid
+    let calendarHTML = '';
+    
+    // Previous month days
+    const prevMonthLastDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 0).getDate();
+    for (let i = startingDay - 1; i >= 0; i--) {
+        const day = prevMonthLastDay - i;
+        calendarHTML += createCalendarDay(day, 'other-month', []);
+    }
+    
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayTrades = monthTrades.filter(trade => {
+            const tradeDate = new Date(trade.timestamp);
+            return tradeDate.getDate() === day;
+        });
+        calendarHTML += createCalendarDay(day, 'current-month', dayTrades);
+    }
+    
+    // Next month days
+    const totalCells = 42; // 6 weeks * 7 days
+    const remainingCells = totalCells - (startingDay + daysInMonth);
+    for (let day = 1; day <= remainingCells; day++) {
+        calendarHTML += createCalendarDay(day, 'other-month', []);
+    }
+    
+    monthGrid.innerHTML = calendarHTML;
+    
+    // Add click event listeners to days
+    monthGrid.querySelectorAll('.calendar-day').forEach(dayElement => {
+        dayElement.addEventListener('click', handleDayClick);
+    });
+}
+
+function createCalendarDay(dayNumber, monthType, dayTrades) {
+    const today = new Date();
+    const isToday = monthType === 'current-month' && 
+                   dayNumber === today.getDate() && 
+                   currentCalendarDate.getMonth() === today.getMonth() && 
+                   currentCalendarDate.getFullYear() === today.getFullYear();
+    
+    const hasTrades = dayTrades.length > 0;
+    const hasProfit = hasTrades && dayTrades.some(trade => trade.profit > 0);
+    const hasLoss = hasTrades && dayTrades.some(trade => trade.profit < 0);
+    
+    let dayClass = 'calendar-day';
+    if (monthType === 'other-month') dayClass += ' other-month';
+    if (isToday) dayClass += ' today';
+    if (hasTrades) dayClass += ' has-trades';
+    if (hasLoss && !hasProfit) dayClass += ' has-losses';
+    
+    const totalProfit = dayTrades.reduce((sum, trade) => sum + trade.profit, 0);
+    const profitClass = totalProfit >= 0 ? 'profit' : 'loss';
+    
+    return `
+        <div class="${dayClass}" data-date="${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}">
+            <div class="calendar-date">${dayNumber}</div>
+            <div class="calendar-trades">
+                ${dayTrades.slice(0, 2).map(trade => `
+                    <div class="calendar-trade-item ${trade.profit >= 0 ? 'profit' : 'loss'}">
+                        ${trade.symbol} ${formatCurrency(trade.profit)}
+                    </div>
+                `).join('')}
+                ${dayTrades.length > 2 ? `<div class="calendar-trade-item">+${dayTrades.length - 2} more</div>` : ''}
+            </div>
+            ${hasTrades ? `
+                <div class="calendar-trade-summary ${profitClass}">
+                    Total: ${formatCurrency(totalProfit)}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderWeekView() {
+    const weekGrid = document.getElementById('weekGrid');
+    const currentMonthYear = document.getElementById('currentMonthYear');
+    
+    if (!weekGrid || !currentMonthYear) return;
+    
+    // Update header
+    const startOfWeek = new Date(currentCalendarDate);
+    startOfWeek.setDate(currentCalendarDate.getDate() - currentCalendarDate.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    currentMonthYear.textContent = `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
+    
+    // Get trades for this week
+    const weekTrades = getTradesForWeek(startOfWeek);
+    
+    // Generate time slots (8 AM to 8 PM)
+    let weekHTML = '';
+    const timeSlots = [];
+    
+    for (let hour = 8; hour <= 20; hour++) {
+        timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+    }
+    
+    // Create time slots and day columns
+    timeSlots.forEach(time => {
+        weekHTML += `<div class="week-time-slot">${time}</div>`;
+        
+        for (let day = 0; day < 7; day++) {
+            const currentDay = new Date(startOfWeek);
+            currentDay.setDate(startOfWeek.getDate() + day);
+            
+            const dayTrades = weekTrades.filter(trade => {
+                const tradeDate = new Date(trade.timestamp);
+                return tradeDate.getDate() === currentDay.getDate() && 
+                       tradeDate.getMonth() === currentDay.getMonth() &&
+                       tradeDate.getFullYear() === currentDay.getFullYear() &&
+                       tradeDate.getHours() === parseInt(time.split(':')[0]);
+            });
+            
+            weekHTML += `
+                <div class="week-day-cell" data-date="${currentDay.toISOString().split('T')[0]}">
+                    ${dayTrades.map(trade => `
+                        <div class="week-trade-marker ${trade.profit >= 0 ? 'profit' : 'loss'}" 
+                             onclick="viewTradeDetails('${trade.id}')"
+                             title="${trade.symbol} - ${formatCurrency(trade.profit)}">
+                            ${trade.symbol}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    });
+    
+    weekGrid.innerHTML = weekHTML;
+}
+
+function getTradesForMonth(year, month) {
+    return allTrades.filter(trade => {
+        const tradeDate = new Date(trade.timestamp);
+        return tradeDate.getFullYear() === year && tradeDate.getMonth() === month;
+    });
+}
+
+function getTradesForWeek(startDate) {
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 7);
+    
+    return allTrades.filter(trade => {
+        const tradeDate = new Date(trade.timestamp);
+        return tradeDate >= startDate && tradeDate < endDate;
+    });
+}
+
+function handleDayClick(e) {
+    const dayElement = e.currentTarget;
+    const dateString = dayElement.getAttribute('data-date');
+    
+    if (!dateString) return;
+    
+    // Remove selection from other days
+    document.querySelectorAll('.calendar-day').forEach(day => {
+        day.classList.remove('selected');
+    });
+    
+    // Add selection to clicked day
+    dayElement.classList.add('selected');
+    
+    // Show trades for selected day
+    showTradesForDate(dateString);
+}
+
+function showTradesForDate(dateString) {
+    const selectedDayTrades = document.getElementById('selectedDayTrades');
+    const selectedDayTitle = document.getElementById('selectedDayTitle');
+    const selectedDayDetails = document.getElementById('selectedDayDetails');
+    
+    if (!selectedDayTrades || !selectedDayTitle || !selectedDayDetails) return;
+    
+    const date = new Date(dateString + 'T00:00:00');
+    const dayTrades = allTrades.filter(trade => {
+        const tradeDate = new Date(trade.timestamp);
+        return tradeDate.toDateString() === date.toDateString();
+    });
+    
+    selectedDayTitle.textContent = `Trades for ${date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+    
+    if (dayTrades.length === 0) {
+        selectedDayTrades.innerHTML = `
+            <div class="text-center text-gray-500 py-4">
+                <p>No trades recorded for this day.</p>
+            </div>
+        `;
+    } else {
+        selectedDayTrades.innerHTML = dayTrades.map(trade => `
+            <div class="trade-item">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="font-semibold">${trade.symbol}</div>
+                            <div class="${trade.profit >= 0 ? 'profit' : 'loss'} font-bold">
+                                ${formatCurrency(trade.profit)}
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <div>Type: ${trade.type.toUpperCase()} • ${trade.lotSize} lots</div>
+                            <div>Entry: ${trade.entryPrice} • SL: ${trade.stopLoss} • TP: ${trade.takeProfit || 'N/A'}</div>
+                            <div>Time: ${new Date(trade.timestamp).toLocaleTimeString()}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    selectedDayDetails.classList.remove('hidden');
+}
+
+function updateCalendarStats() {
+    const periodTrades = calendarViewType === 'month' ? 
+        getTradesForMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth()) :
+        getTradesForWeek(new Date(currentCalendarDate));
+    
+    const periodTradesCount = document.getElementById('periodTradesCount');
+    const periodTotalProfit = document.getElementById('periodTotalProfit');
+    const periodWinRate = document.getElementById('periodWinRate');
+    const periodAvgProfit = document.getElementById('periodAvgProfit');
+    
+    if (periodTradesCount) periodTradesCount.textContent = periodTrades.length;
+    
+    if (periodTotalProfit) {
+        const totalProfit = periodTrades.reduce((sum, trade) => sum + trade.profit, 0);
+        periodTotalProfit.textContent = formatCurrency(totalProfit);
+    }
+    
+    if (periodWinRate) {
+        const winningTrades = periodTrades.filter(trade => trade.profit > 0).length;
+        const winRate = periodTrades.length > 0 ? (winningTrades / periodTrades.length * 100) : 0;
+        periodWinRate.textContent = `${winRate.toFixed(1)}%`;
+    }
+    
+    if (periodAvgProfit) {
+        const avgProfit = periodTrades.length > 0 ? 
+            periodTrades.reduce((sum, trade) => sum + trade.profit, 0) / periodTrades.length : 0;
+        periodAvgProfit.textContent = formatCurrency(avgProfit);
+    }
 }
 
 // ========== ACCOUNT MANAGEMENT SYSTEM ==========
@@ -410,6 +754,11 @@ async function loadAccountData() {
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
         
+        // Update calendar when account data changes
+        if (document.getElementById('calendarContent').classList.contains('active')) {
+            renderCalendar();
+        }
+        
         console.log('✅ Account data loaded successfully');
         
     } catch (error) {
@@ -647,6 +996,7 @@ onAuthStateChanged(auth, async (user) => {
             setupTabs();
             setupMobileMenu();
             setupAccountModalListeners();
+            setupCalendar();
             
             console.log('✅ All systems initialized successfully');
             
@@ -1311,19 +1661,21 @@ function setupTabs() {
     const dashboardTab = document.getElementById('dashboardTab');
     const tradesTab = document.getElementById('tradesTab');
     const affirmationsTab = document.getElementById('affirmationsTab');
+    const calendarTab = document.getElementById('calendarTab');
     const dashboardContent = document.getElementById('dashboardContent');
     const tradesContent = document.getElementById('tradesContent');
     const affirmationsContent = document.getElementById('affirmationsContent');
+    const calendarContent = document.getElementById('calendarContent');
 
     function switchToTab(tabName) {
-        [dashboardContent, tradesContent, affirmationsContent].forEach(content => {
+        [dashboardContent, tradesContent, affirmationsContent, calendarContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
                 content.style.display = 'none';
             }
         });
 
-        [dashboardTab, tradesTab, affirmationsTab].forEach(tab => {
+        [dashboardTab, tradesTab, affirmationsTab, calendarTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
@@ -1350,6 +1702,14 @@ function setupTabs() {
                 }
                 if (affirmationsTab) affirmationsTab.classList.add('active');
                 break;
+            case 'calendar':
+                if (calendarContent) {
+                    calendarContent.classList.add('active');
+                    calendarContent.style.display = 'block';
+                    renderCalendar();
+                }
+                if (calendarTab) calendarTab.classList.add('active');
+                break;
         }
     }
 
@@ -1361,6 +1721,9 @@ function setupTabs() {
     }
     if (affirmationsTab) {
         affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
+    }
+    if (calendarTab) {
+        calendarTab.addEventListener('click', () => switchToTab('calendar'));
     }
     
     console.log('✅ Tabs setup complete');
@@ -2708,6 +3071,6 @@ function renderMarketTypeChart(trades) {
 // ========== INITIALIZATION ==========
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Multi-Account Support, Date Feature, and Fixed Pagination initialized');
+    console.log('Trading Journal with Multi-Account Support, Date Feature, Fixed Pagination, and Calendar View initialized');
     hideLoading();
 });

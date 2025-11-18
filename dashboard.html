@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Your existing styles remain the same */
         :root {
             --profit: #10b981;
             --loss: #ef4444;
@@ -415,6 +414,7 @@
             font-size: 14px;
         }
 
+        /* Ensure buttons are properly sized on mobile */
         @media (max-width: 640px) {
             .pagination-btn, .pagination-current {
                 padding: 6px 12px;
@@ -426,146 +426,291 @@
             }
         }
 
-        /* NEW CALENDAR STYLES */
+        /* Affirmations Styles */
+        .affirmation-card {
+            transition: all 0.3s cubic-bz(0.4, 0, 0.2, 1);
+            border-left-width: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .affirmation-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--card-color, #3b82f6), transparent);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .affirmation-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .affirmation-card:hover {
+            transform: translateY(-8px) scale(1.02);
+        }
+
+        .category-filter {
+            transition: all 0.3s cubic-bz(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-filter::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .category-filter:active::before {
+            width: 100%;
+            height: 100%;
+            border-radius: 0;
+        }
+
+        .category-filter.active {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .affirmation-stat-card {
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s cubic-bz(0.4, 0, 0.2, 1);
+        }
+
+        .affirmation-stat-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        .favorite-btn, .use-btn, .copy-btn {
+            transition: all 0.3s cubic-bz(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .favorite-btn::before, .use-btn::before, .copy-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(0,0,0,0.1);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .favorite-btn:active::before, .use-btn:active::before, .copy-btn:active::before {
+            width: 100%;
+            height: 100%;
+            border-radius: 0;
+        }
+
+        /* Animation for new affirmations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+            }
+        }
+
+        .affirmation-card.new {
+            animation: slideInUp 0.6s cubic-bz(0.4, 0, 0.2, 1);
+        }
+
+        .daily-affirmation-glow {
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+
+        /* Gradient backgrounds for different categories */
+        .category-confidence { --card-color: #10b981; }
+        .category-discipline { --card-color: #8b5cf6; }
+        .category-patience { --card-color: #f59e0b; }
+        .category-risk-management { --card-color: #ef4444; }
+        .category-mindset { --card-color: #6366f1; }
+        .category-general { --card-color: #6b7280; }
+
+        /* Date input styling */
+        input[type="datetime-local"] {
+            font-family: inherit;
+        }
+
+        /* Ensure consistent styling across browsers */
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        input[type="datetime-local"]::-webkit-datetime-edit {
+            padding: 0;
+        }
+
+        /* Calendar Styles */
+        .calendar-view {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+        }
+
         .calendar-day {
-            transition: all 0.2s ease;
+            min-height: 100px;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 8px;
-            min-height: 100px;
+            background: white;
+            transition: all 0.2s ease;
             cursor: pointer;
             position: relative;
         }
-        
+
         .calendar-day:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #f8fafc;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        
+
+        .calendar-day.other-month {
+            background: #f9fafb;
+            color: #9ca3af;
+        }
+
+        .calendar-day.today {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
         .calendar-day.has-trades {
-            background-color: #dbeafe;
+            border-left: 4px solid #10b981;
+        }
+
+        .calendar-day.has-losses {
+            border-left: 4px solid #ef4444;
+        }
+
+        .calendar-day.selected {
+            background: #3b82f6;
+            color: white;
             border-color: #3b82f6;
         }
-        
-        .calendar-day.profit-day {
-            background-color: #dcfce7;
-            border-color: #10b981;
-        }
-        
-        .calendar-day.loss-day {
-            background-color: #fee2e2;
-            border-color: #ef4444;
-        }
-        
-        .calendar-day.active {
-            background-color: #3b82f6;
-            color: white;
-        }
-        
-        .calendar-day.today {
-            border: 2px solid #f59e0b;
-        }
-        
-        .calendar-nav-btn {
-            transition: all 0.2s ease;
-            padding: 8px 12px;
-            border-radius: 6px;
-            background: #f3f4f6;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .calendar-nav-btn:hover {
-            background-color: #e5e7eb;
-        }
-        
-        .calendar-filter-btn.active {
-            background-color: #3b82f6;
-            color: white;
-        }
-        
-        .trade-indicator {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            display: inline-block;
-            margin: 0 1px;
-        }
-        
-        .trade-profit {
-            background-color: #10b981;
-        }
-        
-        .trade-loss {
-            background-color: #ef4444;
-        }
-        
-        .trade-breakeven {
-            background-color: #6b7280;
-        }
-        
-        .calendar-view {
-            transition: all 0.3s ease;
-        }
-        
-        .calendar-day-header {
-            font-weight: 600;
-            color: #374151;
-            text-align: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .calendar-empty-day {
-            background-color: #f9fafb;
-            border: 1px dashed #d1d5db;
-            border-radius: 8px;
-            min-height: 100px;
-        }
-        
-        .calendar-day-number {
+
+        .calendar-date {
             font-weight: bold;
-            font-size: 1.1em;
+            font-size: 14px;
             margin-bottom: 4px;
         }
-        
-        .calendar-day-trades {
-            font-size: 0.75em;
-            color: #6b7280;
-            margin-top: 4px;
+
+        .calendar-trades {
+            font-size: 11px;
+            line-height: 1.2;
         }
-        
-        .calendar-day-pnl {
-            font-size: 0.8em;
-            font-weight: 600;
-            margin-top: 2px;
-        }
-        
-        .week-time-slot {
-            border-bottom: 1px solid #e5e7eb;
-            padding: 4px 0;
-            font-size: 0.8em;
-            color: #6b7280;
-        }
-        
-        .week-trade-item {
-            font-size: 0.7em;
+
+        .calendar-trade-item {
             padding: 2px 4px;
+            margin: 1px 0;
             border-radius: 4px;
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            background: #f3f4f6;
+            font-size: 10px;
         }
-        
-        .week-trade-profit {
-            background-color: #dcfce7;
+
+        .calendar-trade-item.profit {
+            background: #dcfce7;
             color: #166534;
         }
-        
-        .week-trade-loss {
-            background-color: #fee2e2;
+
+        .calendar-trade-item.loss {
+            background: #fef2f2;
             color: #991b1b;
+        }
+
+        .calendar-trade-summary {
+            font-size: 10px;
+            margin-top: 4px;
+            padding-top: 2px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .week-time-slot {
+            height: 60px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #6b7280;
+            background: #f9fafb;
+        }
+
+        .week-day-cell {
+            min-height: 60px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 4px;
+            background: white;
+            position: relative;
+        }
+
+        .week-trade-marker {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .week-trade-marker.profit {
+            background: #dcfce7;
+            border-left: 2px solid #10b981;
+        }
+
+        .week-trade-marker.loss {
+            background: #fef2f2;
+            border-left: 2px solid #ef4444;
+        }
+
+        .calendar-empty {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .calendar-empty .text-4xl {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -654,14 +799,122 @@
         <img id="screenshotImage" src="" alt="Trade Screenshot">
     </div>
 
-    <!-- Affirmation Modals (your existing modals) -->
+    <!-- Affirmation Modals -->
     <div id="affirmationModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <!-- Your existing affirmation modal content -->
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800" id="modalTitle">Create New Affirmation</h3>
+                    <button onclick="closeAffirmationModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                        ×
+                    </button>
+                </div>
+                
+                <form id="affirmationForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">🌟 Affirmation Text</label>
+                        <textarea 
+                            id="affirmationText" 
+                            rows="4" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                            placeholder="Write your powerful trading affirmation..."
+                            required
+                        ></textarea>
+                        <div class="text-right text-sm text-gray-500 mt-2">
+                            <span id="charCount">0</span>/200 characters
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">📂 Category</label>
+                        <select 
+                            id="affirmationCategorySelect" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
+                        >
+                            <option value="confidence">💪 Confidence</option>
+                            <option value="discipline">🎯 Discipline</option>
+                            <option value="patience">⏳ Patience</option>
+                            <option value="risk-management">🛡️ Risk Management</option>
+                            <option value="mindset">🧠 Mindset</option>
+                            <option value="general">🌈 General</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                id="isFavorite" 
+                                class="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                            >
+                            <label for="isFavorite" class="ml-3 text-sm font-medium text-gray-700">Mark as favorite</label>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                id="isActive" 
+                                checked
+                                class="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 transition duration-200"
+                            >
+                            <label for="isActive" class="ml-3 text-sm font-medium text-gray-700">Active</label>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4 pt-4">
+                        <button 
+                            type="button" 
+                            onclick="closeAffirmationModal()" 
+                            class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                        >
+                            Save Affirmation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Random Affirmation Modal -->
     <div id="randomAffirmationModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <!-- Your existing random affirmation modal content -->
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="p-8 text-center">
+                <div class="text-6xl mb-6">💫</div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Your Affirmation</h3>
+                <p class="text-sm text-gray-600 mb-6">Take a deep breath and internalize this message</p>
+                
+                <div id="randomAffirmationText" class="text-xl text-gray-700 mb-8 min-h-32 bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl border-2 border-blue-100 leading-relaxed">
+                    "I am a disciplined trader who follows my plan with precision."
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <button 
+                        onclick="useRandomAffirmation()" 
+                        class="col-span-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                    >
+                        ✅ I'm Using This
+                    </button>
+                    <button 
+                        onclick="showAnotherRandom()" 
+                        class="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 hover:scale-105"
+                    >
+                        🔄 Another
+                    </button>
+                    <button 
+                        onclick="closeRandomModal()" 
+                        class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-gray-600 hover:to-gray-700 transition-all duration-300 hover:scale-105"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Main Content -->
@@ -674,7 +927,7 @@
             </div>
         </div>
 
-        <!-- Tab Navigation - ADDED CALENDAR TAB -->
+        <!-- Tab Navigation -->
         <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg">
             <button id="dashboardTab" class="tab-button active">
                 📊 Dashboard
@@ -682,669 +935,708 @@
             <button id="tradesTab" class="tab-button">
                 📋 Trade History
             </button>
-            <!-- NEW CALENDAR TAB -->
-            <button id="calendarTab" class="tab-button">
-                📅 Calendar
-            </button>
             <button id="affirmationsTab" class="tab-button">
                 🌟 Affirmations
             </button>
+            <button id="calendarTab" class="tab-button">
+                📅 Calendar View
+            </button>
         </div>
 
-        <!-- Dashboard Tab Content (your existing content) -->
+        <!-- Dashboard Tab Content -->
         <div id="dashboardContent" class="tab-content active">
-            <!-- Your existing dashboard content -->
+            <!-- Account Setup -->
+            <div class="card">
+                <h3 class="section-title">💰 Account Setup</h3>
+                <div class="form-grid compact-form">
+                    <div class="form-group">
+                        <div class="flex items-center justify-between mb-1">
+                            <label>Account Balance ($)</label>
+                            <button type="button" id="lockToggle" class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 transition-colors">
+                                🔒 Locked
+                            </button>
+                        </div>
+                        <input type="number" id="accountSize" placeholder="e.g., 10000" value="10000">
+                        <small class="text-gray-500 text-xs" id="balanceHelp">Set your initial trading capital</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Risk Per Trade (%)</label>
+                        <input type="number" id="riskPerTrade" step="0.1" min="0.1" max="5" value="1.0" placeholder="0.1 - 5%">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Currency</label>
+                        <select id="accountCurrency">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="ZAR">ZAR (R)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="CHF">CHF (Fr)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Leverage</label>
+                        <select id="leverage">
+                            <option value="10">1:10</option>
+                            <option value="20">1:20</option>
+                            <option value="50" selected>1:50</option>
+                            <option value="100">1:100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Total Trades</div>
+                    <div class="stat-value" id="totalTrades">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Win Rate</div>
+                    <div class="stat-value" id="winRate">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Total P&L</div>
+                    <div class="stat-value" id="totalPL">$0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs sm:text-sm">Balance</div>
+                    <div class="stat-value" id="currentBalance">$0</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <!-- Trade Entry Form -->
+                <div class="card">
+                    <h3 class="section-title">📝 New Trade</h3>
+                    <form id="tradeForm" class="compact-form">
+                        <div class="form-group">
+                            <label>Mood / Psychology</label>
+                            <select id="mood" class="mb-2">
+                                <option value="">Select Mood</option>
+                                <option value="confident">😊 Confident</option>
+                                <option value="neutral">😐 Neutral</option>
+                                <option value="anxious">😰 Anxious</option>
+                                <option value="greedy">😈 Greedy</option>
+                                <option value="fearful">😨 Fearful</option>
+                                <option value="disciplined">🎯 Disciplined</option>
+                                <option value="impulsive">⚡ Impulsive</option>
+                            </select>
+                        </div>
+
+                        <!-- DATE FEATURE ADDED HERE -->
+                        <div class="form-group">
+                            <label>Trade Date & Time</label>
+                            <input type="datetime-local" id="tradeDateTime" required>
+                            <small class="text-gray-500 text-xs">Select the date and time when the trade was executed</small>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label>Instrument</label>
+                                <select id="symbol" required>
+                                    <option value="">Select Instrument</option>
+                                    <optgroup label="Forex">
+                                        <option value="EUR/USD">EUR/USD</option>
+                                        <option value="GBP/USD">GBP/USD</option>
+                                        <option value="USD/JPY">USD/JPY</option>
+                                        <option value="AUD/USD">AUD/USD</option>
+                                    </optgroup>
+                                    <optgroup label="Indices">
+                                        <option value="US30">US30</option>
+                                        <option value="SPX500">S&P 500</option>
+                                        <option value="NAS100">NASDAQ</option>
+                                        <option value="GE30">DAX 30</option>
+                                    </optgroup>
+                                </select>
+                                <div id="instrumentTypeDisplay" class="pip-display"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Direction</label>
+                                <select id="direction" required>
+                                    <option value="">Select</option>
+                                    <option value="long">Buy</option>
+                                    <option value="short">Sell</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Entry Price</label>
+                                    <input type="number" id="entryPrice" step="0.00001" required>
+                                    <div class="pip-display" id="entryPipDisplay"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Stop Loss</label>
+                                    <input type="number" id="stopLoss" step="0.00001" required>
+                                    <div class="pip-display" id="slPipDisplay"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Take Profit</label>
+                                    <input type="number" id="takeProfit" step="0.00001">
+                                    <div class="pip-display" id="tpPipDisplay"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Size (Lots)</label>
+                                    <input type="number" id="lotSize" step="0.01" value="0.01" required>
+                                    <div class="pip-display">Std Lot = 100k</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Calculator -->
+                        <div class="risk-calculator">
+                            <h5 class="font-bold mb-2">🎯 Risk Management</h5>
+                            <div id="riskCalculation" class="space-y-1 text-xs">
+                                <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
+                                <div>Amount: $<span id="totalRisk">0.00</span></div>
+                                <div>Risk %: <span id="riskPercentage">0.00%</span></div>
+                                <div>R:R: <span id="riskRewardRatio">0.00</span></div>
+                                <div>Rec. Lots: <span id="recommendedLotSize">0.00</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Screenshots -->
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label>📸 Before Chart URL</label>
+                                <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
+                            </div>
+
+                            <div class="form-group">
+                                <label>📸 After Chart URL</label>
+                                <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Notes & Psychology</label>
+                                <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons learned, psychological state..."></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn">
+                            <span id="submitButtonText">💾 Save Trade</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Analytics & Charts -->
+                <div class="space-y-4 sm:space-y-6">
+                    <!-- Performance Metrics -->
+                    <div class="card">
+                        <h3 class="section-title">📈 Performance Analytics</h3>
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Avg Win</div>
+                                <div class="metric-value profit" id="avgWin">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Avg Loss</div>
+                                <div class="metric-value loss" id="avgLoss">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Largest Win</div>
+                                <div class="metric-value profit" id="largestWin">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Largest Loss</div>
+                                <div class="metric-value loss" id="largestLoss">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Profit Factor</div>
+                                <div class="metric-value" id="profitFactor">0.00</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Expectancy</div>
+                                <div class="metric-value" id="expectancy">$0</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Avg R:R</div>
+                                <div class="metric-value" id="avgRiskReward">0.00</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Consistency</div>
+                                <div class="metric-value" id="consistency">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Psychological Metrics -->
+                    <div class="card">
+                        <h3 class="section-title">🧠 Trading Psychology</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="psych-metric">
+                                <div class="psych-value" id="bestMood">-</div>
+                                <div class="psych-label">Best Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="worstMood">-</div>
+                                <div class="psych-label">Worst Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="disciplineScore">0%</div>
+                                <div class="psych-label">Discipline</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="riskAdherence">0%</div>
+                                <div class="psych-label">Risk Adherence</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-600">
+                            <div>Mood Performance:</div>
+                            <div id="moodPerformance" class="mt-1">No data yet</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="card">
+                        <h3 class="section-title">📊 Distribution</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <canvas id="winLossChart" height="160"></canvas>
+                            </div>
+                            <div>
+                                <canvas id="marketTypeChart" height="160"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Analysis -->
+                    <div class="card">
+                        <h3 class="section-title">⏰ Time Analysis</h3>
+                        <div class="metric-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">Best Day</div>
+                                <div class="metric-value" id="bestDay">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Best Instrument</div>
+                                <div class="metric-value" id="bestInstrument">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Avg Trade Duration</div>
+                                <div class="metric-value" id="avgDuration">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Trades/Month</div>
+                                <div class="metric-value" id="tradesPerMonth">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="card">
+                <h3 class="section-title">📈 Balance Progress</h3>
+                <div style="height: 250px;">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
         </div>
 
-        <!-- Trade History Tab Content (your existing content) -->
+        <!-- Trade History Tab Content -->
         <div id="tradesContent" class="tab-content">
-            <!-- Your existing trade history content -->
+            <div class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="section-title mb-0">📋 Trade History</h3>
+                    <div class="flex items-center space-x-2">
+                        <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
+                        <button onclick="importTrades()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
+                            📥 Import CSV
+                        </button>
+                        <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
+                            📤 Export CSV
+                        </button>
+                    </div>
+                </div>
+                <div id="tradeHistory">
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="loading-spinner mx-auto"></div>
+                        <p class="mt-2">Loading trades...</p>
+                    </div>
+                </div>
+                <!-- Pagination -->
+                <div id="pagination" class="flex justify-center items-center space-x-2 mt-4 pt-4 border-t border-gray-200">
+                    <!-- Pagination buttons will be inserted here by JavaScript -->
+                </div>
+            </div>
         </div>
 
-        <!-- NEW CALENDAR TAB CONTENT -->
+        <!-- Affirmations Tab Content -->
+        <div id="affirmationsContent" class="tab-content">
+            <!-- Header Section -->
+            <div class="card bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold mb-2">🌟 Trading Affirmations</h3>
+                        <p class="text-purple-100 opacity-90">Strengthen your mindset with powerful daily affirmations</p>
+                    </div>
+                    <button onclick="addNewAffirmation()" class="mt-4 md:mt-0 bg-white text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-xl font-semibold flex items-center shadow-lg transition-all duration-300 hover:scale-105">
+                        <span class="mr-2 text-lg">+</span> New Affirmation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Dashboard -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="affirmation-stat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-blue-100 text-sm">Total Affirmations</div>
+                            <div class="text-2xl font-bold mt-1" id="totalAffirmations">0</div>
+                        </div>
+                        <div class="text-3xl opacity-80">📚</div>
+                    </div>
+                </div>
+                
+                <div class="affirmation-stat-card bg-gradient-to-br from-green-500 to-green-600 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-green-100 text-sm">Active Today</div>
+                            <div class="text-2xl font-bold mt-1" id="activeAffirmations">0</div>
+                        </div>
+                        <div class="text-3xl opacity-80">⚡</div>
+                    </div>
+                </div>
+                
+                <div class="affirmation-stat-card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-yellow-100 text-sm">Favorites</div>
+                            <div class="text-2xl font-bold mt-1" id="favoriteAffirmations">0</div>
+                        </div>
+                        <div class="text-3xl opacity-80">⭐</div>
+                    </div>
+                </div>
+                
+                <div class="affirmation-stat-card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-purple-100 text-sm">This Week</div>
+                            <div class="text-2xl font-bold mt-1" id="usedThisWeek">0</div>
+                        </div>
+                        <div class="text-3xl opacity-80">📈</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Focus Section -->
+            <div class="card bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white relative overflow-hidden mb-6">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -mr-16 -mt-16"></div>
+                <div class="absolute bottom-0 left-0 w-24 h-24 bg-white bg-opacity-10 rounded-full -ml-12 -mb-12"></div>
+                
+                <div class="relative z-10">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <div>
+                            <h4 class="text-xl font-bold mb-2">💫 Your Daily Focus</h4>
+                            <p class="text-indigo-100 opacity-90">Start your trading day with this powerful affirmation</p>
+                        </div>
+                        <div class="flex space-x-2 mt-4 md:mt-0">
+                            <button onclick="refreshDailyAffirmation()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-xl transition-all duration-300 hover:scale-110" title="New Affirmation">
+                                <span class="text-lg">🔄</span>
+                            </button>
+                            <button onclick="speakAffirmation()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-xl transition-all duration-300 hover:scale-110" title="Listen">
+                                <span class="text-lg">🔊</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="dailyAffirmation" class="text-2xl md:text-3xl font-bold mb-6 min-h-24 bg-white bg-opacity-10 p-6 rounded-2xl backdrop-blur-sm border border-white border-opacity-20">
+                        "I am a disciplined trader who follows my plan with precision and patience."
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row justify-between items-center">
+                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                            <span id="dailyAffirmationCategory" class="bg-white bg-opacity-20 px-4 py-2 rounded-full font-semibold">Discipline</span>
+                            <span class="text-indigo-100 text-sm">Strength: <span id="affirmationStrength" class="font-bold">92%</span></span>
+                        </div>
+                        <button onclick="markDailyAsUsed()" class="bg-white text-indigo-600 px-8 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all duration-300 hover:scale-105 shadow-lg">
+                            ✅ I Used This Today
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions & Categories -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Quick Actions -->
+                <div class="card bg-gradient-to-br from-gray-50 to-gray-100">
+                    <h4 class="font-semibold text-gray-800 mb-4">🚀 Quick Actions</h4>
+                    <div class="space-y-3">
+                        <button onclick="showRandomAffirmation()" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
+                            <span class="mr-3 text-lg">🎲</span> Random Affirmation
+                        </button>
+                        <button onclick="showMotivationalQuote()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
+                            <span class="mr-3 text-lg">💡</span> Motivational Quote
+                        </button>
+                        <button onclick="exportAffirmations()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
+                            <span class="mr-3 text-lg">📤</span> Export All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Categories -->
+                <div class="card bg-gradient-to-br from-blue-50 to-cyan-100 lg:col-span-2">
+                    <h4 class="font-semibold text-gray-800 mb-4">📂 Categories</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <button class="category-filter active bg-blue-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="all">
+                            🌈 All
+                        </button>
+                        <button class="category-filter bg-green-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="confidence">
+                            💪 Confidence
+                        </button>
+                        <button class="category-filter bg-purple-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="discipline">
+                            🎯 Discipline
+                        </button>
+                        <button class="category-filter bg-yellow-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="patience">
+                            ⏳ Patience
+                        </button>
+                        <button class="category-filter bg-red-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="risk-management">
+                            🛡️ Risk Management
+                        </button>
+                        <button class="category-filter bg-indigo-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="mindset">
+                            🧠 Mindset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Affirmations Grid -->
+            <div class="card">
+                <div class="flex justify-between items-center mb-6">
+                    <h4 class="font-semibold text-gray-800">📝 Your Affirmations</h4>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <input type="text" id="searchAffirmations" placeholder="Search affirmations..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                        </div>
+                        <select id="sortAffirmations" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="most-used">Most Used</option>
+                            <option value="favorites">Favorites First</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="affirmationsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <!-- Sample Affirmation Cards will be loaded here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyAffirmations" class="text-center py-16 hidden">
+                    <div class="text-8xl mb-6 opacity-20">🌟</div>
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">No affirmations yet</h3>
+                    <p class="text-gray-500 mb-8 text-lg">Start building your positive trading mindset with powerful daily affirmations.</p>
+                    <button onclick="addNewAffirmation()" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-lg">
+                        Create Your First Affirmation
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar View Tab Content -->
         <div id="calendarContent" class="tab-content">
             <div class="card">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <h3 class="section-title mb-4 md:mb-0">📅 Trading Calendar</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <button id="viewMonth" class="calendar-filter-btn active bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
-                            Month View
-                        </button>
-                        <button id="viewWeek" class="calendar-filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
-                            Week View
-                        </button>
-                        <button id="viewDay" class="calendar-filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
-                            Day View
-                        </button>
-                        <button onclick="showDateFilterModal()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm flex items-center">
-                            <span class="mr-2">🔍</span> Filter by Date
-                        </button>
+                    <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                        <!-- Calendar Navigation -->
+                        <div class="flex items-center space-x-2">
+                            <button id="prevMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
+                                <span>⬅️</span>
+                            </button>
+                            <h4 id="currentMonthYear" class="font-bold text-lg text-gray-800 min-w-40 text-center">
+                                Loading...
+                            </h4>
+                            <button id="nextMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
+                                <span>➡️</span>
+                            </button>
+                        </div>
+                        
+                        <!-- View Type Selector -->
+                        <select id="viewType" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="month">Month View</option>
+                            <option value="week">Week View</option>
+                        </select>
+                        
+                        <!-- Quick Navigation -->
+                        <select id="quickNav" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="current">Current Month</option>
+                            <option value="lastMonth">Last Month</option>
+                            <option value="last3Months">Last 3 Months</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                        
+                        <!-- Custom Date Range (hidden by default) -->
+                        <div id="customRangeContainer" class="hidden flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                            <input type="date" id="startDate" class="px-3 py-2 border border-gray-300 rounded-lg">
+                            <span class="self-center">to</span>
+                            <input type="date" id="endDate" class="px-3 py-2 border border-gray-300 rounded-lg">
+                            <button id="applyCustomRange" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg">
+                                Apply
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Calendar Navigation -->
-                <div class="flex justify-between items-center mb-6">
-                    <button id="prevPeriod" class="calendar-nav-btn bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-lg">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                        </svg>
-                    </button>
-                    
-                    <h2 id="calendarTitle" class="text-xl font-bold text-gray-800">January 2024</h2>
-                    
-                    <button id="nextPeriod" class="calendar-nav-btn bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-lg">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Month View -->
-                <div id="monthView" class="calendar-view">
-                    <div class="grid grid-cols-7 gap-1 mb-2">
-                        <div class="calendar-day-header">Sun</div>
-                        <div class="calendar-day-header">Mon</div>
-                        <div class="calendar-day-header">Tue</div>
-                        <div class="calendar-day-header">Wed</div>
-                        <div class="calendar-day-header">Thu</div>
-                        <div class="calendar-day-header">Fri</div>
-                        <div class="calendar-day-header">Sat</div>
+                <!-- Calendar Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card bg-gradient-to-r from-blue-50 to-blue-100">
+                        <div class="text-sm text-blue-600">Trades This Period</div>
+                        <div class="stat-value text-blue-700" id="periodTradesCount">0</div>
                     </div>
-                    <div id="monthGrid" class="grid grid-cols-7 gap-1">
-                        <!-- Calendar days will be populated here -->
+                    <div class="stat-card bg-gradient-to-r from-green-50 to-green-100">
+                        <div class="text-sm text-green-600">Total Profit</div>
+                        <div class="stat-value text-green-700" id="periodTotalProfit">$0</div>
+                    </div>
+                    <div class="stat-card bg-gradient-to-r from-purple-50 to-purple-100">
+                        <div class="text-sm text-purple-600">Win Rate</div>
+                        <div class="stat-value text-purple-700" id="periodWinRate">0%</div>
+                    </div>
+                    <div class="stat-card bg-gradient-to-r from-orange-50 to-orange-100">
+                        <div class="text-sm text-orange-600">Avg. Profit/Trade</div>
+                        <div class="stat-value text-orange-700" id="periodAvgProfit">$0</div>
                     </div>
                 </div>
 
-                <!-- Week View -->
-                <div id="weekView" class="calendar-view hidden">
-                    <div class="grid grid-cols-8 gap-1 mb-2">
-                        <div class="calendar-day-header">Time</div>
-                        <div class="calendar-day-header">Sun</div>
-                        <div class="calendar-day-header">Mon</div>
-                        <div class="calendar-day-header">Tue</div>
-                        <div class="calendar-day-header">Wed</div>
-                        <div class="calendar-day-header">Thu</div>
-                        <div class="calendar-day-header">Fri</div>
-                        <div class="calendar-day-header">Sat</div>
+                <!-- Calendar Container -->
+                <div id="calendarContainer">
+                    <!-- Month View -->
+                    <div id="monthView" class="calendar-view">
+                        <div class="grid grid-cols-7 gap-1 mb-2">
+                            <div class="text-center font-semibold text-gray-600 py-2">Sun</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Mon</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Tue</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Wed</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Thu</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Fri</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Sat</div>
+                        </div>
+                        <div id="monthGrid" class="grid grid-cols-7 gap-1">
+                            <!-- Calendar days will be populated here -->
+                        </div>
                     </div>
-                    <div id="weekGrid" class="grid grid-cols-8 gap-1">
-                        <!-- Week view will be populated here -->
+
+                    <!-- Week View -->
+                    <div id="weekView" class="calendar-view hidden">
+                        <div class="grid grid-cols-8 gap-1 mb-2">
+                            <div class="text-center font-semibold text-gray-600 py-2">Time</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Sun</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Mon</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Tue</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Wed</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Thu</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Fri</div>
+                            <div class="text-center font-semibold text-gray-600 py-2">Sat</div>
+                        </div>
+                        <div id="weekGrid" class="grid grid-cols-8 gap-1">
+                            <!-- Week view will be populated here -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- Day View -->
-                <div id="dayView" class="calendar-view hidden">
-                    <div id="dayHeader" class="text-center font-bold text-xl mb-4 py-4 bg-blue-50 rounded-lg">
-                        Monday, January 1, 2024
-                    </div>
-                    <div id="dayTrades" class="space-y-4">
-                        <!-- Day trades will be populated here -->
+                <!-- Selected Day Details -->
+                <div id="selectedDayDetails" class="mt-6 hidden">
+                    <div class="border-t pt-4">
+                        <h4 class="font-semibold text-lg mb-3" id="selectedDayTitle">Trades for Selected Day</h4>
+                        <div id="selectedDayTrades" class="space-y-3">
+                            <!-- Trades for selected day will appear here -->
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Selected Day Trades -->
-            <div id="selectedDayTrades" class="card mt-6 hidden">
-                <h3 class="section-title" id="selectedDayTitle">Trades for January 1, 2024</h3>
-                <div id="selectedDayTradesList" class="space-y-4">
-                    <!-- Selected day trades will be populated here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Affirmations Tab Content (your existing content) -->
-        <div id="affirmationsContent" class="tab-content">
-            <!-- Your existing affirmations content -->
         </div>
     </div>
 
-    <!-- Your existing modals (Add Account Modal, etc.) -->
+        <!-- Add Account Modal -->
     <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <!-- Your existing add account modal content -->
-    </div>
-
-    <!-- NEW DATE FILTER MODAL -->
-    <div id="dateFilterModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">Filter by Date Range</h3>
-                    <button onclick="closeDateFilterModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                    <h3 class="text-xl font-bold text-gray-800">Add Trading Account</h3>
+                    <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
                         ×
                     </button>
                 </div>
                 
-                <div class="space-y-4">
+                <form id="addAccountForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">From Date</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Name</label>
                         <input 
-                            type="date" 
-                            id="filterFromDate" 
+                            type="text" 
+                            id="accountName" 
                             class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                            placeholder="e.g., Prop Firm Challenge, Main Account, Demo"
+                            required
+                            maxlength="50"
+                        >
+                        <div class="text-right text-sm text-gray-500 mt-1">
+                            <span id="accountNameCharCount">0</span>/50 characters
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Balance</label>
+                        <input 
+                            type="number" 
+                            id="accountBalance" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                            placeholder="e.g., 10000"
+                            value="10000"
+                            required
+                            min="1"
+                            step="0.01"
                         >
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">To Date</label>
-                        <input 
-                            type="date" 
-                            id="filterToDate" 
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Currency</label>
+                        <select 
+                            id="accountCurrencySelect" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
                         >
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="ZAR">ZAR (R)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="CHF">CHF (Fr)</option>
+                        </select>
                     </div>
                     
                     <div class="flex justify-end space-x-3 pt-4">
                         <button 
                             type="button" 
-                            onclick="closeDateFilterModal()" 
+                            onclick="closeAddAccountModal()" 
                             class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
                         >
                             Cancel
                         </button>
                         <button 
-                            type="button" 
-                            onclick="applyDateFilter()" 
+                            type="submit" 
                             class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
                         >
-                            Apply Filter
+                            Create Account
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </div>
 
     <script type="module" src="./app.js"></script>
-    
-    <!-- NEW CALENDAR JAVASCRIPT -->
-    <script>
-        // Calendar state
-        let currentView = 'month';
-        let currentDate = new Date();
-        let dateFilter = null;
-
-        // Initialize calendar when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Your existing initialization code...
-            
-            // Add calendar initialization
-            initializeCalendar();
-            setupCalendarEventListeners();
-        });
-
-        function initializeCalendar() {
-            renderCalendar();
-        }
-
-        function setupCalendarEventListeners() {
-            // View toggle buttons
-            document.getElementById('viewMonth').addEventListener('click', () => switchView('month'));
-            document.getElementById('viewWeek').addEventListener('click', () => switchView('week'));
-            document.getElementById('viewDay').addEventListener('click', () => switchView('day'));
-            
-            // Navigation buttons
-            document.getElementById('prevPeriod').addEventListener('click', navigatePrevious);
-            document.getElementById('nextPeriod').addEventListener('click', navigateNext);
-            
-            // Add calendar tab to your existing tab switching
-            document.getElementById('calendarTab').addEventListener('click', () => switchToTab('calendar'));
-        }
-
-        function switchView(view) {
-            currentView = view;
-            
-            // Update active button
-            document.getElementById('viewMonth').classList.toggle('active', view === 'month');
-            document.getElementById('viewMonth').classList.toggle('bg-blue-500', view === 'month');
-            document.getElementById('viewMonth').classList.toggle('text-white', view === 'month');
-            document.getElementById('viewMonth').classList.toggle('bg-gray-200', view !== 'month');
-            document.getElementById('viewMonth').classList.toggle('text-gray-700', view !== 'month');
-            
-            document.getElementById('viewWeek').classList.toggle('active', view === 'week');
-            document.getElementById('viewWeek').classList.toggle('bg-blue-500', view === 'week');
-            document.getElementById('viewWeek').classList.toggle('text-white', view === 'week');
-            document.getElementById('viewWeek').classList.toggle('bg-gray-200', view !== 'week');
-            document.getElementById('viewWeek').classList.toggle('text-gray-700', view !== 'week');
-            
-            document.getElementById('viewDay').classList.toggle('active', view === 'day');
-            document.getElementById('viewDay').classList.toggle('bg-blue-500', view === 'day');
-            document.getElementById('viewDay').classList.toggle('text-white', view === 'day');
-            document.getElementById('viewDay').classList.toggle('bg-gray-200', view !== 'day');
-            document.getElementById('viewDay').classList.toggle('text-gray-700', view !== 'day');
-            
-            // Show/hide views
-            document.getElementById('monthView').classList.toggle('hidden', view !== 'month');
-            document.getElementById('weekView').classList.toggle('hidden', view !== 'week');
-            document.getElementById('dayView').classList.toggle('hidden', view !== 'day');
-            
-            renderCalendar();
-        }
-
-        function navigatePrevious() {
-            if (currentView === 'month') {
-                currentDate.setMonth(currentDate.getMonth() - 1);
-            } else if (currentView === 'week') {
-                currentDate.setDate(currentDate.getDate() - 7);
-            } else if (currentView === 'day') {
-                currentDate.setDate(currentDate.getDate() - 1);
-            }
-            renderCalendar();
-        }
-
-        function navigateNext() {
-            if (currentView === 'month') {
-                currentDate.setMonth(currentDate.getMonth() + 1);
-            } else if (currentView === 'week') {
-                currentDate.setDate(currentDate.getDate() + 7);
-            } else if (currentView === 'day') {
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-            renderCalendar();
-        }
-
-        function renderCalendar() {
-            if (currentView === 'month') {
-                renderMonthView();
-            } else if (currentView === 'week') {
-                renderWeekView();
-            } else if (currentView === 'day') {
-                renderDayView();
-            }
-        }
-
-        function renderMonthView() {
-            const monthGrid = document.getElementById('monthGrid');
-            const calendarTitle = document.getElementById('calendarTitle');
-            
-            // Set title
-            const monthNames = ["January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"];
-            calendarTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-            
-            // Clear grid
-            monthGrid.innerHTML = '';
-            
-            // Get first day of month and number of days
-            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-            const daysInMonth = lastDay.getDate();
-            const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
-            
-            // Add empty cells for days before the first day of the month
-            for (let i = 0; i < startingDay; i++) {
-                const emptyCell = document.createElement('div');
-                emptyCell.className = 'calendar-empty-day';
-                monthGrid.appendChild(emptyCell);
-            }
-            
-            // Add cells for each day of the month
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-                const dayCell = document.createElement('div');
-                dayCell.className = 'calendar-day';
-                
-                // Check if this is today
-                if (dayDate.getTime() === today.getTime()) {
-                    dayCell.classList.add('today');
-                }
-                
-                // Check if there are trades on this day
-                const dayTrades = getTradesForDate(dayDate);
-                if (dayTrades.length > 0) {
-                    dayCell.classList.add('has-trades');
-                    
-                    // Check if it's a profit or loss day
-                    const dayProfit = dayTrades.reduce((sum, trade) => sum + trade.profit, 0);
-                    if (dayProfit > 0) {
-                        dayCell.classList.add('profit-day');
-                    } else if (dayProfit < 0) {
-                        dayCell.classList.add('loss-day');
-                    }
-                }
-                
-                // Add day number
-                const dayNumber = document.createElement('div');
-                dayNumber.className = 'calendar-day-number';
-                dayNumber.textContent = day;
-                dayCell.appendChild(dayNumber);
-                
-                // Add trade indicators
-                if (dayTrades.length > 0) {
-                    const tradeIndicators = document.createElement('div');
-                    tradeIndicators.className = 'flex flex-wrap gap-1';
-                    
-                    dayTrades.forEach(trade => {
-                        const indicator = document.createElement('span');
-                        indicator.className = 'trade-indicator ' + 
-                            (trade.profit > 0 ? 'trade-profit' : 
-                             trade.profit < 0 ? 'trade-loss' : 'trade-breakeven');
-                        tradeIndicators.appendChild(indicator);
-                    });
-                    
-                    dayCell.appendChild(tradeIndicators);
-                    
-                    // Add trade count
-                    const tradeCount = document.createElement('div');
-                    tradeCount.className = 'calendar-day-trades';
-                    tradeCount.textContent = `${dayTrades.length} trade${dayTrades.length !== 1 ? 's' : ''}`;
-                    dayCell.appendChild(tradeCount);
-                    
-                    // Add total P&L
-                    const dayProfit = dayTrades.reduce((sum, trade) => sum + trade.profit, 0);
-                    const profitElement = document.createElement('div');
-                    profitElement.className = `calendar-day-pnl ${dayProfit >= 0 ? 'profit' : 'loss'}`;
-                    profitElement.textContent = dayProfit >= 0 ? `+${formatCurrency(dayProfit)}` : formatCurrency(dayProfit);
-                    dayCell.appendChild(profitElement);
-                }
-                
-                // Add click event to show trades for this day
-                dayCell.addEventListener('click', () => showDayTrades(dayDate, dayTrades));
-                
-                monthGrid.appendChild(dayCell);
-            }
-        }
-
-        function renderWeekView() {
-            const weekGrid = document.getElementById('weekGrid');
-            const calendarTitle = document.getElementById('calendarTitle');
-            
-            // Calculate start of week (Sunday)
-            const startOfWeek = new Date(currentDate);
-            startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-            
-            // Calculate end of week (Saturday)
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            
-            // Set title
-            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            calendarTitle.textContent = 
-                `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - 
-                 ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
-            
-            // Clear grid
-            weekGrid.innerHTML = '';
-            
-            // Add time slots (8 AM to 8 PM)
-            for (let hour = 8; hour <= 20; hour++) {
-                // Time label
-                const timeCell = document.createElement('div');
-                timeCell.className = 'week-time-slot text-right pr-2';
-                timeCell.textContent = `${hour}:00`;
-                weekGrid.appendChild(timeCell);
-                
-                // Add cells for each day
-                for (let i = 0; i < 7; i++) {
-                    const dayDate = new Date(startOfWeek);
-                    dayDate.setDate(startOfWeek.getDate() + i);
-                    
-                    const dayCell = document.createElement('div');
-                    dayCell.className = 'week-time-slot p-1';
-                    
-                    // Check for trades in this hour
-                    const hourTrades = getTradesForDateAndHour(dayDate, hour);
-                    
-                    if (hourTrades.length > 0) {
-                        hourTrades.forEach(trade => {
-                            const tradeElement = document.createElement('div');
-                            tradeElement.className = `week-trade-item ${trade.profit >= 0 ? 'week-trade-profit' : 'week-trade-loss'}`;
-                            tradeElement.textContent = `${trade.symbol} ${trade.profit >= 0 ? '+' : ''}${formatCurrency(trade.profit)}`;
-                            dayCell.appendChild(tradeElement);
-                        });
-                    }
-                    
-                    weekGrid.appendChild(dayCell);
-                }
-            }
-        }
-
-        function renderDayView() {
-            const dayHeader = document.getElementById('dayHeader');
-            const dayTradesContainer = document.getElementById('dayTrades');
-            
-            // Set header
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            dayHeader.textContent = currentDate.toLocaleDateString('en-US', options);
-            
-            // Clear trades container
-            dayTradesContainer.innerHTML = '';
-            
-            // Get trades for this day
-            const dayTrades = getTradesForDate(currentDate);
-            
-            if (dayTrades.length === 0) {
-                dayTradesContainer.innerHTML = `
-                    <div class="text-center text-gray-500 py-8">
-                        <div class="text-4xl mb-4">📊</div>
-                        <p class="text-lg">No trades recorded for this day.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Sort trades by time
-            dayTrades.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            // Add each trade
-            dayTrades.forEach(trade => {
-                const tradeElement = document.createElement('div');
-                tradeElement.className = 'bg-gray-50 p-4 rounded-lg border-l-4 ' + 
-                    (trade.profit >= 0 ? 'border-green-500' : 'border-red-500');
-                
-                const tradeTime = new Date(trade.timestamp);
-                const timeString = tradeTime.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                
-                tradeElement.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-bold">${trade.symbol} • ${trade.type.toUpperCase()}</div>
-                            <div class="text-sm text-gray-600">${timeString} • ${trade.lotSize} lots</div>
-                        </div>
-                        <div class="font-bold ${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'}">
-                            ${trade.profit >= 0 ? '+' : ''}${formatCurrency(trade.profit)}
-                        </div>
-                    </div>
-                    <div class="mt-2 text-sm">
-                        <div>Entry: ${trade.entryPrice} | SL: ${trade.stopLoss} | TP: ${trade.takeProfit || 'N/A'}</div>
-                        ${trade.notes ? `<div class="mt-1 text-gray-600">${trade.notes}</div>` : ''}
-                    </div>
-                `;
-                
-                dayTradesContainer.appendChild(tradeElement);
-            });
-        }
-
-        function getTradesForDate(date) {
-            // Use your existing allTrades array from the main app
-            const trades = window.allTrades || [];
-            
-            return trades.filter(trade => {
-                const tradeDate = new Date(trade.timestamp);
-                return tradeDate.getFullYear() === date.getFullYear() &&
-                       tradeDate.getMonth() === date.getMonth() &&
-                       tradeDate.getDate() === date.getDate();
-            });
-        }
-
-        function getTradesForDateAndHour(date, hour) {
-            const trades = window.allTrades || [];
-            
-            return trades.filter(trade => {
-                const tradeDate = new Date(trade.timestamp);
-                return tradeDate.getFullYear() === date.getFullYear() &&
-                       tradeDate.getMonth() === date.getMonth() &&
-                       tradeDate.getDate() === date.getDate() &&
-                       tradeDate.getHours() === hour;
-            });
-        }
-
-        function showDayTrades(date, trades) {
-            const selectedDayTrades = document.getElementById('selectedDayTrades');
-            const selectedDayTitle = document.getElementById('selectedDayTitle');
-            const selectedDayTradesList = document.getElementById('selectedDayTradesList');
-            
-            // Set title
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            selectedDayTitle.textContent = `Trades for ${date.toLocaleDateString('en-US', options)}`;
-            
-            // Clear trades list
-            selectedDayTradesList.innerHTML = '';
-            
-            if (trades.length === 0) {
-                selectedDayTradesList.innerHTML = `
-                    <div class="text-center text-gray-500 py-4">
-                        <p>No trades recorded for this day.</p>
-                    </div>
-                `;
-            } else {
-                // Sort trades by time
-                trades.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
-                // Calculate day totals
-                const totalProfit = trades.reduce((sum, trade) => sum + trade.profit, 0);
-                const winningTrades = trades.filter(t => t.profit > 0).length;
-                const winRate = (winningTrades / trades.length * 100).toFixed(1);
-                
-                // Add summary
-                const summaryElement = document.createElement('div');
-                summaryElement.className = 'bg-blue-50 p-4 rounded-lg mb-4';
-                summaryElement.innerHTML = `
-                    <div class="flex justify-between">
-                        <div>
-                            <div class="font-bold">${trades.length} Trade${trades.length !== 1 ? 's' : ''}</div>
-                            <div class="text-sm text-gray-600">Win Rate: ${winRate}%</div>
-                        </div>
-                        <div class="font-bold text-lg ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}">
-                            ${totalProfit >= 0 ? '+' : ''}${formatCurrency(totalProfit)}
-                        </div>
-                    </div>
-                `;
-                selectedDayTradesList.appendChild(summaryElement);
-                
-                // Add each trade
-                trades.forEach(trade => {
-                    const tradeElement = document.createElement('div');
-                    tradeElement.className = 'trade-item bg-white p-4 rounded-lg border border-gray-200';
-                    
-                    const tradeTime = new Date(trade.timestamp);
-                    const timeString = tradeTime.toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    });
-                    
-                    const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
-                    const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
-                    
-                    tradeElement.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div class="flex items-center">
-                                <div class="font-bold mr-2">${trade.symbol}</div>
-                                <span class="market-type-badge ${badgeClass}">${badgeText}</span>
-                            </div>
-                            <div class="font-bold ${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                ${trade.profit >= 0 ? '+' : ''}${formatCurrency(trade.profit)}
-                            </div>
-                        </div>
-                        <div class="text-sm text-gray-600 mt-1">
-                            <div>${timeString} • ${trade.type.toUpperCase()} • ${trade.lotSize} lots</div>
-                            <div>Entry: ${trade.entryPrice} | SL: ${trade.stopLoss} | TP: ${trade.takeProfit || 'N/A'}</div>
-                            ${trade.notes ? `<div class="mt-1">${trade.notes}</div>` : ''}
-                        </div>
-                    `;
-                    
-                    selectedDayTradesList.appendChild(tradeElement);
-                });
-            }
-            
-            // Show the selected day trades section
-            selectedDayTrades.classList.remove('hidden');
-            
-            // Scroll to the section
-            selectedDayTrades.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function showDateFilterModal() {
-            document.getElementById('dateFilterModal').classList.remove('hidden');
-        }
-
-        function closeDateFilterModal() {
-            document.getElementById('dateFilterModal').classList.add('hidden');
-        }
-
-        function applyDateFilter() {
-            const fromDate = document.getElementById('filterFromDate').value;
-            const toDate = document.getElementById('filterToDate').value;
-            
-            if (fromDate && toDate) {
-                dateFilter = {
-                    from: new Date(fromDate),
-                    to: new Date(toDate)
-                };
-                
-                // Apply the filter to trades
-                filterTradesByDate(dateFilter.from, dateFilter.to);
-                
-                closeDateFilterModal();
-                renderCalendar();
-                
-                // Show notification
-                showSuccessMessage(`Filter applied: ${fromDate} to ${toDate}`);
-            } else {
-                alert('Please select both from and to dates.');
-            }
-        }
-
-        function filterTradesByDate(fromDate, toDate) {
-            // This would filter your trades in the actual implementation
-            console.log(`Filtering trades from ${fromDate} to ${toDate}`);
-            // In a real app, you would update the trades shown based on this filter
-        }
-
-        // Use your existing formatCurrency function
-        function formatCurrency(amount) {
-            // This should use your existing currency formatting
-            if (window.formatCurrency) {
-                return window.formatCurrency(amount);
-            }
-            // Fallback
-            const currentAccount = window.getCurrentAccount ? window.getCurrentAccount() : { currency: 'USD' };
-            const symbol = window.getCurrencySymbol ? window.getCurrencySymbol(currentAccount.currency) : '$';
-            return `${symbol}${amount.toFixed(2)}`;
-        }
-
-        // Use your existing showSuccessMessage function
-        function showSuccessMessage(message) {
-            if (window.showSuccessMessage) {
-                window.showSuccessMessage(message);
-            } else {
-                // Fallback
-                const successDiv = document.createElement('div');
-                successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-                successDiv.textContent = message;
-                document.body.appendChild(successDiv);
-                
-                setTimeout(() => {
-                    successDiv.remove();
-                }, 3000);
-            }
-        }
-
-        // Add to your existing tab switching function
-        function switchToTab(tabName) {
-            // Your existing tab switching code...
-            
-            // Add calendar tab support
-            if (tabName === 'calendar') {
-                renderCalendar();
-            }
-        }
-    </script>
 </body>
 </html>
