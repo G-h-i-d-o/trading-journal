@@ -1,4 +1,4 @@
-// app.js - UPDATED VERSION WITH CALENDAR FUNCTIONALITY
+// app.js - COMPLETE WORKING VERSION WITH MOBILE RESPONSIVENESS
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
@@ -95,6 +95,32 @@ const motivationalQuotes = [
     "Emotion is the enemy of successful trading.",
     "Plan your trade and trade your plan."
 ];
+
+// ========== MOBILE VIEWPORT SETUP ==========
+
+function setupMobileViewport() {
+    // Prevent zoom on input focus for iOS
+    document.addEventListener('touchstart', function() {}, {passive: true});
+    
+    // Handle orientation changes
+    window.addEventListener('orientationchange', function() {
+        setTimeout(() => {
+            if (window.visualViewport) {
+                document.body.style.height = window.visualViewport.height + 'px';
+            }
+        }, 150);
+    });
+    
+    // Fix viewport height on mobile
+    function setViewportHeight() {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+}
 
 // ========== LOADING FUNCTIONS ==========
 
@@ -997,6 +1023,7 @@ onAuthStateChanged(auth, async (user) => {
             setupMobileMenu();
             setupAccountModalListeners();
             setupCalendar();
+            setupMobileViewport();
             
             console.log('✅ All systems initialized successfully');
             
@@ -1736,14 +1763,42 @@ function setupMobileMenu() {
     const mobileMenu = document.getElementById('mobileMenu');
 
     if (mobileMenuButton && mobileMenu) {
-        mobileMenuButton.addEventListener('click', () => {
+        mobileMenuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
             mobileMenu.classList.toggle('hidden');
             renderAccountsList();
+            
+            // Prevent body scroll when menu is open
+            if (!mobileMenu.classList.contains('hidden')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
         });
 
+        // Close menu when clicking outside or on a link
         document.addEventListener('click', (e) => {
             if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
                 mobileMenu.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // Close menu when clicking on menu items (except the accounts list)
+        mobileMenu.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') {
+                if (!e.target.closest('#mobileAccountsList')) {
+                    mobileMenu.classList.add('hidden');
+                    document.body.style.overflow = 'auto';
+                }
+            }
+        });
+
+        // Handle escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
+                mobileMenu.classList.add('hidden');
+                document.body.style.overflow = 'auto';
             }
         });
     }
@@ -3071,6 +3126,6 @@ function renderMarketTypeChart(trades) {
 // ========== INITIALIZATION ==========
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Multi-Account Support, Date Feature, Fixed Pagination, and Calendar View initialized');
+    console.log('Trading Journal with Mobile Responsiveness, Multi-Account Support, Date Feature, Fixed Pagination, and Calendar View initialized');
     hideLoading();
 });

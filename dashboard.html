@@ -300,21 +300,25 @@
             opacity: 0.9;
         }
 
-        /* Tab Styles */
+        /* Tab Styles - Improved for Mobile */
         .tab-button {
             transition: all 0.3s ease;
             cursor: pointer;
             background: none;
             border: none;
             outline: none;
-            padding: 12px 24px;
+            padding: 12px 20px;
             font-weight: 600;
             border-bottom: 3px solid transparent;
+            flex-shrink: 0;
+            min-width: 80px;
+            text-align: center;
         }
 
         .tab-button.active {
             color: #3b82f6;
             border-bottom-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
         }
 
         .tab-button:not(.active) {
@@ -323,14 +327,7 @@
 
         .tab-button:not(.active):hover {
             color: #374151;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
+            background: rgba(59, 130, 246, 0.02);
         }
 
         /* Mobile Menu Styles */
@@ -412,18 +409,6 @@
             padding: 8px 4px;
             color: #6b7280;
             font-size: 14px;
-        }
-
-        /* Ensure buttons are properly sized on mobile */
-        @media (max-width: 640px) {
-            .pagination-btn, .pagination-current {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-            
-            #pagination {
-                gap: 4px;
-            }
         }
 
         /* Affirmations Styles */
@@ -712,6 +697,271 @@
             margin-bottom: 16px;
             opacity: 0.5;
         }
+
+        /* Improved Mobile Responsiveness */
+        @media (max-width: 767px) {
+            /* Fix mobile menu overflow */
+            #mobileMenu {
+                position: fixed;
+                top: 64px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(55, 65, 81, 0.95);
+                backdrop-filter: blur(10px);
+                z-index: 100;
+                overflow-y: auto;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            #mobileMenu:not(.hidden) {
+                transform: translateX(0);
+            }
+
+            /* Improved mobile menu layout */
+            #mobileMenu .px-2.pt-2.pb-3.space-y-1 {
+                padding: 1rem;
+            }
+
+            /* Mobile accounts list */
+            #mobileAccountsList {
+                max-height: 40vh;
+                overflow-y: auto;
+            }
+
+            /* Better mobile navigation */
+            nav .max-w-7xl {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            /* Fix tab navigation for mobile */
+            .flex.border-b.border-gray-300 {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .flex.border-b.border-gray-300::-webkit-scrollbar {
+                display: none;
+            }
+
+            .tab-button {
+                flex-shrink: 0;
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+
+            /* Improved card layouts for mobile */
+            .card {
+                margin-left: 0.5rem;
+                margin-right: 0.5rem;
+                padding: 12px;
+            }
+
+            /* Better stats grid for mobile */
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                margin-left: 0.5rem;
+                margin-right: 0.5rem;
+            }
+
+            .stat-card {
+                padding: 10px 8px;
+            }
+
+            .stat-value {
+                font-size: 1.1em;
+            }
+
+            /* Improved form layouts */
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .compact-form .form-group {
+                margin-bottom: 10px;
+            }
+
+            /* Better trade history on mobile */
+            .trade-item {
+                margin-left: 0;
+                margin-right: 0;
+                padding: 10px;
+            }
+
+            .trade-actions {
+                justify-content: flex-start;
+                margin-top: 12px;
+            }
+
+            /* Fix modal overflow on mobile */
+            .fixed.inset-0 {
+                padding: 1rem;
+            }
+
+            .fixed.inset-0 .bg-white {
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            /* Improved button sizes for touch */
+            .btn-sm {
+                padding: 10px 14px;
+                font-size: 14px;
+            }
+
+            /* Better chart containers */
+            .grid.grid-cols-1.lg\:grid-cols-2.gap-4.sm\:gap-6 {
+                gap: 12px;
+            }
+
+            /* Fix metric grid overflow */
+            .metric-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+
+            .metric-card {
+                padding: 8px;
+            }
+
+            /* Improved psychological metrics */
+            .grid.grid-cols-2.gap-3 {
+                gap: 8px;
+            }
+
+            .psych-metric {
+                padding: 10px;
+            }
+
+            /* Better section titles */
+            .section-title {
+                font-size: 1.1em;
+                margin-bottom: 10px;
+            }
+
+            /* Fix input sizes */
+            input, select, textarea {
+                font-size: 16px; /* Prevents zoom on iOS */
+                padding: 12px;
+            }
+
+            /* Improved risk calculator */
+            .risk-calculator {
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            /* Better pagination for mobile */
+            #pagination {
+                padding: 12px 0;
+            }
+
+            .pagination-btn, .pagination-current {
+                padding: 8px 12px;
+                font-size: 12px;
+                min-width: 44px; /* Better touch targets */
+            }
+
+            /* Fix affirmation cards on mobile */
+            .affirmation-card {
+                padding: 1rem;
+            }
+
+            /* Improve mobile menu button spacing */
+            .sm\:hidden.flex.items-center {
+                margin-right: 0.5rem;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            /* Even more compact layouts */
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .grid.grid-cols-2.gap-3 {
+                grid-template-columns: 1fr;
+            }
+
+            /* Better text sizes */
+            .stat-value {
+                font-size: 1em;
+            }
+
+            .section-title {
+                font-size: 1em;
+            }
+
+            /* Compact form inputs */
+            .compact-form input, 
+            .compact-form select, 
+            .compact-form textarea {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            /* Smaller padding for cards */
+            .card {
+                padding: 10px;
+            }
+
+            /* Better trade item layout */
+            .trade-item .grid.grid-cols-1.sm\:grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Prevent horizontal scrolling */
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Improved touch targets */
+        button, 
+        .btn, 
+        .tab-button, 
+        .pagination-btn {
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        /* Better focus states for touch */
+        button:focus, 
+        input:focus, 
+        select:focus, 
+        textarea:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        /* Smooth transitions for mobile interactions */
+        .tab-button,
+        .btn,
+        .pagination-btn,
+        .affirmation-card {
+            transition: all 0.2s ease;
+        }
+
+        /* Improved loading indicator for mobile */
+        #loadingIndicator {
+            padding: 1rem;
+        }
+
+        #loadingIndicator .bg-white {
+            padding: 1.5rem;
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -928,17 +1178,17 @@
         </div>
 
         <!-- Tab Navigation -->
-        <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg">
-            <button id="dashboardTab" class="tab-button active">
+        <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg overflow-x-auto">
+            <button id="dashboardTab" class="tab-button active" data-icon="📊">
                 📊 Dashboard
             </button>
-            <button id="tradesTab" class="tab-button">
+            <button id="tradesTab" class="tab-button" data-icon="📋">
                 📋 Trade History
             </button>
-            <button id="affirmationsTab" class="tab-button">
+            <button id="affirmationsTab" class="tab-button" data-icon="🌟">
                 🌟 Affirmations
             </button>
-            <button id="calendarTab" class="tab-button">
+            <button id="calendarTab" class="tab-button" data-icon="📅">
                 📅 Calendar View
             </button>
         </div>
