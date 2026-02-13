@@ -128,7 +128,7 @@ function showLoading() {
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) {
         loadingIndicator.style.display = 'flex';
-        console.log('⏳ Showing loading indicator');
+        console.log('[LOADING] Showing loading indicator');
         
         loadingTimeout = setTimeout(() => {
             console.warn('⚠️ Loading timeout reached, forcing hide');
@@ -141,7 +141,7 @@ function hideLoading() {
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) {
         loadingIndicator.style.display = 'none';
-        console.log('✅ Hiding loading indicator');
+        console.log('[SUCCESS] Hiding loading indicator');
         
         if (loadingTimeout) {
             clearTimeout(loadingTimeout);
@@ -165,7 +165,7 @@ function getCurrentDateTimeString() {
 // ========== CALENDAR FUNCTIONS ==========
 
 function setupCalendar() {
-    console.log('📅 Setting up calendar functionality...');
+    console.log('[CALENDAR] Setting up calendar functionality...');
     
     // Event listeners for calendar navigation
     const prevMonthBtn = document.getElementById('prevMonth');
@@ -199,7 +199,7 @@ function setupCalendar() {
     
     // Initialize calendar
     renderCalendar();
-    console.log('✅ Calendar setup complete');
+    console.log('[SUCCESS] Calendar setup complete');
 }
 
 function handleCustomRangeApply() {
@@ -574,13 +574,13 @@ async function initializeAccounts() {
     console.log('🔄 Initializing accounts system...');
     await loadUserAccounts();
     setupAccountsDropdown();
-    console.log('✅ Accounts system initialized');
+    console.log('[SUCCESS] Accounts system initialized');
 }
 
 async function loadUserAccounts() {
     try {
         if (!currentUser) {
-            console.log('❌ No user for accounts');
+            console.log('[ERROR] No user for accounts');
             throw new Error('No authenticated user');
         }
 
@@ -593,7 +593,7 @@ async function loadUserAccounts() {
             accounts.push({ id: doc.id, ...doc.data() });
         });
 
-        console.log('📊 Accounts found in Firestore:', accounts.length);
+        console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
 
         if (accounts.length === 0) {
             console.log('🆕 Creating default account...');
@@ -608,10 +608,10 @@ async function loadUserAccounts() {
             
             const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
             userAccounts = [{ id: docRef.id, ...defaultAccount }];
-            console.log('✅ Default account created with ID:', docRef.id);
+            console.log('[SUCCESS] Default account created with ID:', docRef.id);
         } else {
             userAccounts = accounts;
-            console.log('✅ Accounts loaded from Firestore:', userAccounts.length);
+            console.log('[SUCCESS] Accounts loaded from Firestore:', userAccounts.length);
         }
         
         const savedCurrentAccount = localStorage.getItem('currentAccountId');
@@ -623,11 +623,11 @@ async function loadUserAccounts() {
             localStorage.setItem('currentAccountId', currentAccountId);
         }
         
-        console.log('🎯 Current account set to:', currentAccountId);
+        console.log('[ACCOUNT] Current account set to:', currentAccountId);
         updateCurrentAccountDisplay();
         
     } catch (error) {
-        console.error('❌ Error loading accounts from Firestore:', error);
+        console.error('[ERROR] Error loading accounts from Firestore:', error);
         await loadAccountsFromLocalStorageFallback();
     }
 }
@@ -653,17 +653,17 @@ async function loadAccountsFromLocalStorageFallback() {
     
     const savedCurrentAccount = localStorage.getItem('currentAccountId');
     currentAccountId = savedCurrentAccount || userAccounts[0].id;
-    console.log('🎯 Current account:', currentAccountId);
+    console.log('[ACCOUNT] Current account:', currentAccountId);
     
     updateCurrentAccountDisplay();
 }
 
 async function saveUserAccounts() {
     try {
-        console.log('💾 Saving accounts to Firestore...');
+        console.log('[SAVE] Saving accounts to Firestore...');
         
         if (!currentUser) {
-            console.log('❌ No user, saving to localStorage only');
+            console.log('[ERROR] No user, saving to localStorage only');
             localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
             return;
         }
@@ -675,7 +675,7 @@ async function saveUserAccounts() {
                     const accountData = { ...account };
                     delete accountData.id;
                     await setDoc(accountRef, accountData, { merge: true });
-                    console.log('✅ Updated account in Firestore:', account.id);
+                    console.log('[SUCCESS] Updated account in Firestore:', account.id);
                 } else if (!account.id || account.id.startsWith('local_') || account.id.startsWith('main_')) {
                     const accountData = { ...account };
                     if (account.id?.startsWith('local_') || account.id?.startsWith('main_')) {
@@ -685,21 +685,21 @@ async function saveUserAccounts() {
                     
                     const docRef = await addDoc(collection(db, 'accounts'), accountData);
                     account.id = docRef.id;
-                    console.log('✅ Created new account in Firestore:', docRef.id);
+                    console.log('[SUCCESS] Created new account in Firestore:', docRef.id);
                 }
             } catch (error) {
-                console.error('❌ Error saving individual account:', account.name, error);
+                console.error('[ERROR] Error saving individual account:', account.name, error);
                 throw error;
             }
         });
         
         await Promise.all(savePromises);
-        console.log('✅ All accounts saved to Firestore');
+        console.log('[SUCCESS] All accounts saved to Firestore');
         
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         
     } catch (error) {
-        console.error('❌ Error saving accounts to Firestore:', error);
+        console.error('[ERROR] Error saving accounts to Firestore:', error);
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         console.log('📁 Accounts saved to localStorage as fallback');
     }
@@ -825,7 +825,7 @@ async function saveCurrentAccountData() {
 
 async function loadAccountData() {
     showLoading();
-    console.log('📊 Loading account data for:', currentAccountId);
+    console.log('[ACCOUNTS] Loading account data for:', currentAccountId);
     
     try {
         if (!currentAccountId || !userAccounts.some(acc => acc.id === currentAccountId)) {
@@ -852,10 +852,10 @@ async function loadAccountData() {
         //     renderCalendar();
         // }
         
-        console.log('✅ Account data loaded successfully');
+        console.log('[SUCCESS] Account data loaded successfully');
         
     } catch (error) {
-        console.error('❌ Error loading account data:', error);
+        console.error('[ERROR] Error loading account data:', error);
         
         let errorMessage = 'Error loading account data. ';
         
@@ -932,7 +932,7 @@ function setupAccountModalListeners() {
                 console.log('🆕 Creating new account:', newAccount);
                 
                 const docRef = await addDoc(collection(db, 'accounts'), newAccount);
-                console.log('✅ Account created in Firestore with ID:', docRef.id);
+                console.log('[SUCCESS] Account created in Firestore with ID:', docRef.id);
                 
                 const accountWithId = {
                     id: docRef.id,
@@ -947,7 +947,7 @@ function setupAccountModalListeners() {
                 showSuccessMessage(`Account "${accountName}" created successfully!`);
                 
             } catch (error) {
-                console.error('❌ Error creating account:', error);
+                console.error('[ERROR] Error creating account:', error);
                 
                 let errorMessage = 'Error creating account. ';
                 if (error.code === 'permission-denied') {
@@ -1071,19 +1071,19 @@ onAuthStateChanged(auth, async (user) => {
         if (mobileUserEmailElement) mobileUserEmailElement.textContent = user.email;
         
         showLoading();
-        console.log('👤 User authenticated:', user.email);
+        console.log('[USER] User authenticated:', user.email);
         
         try {
             console.log('🔄 Starting account initialization...');
             await initializeAccounts();
-            console.log('✅ Account initialization complete');
+            console.log('[SUCCESS] Account initialization complete');
             
             await loadUserSettings();
-            console.log('✅ User settings loaded');
+            console.log('[SUCCESS] User settings loaded');
             
             console.log('🔄 Loading account data...');
             await loadAccountData();
-            console.log('✅ Account data loaded');
+            console.log('[SUCCESS] Account data loaded');
             
             setupEventListeners();
             setupTabs();
@@ -1187,7 +1187,7 @@ function setupEventListeners() {
 
 async function loadTrades() {
     try {
-        console.log('📊 Loading trades for account:', currentAccountId);
+        console.log('[TRADES] Loading trades for account:', currentAccountId);
         
         if (!currentUser) {
             console.log('❌ No user for trades');
@@ -1547,7 +1547,7 @@ function attachPaginationEventListeners() {
             if (this.disabled) return;
             
             const page = parseInt(this.getAttribute('data-page'));
-            console.log('🎯 Pagination button clicked, going to page:', page);
+            console.log('[PAGINATION] Pagination button clicked, going to page:', page);
             
             if (page && page !== currentPage) {
                 displayTradesPage(page);
@@ -1568,7 +1568,7 @@ function displayTrades(trades) {
     if (trades.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-500 py-8">
-                <div class="text-4xl mb-4">📊</div>
+                <div class="text-4xl mb-4"><i class="fas fa-chart-line"></i></div>
                 <p class="text-lg">No trades recorded yet.</p>
                 <p class="text-sm mt-2">Start by adding your first trade in the Dashboard tab!</p>
             </div>
@@ -1629,13 +1629,13 @@ function displayTrades(trades) {
                     ${trade.beforeScreenshot ? `
                         <button onclick="viewScreenshot('${trade.beforeScreenshot}')" 
                                 class="btn-sm bg-blue-500 text-white hover:bg-blue-600 transition-colors flex items-center gap-1">
-                            <span>📸</span> Before
+                            <span><i class="fas fa-camera"></i></span> Before
                         </button>
                     ` : ''}
                     ${trade.afterScreenshot ? `
                         <button onclick="viewScreenshot('${trade.afterScreenshot}')" 
                                 class="btn-sm bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1">
-                            <span>📸</span> After
+                            <span><i class="fas fa-camera"></i></span> After
                         </button>
                     ` : ''}
                     <button onclick="deleteTrade('${trade.id}')" 
@@ -1666,7 +1666,7 @@ function setupAccountBalanceLock() {
         if (isLocked) {
             accountSizeInput.readOnly = true;
             accountSizeInput.classList.add('bg-gray-100', 'cursor-not-allowed');
-            lockToggle.innerHTML = '🔒 Locked';
+            lockToggle.innerHTML = '<i class="fas fa-lock"></i> Locked';
             lockToggle.classList.remove('bg-green-100', 'text-green-600', 'hover:bg-green-200');
             lockToggle.classList.add('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
             balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
@@ -1700,7 +1700,7 @@ function setupAccountBalanceLock() {
             }
             
             updateLockState();
-            showSuccessMessage('Account balance locked! 🔒');
+            showSuccessMessage('Account balance locked! <i class="fas fa-lock"></i>');
             
             updateStats(allTrades);
             renderCharts(allTrades);
@@ -1753,18 +1753,20 @@ function updateCurrencyDisplay() {
 
 function setupTabs() {
     const dashboardTab = document.getElementById('dashboardTab');
+    const addTradeTab = document.getElementById('addTradeTab');
     const tradesTab = document.getElementById('tradesTab');
     const affirmationsTab = document.getElementById('affirmationsTab');
     const calendarTab = document.getElementById('calendarTab');
     const settingsTab = document.getElementById('settingsTab');
     const dashboardContent = document.getElementById('dashboardContent');
+    const addTradeContent = document.getElementById('addTradeContent');
     const tradesContent = document.getElementById('tradesContent');
     const affirmationsContent = document.getElementById('affirmationsContent');
     const calendarContent = document.getElementById('calendarContent');
     const settingsContent = document.getElementById('settingsContent');
 
     // Hide all tab contents first
-    [dashboardContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
+    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
         if (content) {
             content.classList.remove('active');
             content.style.display = 'none';
@@ -1773,7 +1775,7 @@ function setupTabs() {
 
     function switchToTab(tabName) {
         // Hide all tab contents
-        [dashboardContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
+        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
                 content.style.display = 'none';
@@ -1781,7 +1783,7 @@ function setupTabs() {
         });
 
         // Remove active class from all tabs
-        [dashboardTab, tradesTab, affirmationsTab, calendarTab, settingsTab].forEach(tab => {
+        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
@@ -1793,6 +1795,13 @@ function setupTabs() {
                     dashboardContent.style.display = 'block';
                 }
                 if (dashboardTab) dashboardTab.classList.add('active');
+                break;
+            case 'addTrade':
+                if (addTradeContent) {
+                    addTradeContent.classList.add('active');
+                    addTradeContent.style.display = 'block';
+                }
+                if (addTradeTab) addTradeTab.classList.add('active');
                 break;
             case 'trades':
                 if (tradesContent) {
@@ -1832,6 +1841,9 @@ function setupTabs() {
     // Set up event listeners
     if (dashboardTab) {
         dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
+    }
+    if (addTradeTab) {
+        addTradeTab.addEventListener('click', () => switchToTab('addTrade'));
     }
     if (tradesTab) {
         tradesTab.addEventListener('click', () => switchToTab('trades'));
@@ -1948,7 +1960,7 @@ async function loadAffirmations() {
         });
 
         if (affirmations.length === 0) {
-            console.log('📝 No affirmations found, creating sample data...');
+            console.log('[AFFIRMATIONS] No affirmations found, creating sample data...');
             for (const sampleAffirmation of sampleAffirmations) {
                 const affirmationData = {
                     ...sampleAffirmation,
@@ -2030,7 +2042,7 @@ function renderAffirmationsGrid(filteredAffirmations = null) {
                         ✅ Use Now
                     </button>
                     <button onclick="copyAffirmation('${affirmation.id}')" class="copy-btn bg-gray-50 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
-                        📋 Copy
+                        <i class="fas fa-copy"></i> Copy
                     </button>
                     <button onclick="deleteAffirmation('${affirmation.id}')" class="delete-btn bg-red-50 text-red-600 hover:bg-red-100 px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105">
                         🗑️ Delete
@@ -2201,7 +2213,7 @@ window.copyAffirmation = (id) => {
     const affirmation = allAffirmations.find(a => a.id === id);
     if (affirmation) {
         navigator.clipboard.writeText(affirmation.text)
-            .then(() => showSuccessMessage('Affirmation copied to clipboard! 📋'))
+            .then(() => showSuccessMessage('Affirmation copied to clipboard! <i class="fas fa-copy"></i>'))
             .catch(() => alert('Failed to copy affirmation.'));
     }
 };
@@ -2333,7 +2345,7 @@ window.speakAffirmation = () => {
 
 window.showMotivationalQuote = () => {
     const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-    alert(`💡 Motivational Quote:\n\n"${randomQuote}"`);
+    alert(`Motivational Quote:\n\n"${randomQuote}"`);
 };
 
 window.exportAffirmations = () => {
@@ -2347,7 +2359,7 @@ window.exportAffirmations = () => {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    showSuccessMessage('Affirmations exported successfully! 📤');
+    showSuccessMessage('Affirmations exported successfully! <i class="fas fa-upload"></i>');
 };
 
 function convertAffirmationsToCSV(affirmations) {
@@ -2960,11 +2972,16 @@ function calculatePsychologicalMetrics(trades) {
 }
 
 function getMoodEmoji(mood) {
-    const emojiMap = {
-        'confident': '😊', 'neutral': '😐', 'anxious': '😰',
-        'greedy': '😈', 'fearful': '😨', 'disciplined': '🎯', 'impulsive': '⚡'
+    const moodMap = {
+        'confident': '<i class="fas fa-smile" style="color: #10b981;"></i>',
+        'neutral': '<i class="fas fa-meh" style="color: #6b7280;"></i>',
+        'anxious': '<i class="fas fa-frown" style="color: #ef4444;"></i>',
+        'greedy': '<i class="fas fa-grin-stars" style="color: #f59e0b;"></i>',
+        'fearful': '<i class="fas fa-dizzy" style="color: #8b5cf6;"></i>',
+        'disciplined': '<i class="fas fa-crosshairs" style="color: #3b82f6;"></i>',
+        'impulsive': '<i class="fas fa-thunderstorm" style="color: #ef4444;"></i>'
     };
-    return emojiMap[mood] || mood;
+    return moodMap[mood] || mood;
 }
 
 function calculateRiskAdherence(trades) {

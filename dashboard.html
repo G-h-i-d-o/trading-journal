@@ -6,6 +6,7 @@
     <title>Trade Journal - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --profit: #10b981;
@@ -1041,34 +1042,38 @@
     <nav class="bg-gray-800 border-b border-gray-700">
         <!-- Desktop Sidebar -->
         <aside id="sidebar" class="hidden sm:flex flex-col">
-            <div class="brand">💱 Trading Journal</div>
+            <div class="brand"><i class="fas fa-exchange-alt"></i> Trading Journal</div>
 
             <div class="sidebar-section">
                 <button class="sidebar-btn" onclick="document.getElementById('dashboardTab').click();">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i class="fas fa-chart-line"></i></span>
                     <span class="label">Dashboard</span>
                 </button>
+                <button class="sidebar-btn" onclick="document.getElementById('addTradeTab').click();">
+                    <span class="icon"><i class="fas fa-plus-circle"></i></span>
+                    <span class="label">Add Trade</span>
+                </button>
                 <button class="sidebar-btn" onclick="document.getElementById('tradesTab').click();">
-                    <span class="icon">📋</span>
+                    <span class="icon"><i class="fas fa-history"></i></span>
                     <span class="label">Trade History</span>
                 </button>
                 <button class="sidebar-btn" onclick="document.getElementById('affirmationsTab').click();">
-                    <span class="icon">🌟</span>
+                    <span class="icon"><i class="fas fa-star"></i></span>
                     <span class="label">Affirmations</span>
                 </button>
                 <button class="sidebar-btn" onclick="document.getElementById('calendarTab').click();">
-                    <span class="icon">📅</span>
+                    <span class="icon"><i class="fas fa-calendar"></i></span>
                     <span class="label">Calendar</span>
                 </button>
                 <button class="sidebar-btn" onclick="document.getElementById('settingsTab').click();">
-                    <span class="icon">⚙️</span>
+                    <span class="icon"><i class="fas fa-cog"></i></span>
                     <span class="label">Settings</span>
                 </button>
             </div>
 
             <div class="sidebar-section" id="accountsDropdown">
                 <button id="accountsToggle" class="sidebar-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center">
-                    <span class="icon">👤</span>
+                    <span class="icon"><i class="fas fa-user"></i></span>
                     <span id="currentAccountName" class="label">Main Account</span>
                 </button>
                 <div id="accountsMenu" class="hidden mt-2 w-64 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
@@ -1088,14 +1093,14 @@
 
             <div class="sidebar-section">
                 <div id="user-email" class="text-gray-300 text-sm mb-2">Loading...</div>
-                <button onclick="exportTrades()" class="sidebar-btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon">⬇️</span><span class="label">Export</span></button>
-                <button onclick="logout()" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon">⏏️</span><span class="label">Logout</span></button>
+                <button onclick="exportTrades()" class="sidebar-btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-download"></i></span><span class="label">Export</span></button>
+                <button onclick="logout()" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
             </div>
         </aside>
 
         <!-- Mobile Topbar -->
         <div id="mobileTopbar" class="sm:hidden flex items-center justify-between px-3 py-2">
-            <h1 class="text-lg font-bold text-white">💱 Trading Journal</h1>
+            <h1 class="text-lg font-bold text-white"><i class="fas fa-exchange-alt"></i> Trading Journal</h1>
             <div class="sm:hidden flex items-center">
                 <button id="mobileMenuButton" class="text-gray-300 hover:text-white p-2">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1149,7 +1154,7 @@
                 
                 <form id="affirmationForm" class="space-y-6">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">🌟 Affirmation Text</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-star"></i> Affirmation Text</label>
                         <textarea 
                             id="affirmationText" 
                             rows="4" 
@@ -1163,17 +1168,17 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">📂 Category</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-folder"></i> Category</label>
                         <select 
                             id="affirmationCategorySelect" 
                             class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
                         >
-                            <option value="confidence">💪 Confidence</option>
-                            <option value="discipline">🎯 Discipline</option>
-                            <option value="patience">⏳ Patience</option>
-                            <option value="risk-management">🛡️ Risk Management</option>
-                            <option value="mindset">🧠 Mindset</option>
-                            <option value="general">🌈 General</option>
+                            <option value="confidence"><i class="fas fa-fist-raised"></i> Confidence</option>
+                            <option value="discipline"><i class="fas fa-bullseye"></i> Discipline</option>
+                            <option value="patience"><i class="fas fa-hourglass-end"></i> Patience</option>
+                            <option value="risk-management"><i class="fas fa-shield-alt"></i> Risk Management</option>
+                            <option value="mindset"><i class="fas fa-brain"></i> Mindset</option>
+                            <option value="general"><i class="fas fa-rainbow"></i> General</option>
                         </select>
                     </div>
                     
@@ -1222,7 +1227,7 @@
     <div id="randomAffirmationModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="p-8 text-center">
-                <div class="text-6xl mb-6">💫</div>
+                <div class="text-6xl mb-6"><i class="fas fa-lightbulb" style="font-size: 3rem; color: #fbbf24;"></i></div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Your Affirmation</h3>
                 <p class="text-sm text-gray-600 mb-6">Take a deep breath and internalize this message</p>
                 
@@ -1235,13 +1240,13 @@
                         onclick="useRandomAffirmation()" 
                         class="col-span-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 hover:scale-105 shadow-lg"
                     >
-                        ✅ I'm Using This
+                        <i class="fas fa-check-circle"></i> I'm Using This
                     </button>
                     <button 
                         onclick="showAnotherRandom()" 
                         class="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 hover:scale-105"
                     >
-                        🔄 Another
+                        <i class="fas fa-redo"></i> Another
                     </button>
                     <button 
                         onclick="closeRandomModal()" 
@@ -1267,20 +1272,23 @@
 
         <!-- Tab Navigation -->
         <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg overflow-x-auto">
-            <button id="dashboardTab" class="tab-button active" data-icon="📊">
-                📊 Dashboard
+            <button id="dashboardTab" class="tab-button active" data-icon="chart-line">
+                <i class="fas fa-chart-line"></i> Dashboard
             </button>
-            <button id="tradesTab" class="tab-button" data-icon="📋">
-                📋 Trade History
+            <button id="addTradeTab" class="tab-button" data-icon="plus-circle">
+                <i class="fas fa-plus-circle"></i> Add Trade
             </button>
-            <button id="affirmationsTab" class="tab-button" data-icon="🌟">
-                🌟 Affirmations
+            <button id="tradesTab" class="tab-button" data-icon="history">
+                <i class="fas fa-history"></i> Trade History
             </button>
-            <button id="calendarTab" class="tab-button" data-icon="📅">
-                📅 Calendar View
+            <button id="affirmationsTab" class="tab-button" data-icon="star">
+                <i class="fas fa-star"></i> Affirmations
             </button>
-            <button id="settingsTab" class="tab-button" data-icon="⚙️">
-                ⚙️ Settings
+            <button id="calendarTab" class="tab-button" data-icon="calendar">
+                <i class="fas fa-calendar"></i> Calendar View
+            </button>
+            <button id="settingsTab" class="tab-button" data-icon="cog">
+                <i class="fas fa-cog"></i> Settings
             </button>
         </div>
 
@@ -1288,13 +1296,13 @@
         <div id="dashboardContent" class="tab-content active">
             <!-- Account Setup -->
             <div class="card">
-                <h3 class="section-title">💰 Account Setup</h3>
+                <h3 class="section-title"><i class="fas fa-wallet"></i> Account Setup</h3>
                 <div class="form-grid compact-form">
                     <div class="form-group">
                         <div class="flex items-center justify-between mb-1">
                             <label>Account Balance ($)</label>
                             <button type="button" id="lockToggle" class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 transition-colors">
-                                🔒 Locked
+                                <i class="fas fa-lock"></i> Locked
                             </button>
                         </div>
                         <input type="number" id="accountSize" placeholder="e.g., 10000" value="10000">
@@ -1350,131 +1358,11 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <!-- Trade Entry Form -->
-                <div class="card">
-                    <h3 class="section-title">📝 New Trade</h3>
-                    <form id="tradeForm" class="compact-form">
-                        <div class="form-group">
-                            <label>Mood / Psychology</label>
-                            <select id="mood" class="mb-2">
-                                <option value="">Select Mood</option>
-                                <option value="confident">😊 Confident</option>
-                                <option value="neutral">😐 Neutral</option>
-                                <option value="anxious">😰 Anxious</option>
-                                <option value="greedy">😈 Greedy</option>
-                                <option value="fearful">😨 Fearful</option>
-                                <option value="disciplined">🎯 Disciplined</option>
-                                <option value="impulsive">⚡ Impulsive</option>
-                            </select>
-                        </div>
-
-                        <!-- DATE FEATURE ADDED HERE -->
-                        <div class="form-group">
-                            <label>Trade Date & Time</label>
-                            <input type="datetime-local" id="tradeDateTime" required>
-                            <small class="text-gray-500 text-xs">Select the date and time when the trade was executed</small>
-                        </div>
-
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label>Instrument</label>
-                                <select id="symbol" required>
-                                    <option value="">Select Instrument</option>
-                                    <optgroup label="Forex">
-                                        <option value="EUR/USD">EUR/USD</option>
-                                        <option value="GBP/USD">GBP/USD</option>
-                                        <option value="USD/JPY">USD/JPY</option>
-                                        <option value="AUD/USD">AUD/USD</option>
-                                    </optgroup>
-                                    <optgroup label="Indices">
-                                        <option value="US30">US30</option>
-                                        <option value="SPX500">S&P 500</option>
-                                        <option value="NAS100">NASDAQ</option>
-                                        <option value="GE30">DAX 30</option>
-                                    </optgroup>
-                                </select>
-                                <div id="instrumentTypeDisplay" class="pip-display"></div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Direction</label>
-                                <select id="direction" required>
-                                    <option value="">Select</option>
-                                    <option value="long">Buy</option>
-                                    <option value="short">Sell</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-section">
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>Entry Price</label>
-                                    <input type="number" id="entryPrice" step="0.00001" required>
-                                    <div class="pip-display" id="entryPipDisplay"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Stop Loss</label>
-                                    <input type="number" id="stopLoss" step="0.00001" required>
-                                    <div class="pip-display" id="slPipDisplay"></div>
-                                </div>
-                            </div>
-
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>Take Profit</label>
-                                    <input type="number" id="takeProfit" step="0.00001">
-                                    <div class="pip-display" id="tpPipDisplay"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Size (Lots)</label>
-                                    <input type="number" id="lotSize" step="0.01" value="0.01" required>
-                                    <div class="pip-display">Std Lot = 100k</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Risk Calculator -->
-                        <div class="risk-calculator">
-                            <h5 class="font-bold mb-2">🎯 Risk Management</h5>
-                            <div id="riskCalculation" class="space-y-1 text-xs">
-                                <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
-                                <div>Amount: $<span id="totalRisk">0.00</span></div>
-                                <div>Risk %: <span id="riskPercentage">0.00%</span></div>
-                                <div>R:R: <span id="riskRewardRatio">0.00</span></div>
-                                <div>Rec. Lots: <span id="recommendedLotSize">0.00</span></div>
-                            </div>
-                        </div>
-
-                        <!-- Screenshots -->
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label>📸 Before Chart URL</label>
-                                <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
-                            </div>
-
-                            <div class="form-group">
-                                <label>📸 After Chart URL</label>
-                                <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Notes & Psychology</label>
-                                <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons learned, psychological state..."></textarea>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn">
-                            <span id="submitButtonText">💾 Save Trade</span>
-                        </button>
-                    </form>
-                </div>
-
                 <!-- Analytics & Charts -->
                 <div class="space-y-4 sm:space-y-6">
                     <!-- Performance Metrics -->
                     <div class="card">
-                        <h3 class="section-title">📈 Performance Analytics</h3>
+                        <h3 class="section-title"><i class="fas fa-chart-bar"></i> Performance Analytics</h3>
                         <div class="metric-grid">
                             <div class="metric-card">
                                 <div class="metric-label">Avg Win</div>
@@ -1513,7 +1401,7 @@
 
                     <!-- Psychological Metrics -->
                     <div class="card">
-                        <h3 class="section-title">🧠 Trading Psychology</h3>
+                        <h3 class="section-title"><i class="fas fa-brain"></i> Trading Psychology</h3>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="psych-metric">
                                 <div class="psych-value" id="bestMood">-</div>
@@ -1540,7 +1428,7 @@
 
                     <!-- Charts -->
                     <div class="card">
-                        <h3 class="section-title">📊 Distribution</h3>
+                        <h3 class="section-title"><i class="fas fa-pie-chart"></i> Distribution</h3>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <canvas id="winLossChart" height="160"></canvas>
@@ -1553,7 +1441,7 @@
 
                     <!-- Time Analysis -->
                     <div class="card">
-                        <h3 class="section-title">⏰ Time Analysis</h3>
+                        <h3 class="section-title"><i class="fas fa-clock"></i> Time Analysis</h3>
                         <div class="metric-grid">
                             <div class="metric-card">
                                 <div class="metric-label">Best Day</div>
@@ -1578,10 +1466,132 @@
 
             <!-- Performance Chart -->
             <div class="card">
-                <h3 class="section-title">📈 Balance Progress</h3>
+                <h3 class="section-title"><i class="fas fa-chart-line"></i> Balance Progress</h3>
                 <div style="height: 250px;">
                     <canvas id="performanceChart"></canvas>
                 </div>
+            </div>
+        </div>
+
+        <!-- Add Trade Tab Content -->
+        <div id="addTradeContent" class="tab-content">
+            <div class="card">
+                <h3 class="section-title"><i class="fas fa-plus-circle"></i> Add Trade</h3>
+                <form id="tradeForm" class="compact-form space-y-4">
+                    <div class="form-group">
+                        <label>Mood / Psychology</label>
+                        <select id="mood" class="mb-2">
+                            <option value="">Select Mood</option>
+                            <option value="confident">😊 Confident</option>
+                            <option value="neutral">😐 Neutral</option>
+                            <option value="anxious">😰 Anxious</option>
+                            <option value="greedy">😈 Greedy</option>
+                            <option value="fearful">😨 Fearful</option>
+                            <option value="disciplined"><i class="fas fa-bullseye"></i> Disciplined</option>
+                            <option value="impulsive"><i class="fas fa-bolt"></i> Impulsive</option>
+                        </select>
+                    </div>
+
+                    <!-- DATE FEATURE -->
+                    <div class="form-group">
+                        <label>Trade Date & Time</label>
+                        <input type="datetime-local" id="tradeDateTime" required>
+                        <small class="text-gray-500 text-xs">Select the date and time when the trade was executed</small>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>Instrument</label>
+                            <select id="symbol" required>
+                                <option value="">Select Instrument</option>
+                                <optgroup label="Forex">
+                                    <option value="EUR/USD">EUR/USD</option>
+                                    <option value="GBP/USD">GBP/USD</option>
+                                    <option value="USD/JPY">USD/JPY</option>
+                                    <option value="AUD/USD">AUD/USD</option>
+                                </optgroup>
+                                <optgroup label="Indices">
+                                    <option value="US30">US30</option>
+                                    <option value="SPX500">S&P 500</option>
+                                    <option value="NAS100">NASDAQ</option>
+                                    <option value="GE30">DAX 30</option>
+                                </optgroup>
+                            </select>
+                            <div id="instrumentTypeDisplay" class="pip-display"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Direction</label>
+                            <select id="direction" required>
+                                <option value="">Select</option>
+                                <option value="long">Buy</option>
+                                <option value="short">Sell</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Entry Price</label>
+                                <input type="number" id="entryPrice" step="0.00001" required>
+                                <div class="pip-display" id="entryPipDisplay"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Stop Loss</label>
+                                <input type="number" id="stopLoss" step="0.00001" required>
+                                <div class="pip-display" id="slPipDisplay"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Take Profit</label>
+                                <input type="number" id="takeProfit" step="0.00001">
+                                <div class="pip-display" id="tpPipDisplay"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Size (Lots)</label>
+                                <input type="number" id="lotSize" step="0.01" value="0.01" required>
+                                <div class="pip-display">Std Lot = 100k</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Calculator -->
+                    <div class="risk-calculator">
+                        <h5 class="font-bold mb-2"><i class="fas fa-bullseye"></i> Risk Management</h5>
+                        <div id="riskCalculation" class="space-y-1 text-xs">
+                            <div>Risk: <span id="pipsRisk">0</span> pips/points</div>
+                            <div>Amount: $<span id="totalRisk">0.00</span></div>
+                            <div>Risk %: <span id="riskPercentage">0.00%</span></div>
+                            <div>R:R: <span id="riskRewardRatio">0.00</span></div>
+                            <div>Rec. Lots: <span id="recommendedLotSize">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Screenshots -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label><i class="fas fa-camera"></i> Before Chart URL</label>
+                            <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-camera"></i> After Chart URL</label>
+                            <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Notes & Psychology</label>
+                            <textarea id="notes" rows="2" placeholder="Strategy, emotions, lessons learned, psychological state..."></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn">
+                        <span id="submitButtonText"><i class="fas fa-save"></i> Save Trade</span>
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -1593,10 +1603,10 @@
                     <div class="flex items-center space-x-2">
                         <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
                         <button onclick="importTrades()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
-                            📥 Import CSV
+                            <i class="fas fa-download"></i> Import CSV
                         </button>
                         <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
-                            📤 Export CSV
+                            <i class="fas fa-upload"></i> Export CSV
                         </button>
                     </div>
                 </div>
@@ -1619,7 +1629,7 @@
             <div class="card bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div class="flex-1">
-                        <h3 class="text-2xl font-bold mb-2">🌟 Trading Affirmations</h3>
+                        <h3 class="text-2xl font-bold mb-2"><i class="fas fa-star"></i> Trading Affirmations</h3>
                         <p class="text-purple-100 opacity-90">Strengthen your mindset with powerful daily affirmations</p>
                     </div>
                     <button onclick="addNewAffirmation()" class="mt-4 md:mt-0 bg-white text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-xl font-semibold flex items-center shadow-lg transition-all duration-300 hover:scale-105">
@@ -1636,7 +1646,7 @@
                             <div class="text-blue-100 text-sm">Total Affirmations</div>
                             <div class="text-2xl font-bold mt-1" id="totalAffirmations">0</div>
                         </div>
-                        <div class="text-3xl opacity-80">📚</div>
+                        <div class="text-3xl opacity-80"><i class="fas fa-book"></i></div>
                     </div>
                 </div>
                 
@@ -1646,7 +1656,7 @@
                             <div class="text-green-100 text-sm">Active Today</div>
                             <div class="text-2xl font-bold mt-1" id="activeAffirmations">0</div>
                         </div>
-                        <div class="text-3xl opacity-80">⚡</div>
+                        <div class="text-3xl opacity-80"><i class="fas fa-bolt"></i></div>
                     </div>
                 </div>
                 
@@ -1656,7 +1666,7 @@
                             <div class="text-yellow-100 text-sm">Favorites</div>
                             <div class="text-2xl font-bold mt-1" id="favoriteAffirmations">0</div>
                         </div>
-                        <div class="text-3xl opacity-80">⭐</div>
+                        <div class="text-3xl opacity-80"><i class="fas fa-star"></i></div>
                     </div>
                 </div>
                 
@@ -1679,15 +1689,15 @@
                 <div class="relative z-10">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
-                            <h4 class="text-xl font-bold mb-2">💫 Your Daily Focus</h4>
+                            <h4 class="text-xl font-bold mb-2"><i class="fas fa-lightbulb" style="color: #fbbf24;"></i> Your Daily Focus</h4>
                             <p class="text-indigo-100 opacity-90">Start your trading day with this powerful affirmation</p>
                         </div>
                         <div class="flex space-x-2 mt-4 md:mt-0">
                             <button onclick="refreshDailyAffirmation()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-xl transition-all duration-300 hover:scale-110" title="New Affirmation">
-                                <span class="text-lg">🔄</span>
+                                <span class="text-lg"><i class="fas fa-redo"></i></span>
                             </button>
                             <button onclick="speakAffirmation()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-xl transition-all duration-300 hover:scale-110" title="Listen">
-                                <span class="text-lg">🔊</span>
+                                <span class="text-lg"><i class="fas fa-volume-up"></i></span>
                             </button>
                         </div>
                     </div>
@@ -1702,7 +1712,7 @@
                             <span class="text-indigo-100 text-sm">Strength: <span id="affirmationStrength" class="font-bold">92%</span></span>
                         </div>
                         <button onclick="markDailyAsUsed()" class="bg-white text-indigo-600 px-8 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all duration-300 hover:scale-105 shadow-lg">
-                            ✅ I Used This Today
+                            <i class="fas fa-check-circle"></i> I Used This Today
                         </button>
                     </div>
                 </div>
@@ -1712,16 +1722,16 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <!-- Quick Actions -->
                 <div class="card bg-gradient-to-br from-gray-50 to-gray-100">
-                    <h4 class="font-semibold text-gray-800 mb-4">🚀 Quick Actions</h4>
+                    <h4 class="font-semibold text-gray-800 mb-4"><i class="fas fa-rocket"></i> Quick Actions</h4>
                     <div class="space-y-3">
                         <button onclick="showRandomAffirmation()" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
-                            <span class="mr-3 text-lg">🎲</span> Random Affirmation
+                            <span class="mr-3 text-lg"><i class="fas fa-random"></i></span> Random Affirmation
                         </button>
                         <button onclick="showMotivationalQuote()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
-                            <span class="mr-3 text-lg">💡</span> Motivational Quote
+                            <span class="mr-3 text-lg"><i class="fas fa-lightbulb"></i></span> Motivational Quote
                         </button>
                         <button onclick="exportAffirmations()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
-                            <span class="mr-3 text-lg">📤</span> Export All
+                            <span class="mr-3 text-lg"><i class="fas fa-upload"></i></span> Export All
                         </button>
                     </div>
                 </div>
@@ -1731,22 +1741,22 @@
                     <h4 class="font-semibold text-gray-800 mb-4">📂 Categories</h4>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <button class="category-filter active bg-blue-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="all">
-                            🌈 All
+                            <i class="fas fa-rainbow"></i> All
                         </button>
                         <button class="category-filter bg-green-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="confidence">
-                            💪 Confidence
+                            <i class="fas fa-fist-raised"></i> Confidence
                         </button>
                         <button class="category-filter bg-purple-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="discipline">
-                            🎯 Discipline
+                            <i class="fas fa-bullseye"></i> Discipline
                         </button>
                         <button class="category-filter bg-yellow-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="patience">
-                            ⏳ Patience
+                            <i class="fas fa-hourglass-end"></i> Patience
                         </button>
                         <button class="category-filter bg-red-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="risk-management">
-                            🛡️ Risk Management
+                            <i class="fas fa-shield-alt"></i> Risk Management
                         </button>
                         <button class="category-filter bg-indigo-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="mindset">
-                            🧠 Mindset
+                            <i class="fas fa-brain"></i> Mindset
                         </button>
                     </div>
                 </div>
@@ -1759,7 +1769,7 @@
                     <div class="flex items-center space-x-4">
                         <div class="relative">
                             <input type="text" id="searchAffirmations" placeholder="Search affirmations..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><i class="fas fa-search"></i></span>
                         </div>
                         <select id="sortAffirmations" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="newest">Newest First</option>
@@ -1776,7 +1786,7 @@
 
                 <!-- Empty State -->
                 <div id="emptyAffirmations" class="text-center py-16 hidden">
-                    <div class="text-8xl mb-6 opacity-20">🌟</div>
+                    <div class="text-8xl mb-6 opacity-20"><i class="fas fa-star"></i></div>
                     <h3 class="text-2xl font-semibold text-gray-700 mb-4">No affirmations yet</h3>
                     <p class="text-gray-500 mb-8 text-lg">Start building your positive trading mindset with powerful daily affirmations.</p>
                     <button onclick="addNewAffirmation()" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-lg">
@@ -1790,18 +1800,18 @@
         <div id="calendarContent" class="tab-content">
             <div class="card">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <h3 class="section-title mb-4 md:mb-0">📅 Trading Calendar</h3>
+                    <h3 class="section-title mb-4 md:mb-0"><i class="fas fa-calendar"></i> Trading Calendar</h3>
                     <div class="flex flex-wrap gap-3 w-full md:w-auto">
                         <!-- Calendar Navigation -->
                         <div class="flex items-center space-x-2">
                             <button id="prevMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
-                                <span>⬅️</span>
+                                <span><i class="fas fa-arrow-left"></i></span>
                             </button>
                             <h4 id="currentMonthYear" class="font-bold text-lg text-gray-800 min-w-40 text-center">
                                 Loading...
                             </h4>
                             <button id="nextMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
-                                <span>➡️</span>
+                                <span><i class="fas fa-arrow-right"></i></span>
                             </button>
                         </div>
                         
