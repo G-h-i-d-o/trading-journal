@@ -24,15 +24,15 @@
         
         .card {
             background: white;
-            padding: 16px;
+            padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             border: 1px solid #e5e7eb;
         }
         
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         
         label {
@@ -86,8 +86,8 @@
         
         .trade-item {
             border-left: 4px solid var(--primary);
-            padding: 12px;
-            margin: 8px 0;
+            padding: 16px;
+            margin: 12px 0;
             background: #f9fafb;
             border-radius: 0 8px 8px 0;
         }
@@ -95,23 +95,24 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
         
         @media (min-width: 768px) {
             .stats-grid {
                 grid-template-columns: repeat(4, 1fr);
-                gap: 12px;
+                gap: 16px;
             }
         }
         
         .stat-card {
             background: white;
-            padding: 12px;
+            padding: 16px;
             border-radius: 10px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
             text-align: center;
+            border: 1px solid #e5e7eb;
         }
         
         .stat-value {
@@ -122,17 +123,17 @@
         
         .risk-calculator {
             background: #f0f9ff;
-            padding: 12px;
+            padding: 16px;
             border-radius: 8px;
             border-left: 4px solid var(--primary);
-            margin: 8px 0;
+            margin: 16px 0;
             font-size: 13px;
         }
         
         .form-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 16px;
         }
         
         @media (min-width: 480px) {
@@ -161,9 +162,12 @@
         
         .section-title {
             font-size: 1.2em;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            margin-top: 0;
+            padding-bottom: 12px;
             border-bottom: 2px solid #e5e7eb;
+            color: #1f2937;
         }
         
         /* Mobile optimizations */
@@ -257,14 +261,17 @@
         .metric-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 8px;
+            gap: 16px;
+            margin-top: 16px;
+            margin-bottom: 16px;
         }
         
         .metric-card {
             background: #f8fafc;
-            padding: 10px;
+            padding: 16px;
             border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+            border: 1px solid #e5e7eb;
             border-left: 3px solid #3b82f6;
         }
         
@@ -422,6 +429,15 @@
         .content-wrapper {
             margin-left: 0;
             transition: margin-left 0.25s ease;
+            width: 100%;
+            background: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .content-wrapper > div {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         @media (min-width: 640px) {
@@ -1035,6 +1051,31 @@
         #loadingIndicator .bg-white {
             padding: 1.5rem;
         }
+
+        /* Tab Content Styles */
+        .tab-content {
+            display: none;
+            padding: 24px;
+            margin: 0;
+            width: 100%;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 768px) {
+            .tab-content {
+                padding: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tab-content {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
@@ -1152,7 +1193,7 @@
                     </button>
                 </div>
                 
-                <form id="affirmationForm" class="space-y-6">
+                <form id="affirmationForm" class="space-y-4">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-star"></i> Affirmation Text</label>
                         <textarea 
@@ -1357,9 +1398,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <!-- Analytics & Charts -->
-                <div class="space-y-4 sm:space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left Column: Performance & Analysis -->
+                <div class="space-y-8">
                     <!-- Performance Metrics -->
                     <div class="card">
                         <h3 class="section-title"><i class="fas fa-chart-bar"></i> Performance Analytics</h3>
@@ -1399,37 +1440,10 @@
                         </div>
                     </div>
 
-                    <!-- Psychological Metrics -->
-                    <div class="card">
-                        <h3 class="section-title"><i class="fas fa-brain"></i> Trading Psychology</h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="psych-metric">
-                                <div class="psych-value" id="bestMood">-</div>
-                                <div class="psych-label">Best Mood</div>
-                            </div>
-                            <div class="psych-metric">
-                                <div class="psych-value" id="worstMood">-</div>
-                                <div class="psych-label">Worst Mood</div>
-                            </div>
-                            <div class="psych-metric">
-                                <div class="psych-value" id="disciplineScore">0%</div>
-                                <div class="psych-label">Discipline</div>
-                            </div>
-                            <div class="psych-metric">
-                                <div class="psych-value" id="riskAdherence">0%</div>
-                                <div class="psych-label">Risk Adherence</div>
-                            </div>
-                        </div>
-                        <div class="mt-3 text-xs text-gray-600">
-                            <div>Mood Performance:</div>
-                            <div id="moodPerformance" class="mt-1">No data yet</div>
-                        </div>
-                    </div>
-
                     <!-- Charts -->
                     <div class="card">
                         <h3 class="section-title"><i class="fas fa-pie-chart"></i> Distribution</h3>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <canvas id="winLossChart" height="160"></canvas>
                             </div>
@@ -1462,10 +1476,40 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Right Column: Psychology -->
+                <div class="space-y-8">
+                    <!-- Psychological Metrics -->
+                    <div class="card">
+                        <h3 class="section-title"><i class="fas fa-brain"></i> Trading Psychology</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="psych-metric">
+                                <div class="psych-value" id="bestMood">-</div>
+                                <div class="psych-label">Best Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="worstMood">-</div>
+                                <div class="psych-label">Worst Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="disciplineScore">0%</div>
+                                <div class="psych-label">Discipline</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="riskAdherence">0%</div>
+                                <div class="psych-label">Risk Adherence</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-600">
+                            <div>Mood Performance:</div>
+                            <div id="moodPerformance" class="mt-1">No data yet</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Performance Chart -->
-            <div class="card">
+            <div class="card mt-16">
                 <h3 class="section-title"><i class="fas fa-chart-line"></i> Balance Progress</h3>
                 <div style="height: 250px;">
                     <canvas id="performanceChart"></canvas>
@@ -1482,13 +1526,13 @@
                         <label>Mood / Psychology</label>
                         <select id="mood" class="mb-2">
                             <option value="">Select Mood</option>
-                            <option value="confident">😊 Confident</option>
-                            <option value="neutral">😐 Neutral</option>
-                            <option value="anxious">😰 Anxious</option>
-                            <option value="greedy">😈 Greedy</option>
-                            <option value="fearful">😨 Fearful</option>
-                            <option value="disciplined"><i class="fas fa-bullseye"></i> Disciplined</option>
-                            <option value="impulsive"><i class="fas fa-bolt"></i> Impulsive</option>
+                            <option value="confident">Confident</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="anxious">Anxious</option>
+                            <option value="greedy">Greedy</option>
+                            <option value="fearful">Fearful</option>
+                            <option value="disciplined">Disciplined</option>
+                            <option value="impulsive">Impulsive</option>
                         </select>
                     </div>
 
@@ -1639,7 +1683,7 @@
             </div>
 
             <!-- Stats Dashboard -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div class="affirmation-stat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
                     <div class="flex items-center justify-between">
                         <div>
@@ -1719,11 +1763,11 @@
             </div>
 
             <!-- Quick Actions & Categories -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Quick Actions -->
                 <div class="card bg-gradient-to-br from-gray-50 to-gray-100">
                     <h4 class="font-semibold text-gray-800 mb-4"><i class="fas fa-rocket"></i> Quick Actions</h4>
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <button onclick="showRandomAffirmation()" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
                             <span class="mr-3 text-lg"><i class="fas fa-random"></i></span> Random Affirmation
                         </button>
@@ -1738,8 +1782,8 @@
 
                 <!-- Categories -->
                 <div class="card bg-gradient-to-br from-blue-50 to-cyan-100 lg:col-span-2">
-                    <h4 class="font-semibold text-gray-800 mb-4">📂 Categories</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <h4 class="font-semibold text-gray-800 mb-4"><i class="fas fa-folder"></i> Categories</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <button class="category-filter active bg-blue-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="all">
                             <i class="fas fa-rainbow"></i> All
                         </button>
@@ -1780,7 +1824,7 @@
                     </div>
                 </div>
 
-                <div id="affirmationsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div id="affirmationsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     <!-- Sample Affirmation Cards will be loaded here -->
                 </div>
 
@@ -1912,11 +1956,11 @@
         <!-- Settings Tab Content -->
         <div id="settingsContent" class="tab-content">
             <div class="card">
-                <h3 class="section-title">⚙️ Settings</h3>
+                <h3 class="section-title"><i class="fas fa-cog"></i> Settings</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="card">
                         <h4 class="font-semibold mb-2">Personal Information</h4>
-                        <form id="personalInfoForm" class="space-y-3">
+                        <form id="personalInfoForm" class="space-y-4">
                             <div>
                                 <label>Full Name</label>
                                 <input type="text" id="fullName" placeholder="Your full name">
@@ -1940,7 +1984,7 @@
 
                     <div class="card">
                         <h4 class="font-semibold mb-2">Preferences</h4>
-                        <div class="space-y-3">
+                        <div class="space-y-4">
                             <div>
                                 <label>Default Account</label>
                                 <select id="defaultAccountSelect">
