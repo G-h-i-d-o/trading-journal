@@ -1756,13 +1756,15 @@ function setupTabs() {
     const tradesTab = document.getElementById('tradesTab');
     const affirmationsTab = document.getElementById('affirmationsTab');
     const calendarTab = document.getElementById('calendarTab');
+    const settingsTab = document.getElementById('settingsTab');
     const dashboardContent = document.getElementById('dashboardContent');
     const tradesContent = document.getElementById('tradesContent');
     const affirmationsContent = document.getElementById('affirmationsContent');
     const calendarContent = document.getElementById('calendarContent');
+    const settingsContent = document.getElementById('settingsContent');
 
     // Hide all tab contents first
-    [dashboardContent, tradesContent, affirmationsContent, calendarContent].forEach(content => {
+    [dashboardContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
         if (content) {
             content.classList.remove('active');
             content.style.display = 'none';
@@ -1771,7 +1773,7 @@ function setupTabs() {
 
     function switchToTab(tabName) {
         // Hide all tab contents
-        [dashboardContent, tradesContent, affirmationsContent, calendarContent].forEach(content => {
+        [dashboardContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
                 content.style.display = 'none';
@@ -1779,7 +1781,7 @@ function setupTabs() {
         });
 
         // Remove active class from all tabs
-        [dashboardTab, tradesTab, affirmationsTab, calendarTab].forEach(tab => {
+        [dashboardTab, tradesTab, affirmationsTab, calendarTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
@@ -1817,6 +1819,13 @@ function setupTabs() {
                 }
                 if (calendarTab) calendarTab.classList.add('active');
                 break;
+            case 'settings':
+                if (settingsContent) {
+                    settingsContent.classList.add('active');
+                    settingsContent.style.display = 'block';
+                }
+                if (settingsTab) settingsTab.classList.add('active');
+                break;
         }
     }
 
@@ -1832,6 +1841,9 @@ function setupTabs() {
     }
     if (calendarTab) {
         calendarTab.addEventListener('click', () => switchToTab('calendar'));
+    }
+    if (settingsTab) {
+        settingsTab.addEventListener('click', () => switchToTab('settings'));
     }
     
     // Start with dashboard tab active
