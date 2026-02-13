@@ -2954,8 +2954,8 @@ function calculatePsychologicalMetrics(trades) {
     const riskAdherence = calculateRiskAdherence(trades);
     const disciplineScore = Math.min(100, riskAdherence * 100);
 
-    document.getElementById('bestMood').textContent = bestMood;
-    document.getElementById('worstMood').textContent = worstMood;
+    document.getElementById('bestMood').innerHTML = bestMood;
+    document.getElementById('worstMood').innerHTML = worstMood;
     document.getElementById('disciplineScore').textContent = `${disciplineScore.toFixed(0)}%`;
     document.getElementById('riskAdherence').textContent = `${riskAdherence.toFixed(1)}%`;
 
@@ -2973,13 +2973,13 @@ function calculatePsychologicalMetrics(trades) {
 
 function getMoodEmoji(mood) {
     const moodMap = {
-        'confident': '<i class="fas fa-smile" style="color: #10b981;"></i>',
-        'neutral': '<i class="fas fa-meh" style="color: #6b7280;"></i>',
-        'anxious': '<i class="fas fa-frown" style="color: #ef4444;"></i>',
-        'greedy': '<i class="fas fa-grin-stars" style="color: #f59e0b;"></i>',
-        'fearful': '<i class="fas fa-dizzy" style="color: #8b5cf6;"></i>',
-        'disciplined': '<i class="fas fa-crosshairs" style="color: #3b82f6;"></i>',
-        'impulsive': '<i class="fas fa-thunderstorm" style="color: #ef4444;"></i>'
+        'confident': '😊',
+        'neutral': '😐',
+        'anxious': '😰',
+        'greedy': '😈',
+        'fearful': '😨',
+        'disciplined': '📋',
+        'impulsive': '⚡'
     };
     return moodMap[mood] || mood;
 }
