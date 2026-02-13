@@ -357,6 +357,61 @@
             z-index: 50;
         }
 
+        /* Sidebar Styles */
+        #sidebar {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: #0f172a;
+            color: #e5e7eb;
+            padding: 1rem;
+            z-index: 60;
+            overflow-y: auto;
+        }
+
+        #sidebar .brand {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        #sidebar .sidebar-section {
+            margin-bottom: 0.75rem;
+        }
+
+        #sidebar .sidebar-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 0.5rem;
+            padding: 8px 10px;
+            border-radius: 8px;
+            color: #e5e7eb;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+
+        #sidebar .sidebar-btn:hover {
+            background: rgba(255,255,255,0.03);
+            color: white;
+        }
+
+        .content-wrapper {
+            margin-left: 0;
+            transition: margin-left 0.25s ease;
+        }
+
+        @media (min-width: 640px) {
+            .content-wrapper { margin-left: 240px; }
+            #mobileTopbar { display: none; }
+            #sidebar { display: block; }
+        }
+
         /* Pagination Styles */
         #pagination {
             display: flex;
@@ -965,80 +1020,74 @@
     </style>
 </head>
 <body class="bg-gray-900 min-h-screen">
-    <!-- Navigation -->
+    <!-- Navigation / Sidebar -->
     <nav class="bg-gray-800 border-b border-gray-700">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <h1 class="text-lg sm:text-xl font-bold text-white">💱 Trading Journal</h1>
-                </div>
-                
-                <!-- Desktop Menu -->
-                <div class="hidden sm:flex items-center space-x-4">
-                    <!-- Accounts Dropdown -->
-                    <div class="relative" id="accountsDropdown">
-                        <button id="accountsToggle" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center">
-                            <span id="currentAccountName">Main Account</span>
-                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                        <div id="accountsMenu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
-                            <div class="p-3 border-b border-gray-200">
-                                <h3 class="font-semibold text-gray-800">Trading Accounts</h3>
-                            </div>
-                            <div id="accountsList" class="max-h-60 overflow-y-auto">
-                                <!-- Accounts will be loaded here -->
-                            </div>
-                            <div class="p-3 border-t border-gray-200">
-                                <button onclick="showAddAccountModal()" class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm flex items-center justify-center">
-                                    <span class="mr-2">+</span> Add New Account
-                                </button>
-                            </div>
-                        </div>
+        <!-- Desktop Sidebar -->
+        <aside id="sidebar" class="hidden sm:flex flex-col">
+            <div class="brand">💱 Trading Journal</div>
+
+            <div class="sidebar-section" id="accountsDropdown">
+                <button id="accountsToggle" class="sidebar-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center">
+                    <span id="currentAccountName">Main Account</span>
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div id="accountsMenu" class="hidden mt-2 w-64 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
+                    <div class="p-3 border-b border-gray-200">
+                        <h3 class="font-semibold text-gray-800">Trading Accounts</h3>
                     </div>
-                    
-                    <span id="user-email" class="text-gray-300 text-sm">Loading...</span>
-                    <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
-                        Export
-                    </button>
-                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm">
-                        Logout
-                    </button>
-                </div>
-
-                <!-- Mobile Menu -->
-                <div class="sm:hidden flex items-center">
-                    <button id="mobileMenuButton" class="text-gray-300 hover:text-white p-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Mobile Dropdown Menu -->
-            <div id="mobileMenu" class="sm:hidden hidden bg-gray-700 border-t border-gray-600">
-                <div class="px-2 pt-2 pb-3 space-y-1">
-                    <!-- Mobile Accounts Section -->
-                    <div class="px-3 py-2">
-                        <h4 class="text-gray-300 text-sm font-semibold mb-2">Trading Accounts</h4>
-                        <div id="mobileAccountsList" class="space-y-1">
-                            <!-- Mobile accounts will be loaded here -->
-                        </div>
-                        <button onclick="showAddAccountModal()" class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mt-2 flex items-center justify-center">
+                    <div id="accountsList" class="max-h-60 overflow-y-auto">
+                        <!-- Accounts will be loaded here -->
+                    </div>
+                    <div class="p-3 border-t border-gray-200">
+                        <button onclick="showAddAccountModal()" class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm flex items-center justify-center">
                             <span class="mr-2">+</span> Add New Account
                         </button>
                     </div>
-                    
-                    <div class="text-gray-300 px-3 py-2 text-sm" id="mobile-user-email">Loading...</div>
-                    <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">
-                        Export Trades
-                    </button>
-                    <button onclick="logout()" class="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">
-                        Logout
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div id="user-email" class="text-gray-300 text-sm mb-2">Loading...</div>
+                <button onclick="exportTrades()" class="sidebar-btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">Export</button>
+                <button onclick="logout()" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Mobile Topbar -->
+        <div id="mobileTopbar" class="sm:hidden flex items-center justify-between px-3 py-2">
+            <h1 class="text-lg font-bold text-white">💱 Trading Journal</h1>
+            <div class="sm:hidden flex items-center">
+                <button id="mobileMenuButton" class="text-gray-300 hover:text-white p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Dropdown Menu (unchanged) -->
+        <div id="mobileMenu" class="sm:hidden hidden bg-gray-700 border-t border-gray-600">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <!-- Mobile Accounts Section -->
+                <div class="px-3 py-2">
+                    <h4 class="text-gray-300 text-sm font-semibold mb-2">Trading Accounts</h4>
+                    <div id="mobileAccountsList" class="space-y-1">
+                        <!-- Mobile accounts will be loaded here -->
+                    </div>
+                    <button onclick="showAddAccountModal()" class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mt-2 flex items-center justify-center">
+                        <span class="mr-2">+</span> Add New Account
                     </button>
                 </div>
+                
+                <div class="text-gray-300 px-3 py-2 text-sm" id="mobile-user-email">Loading...</div>
+                <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">
+                    Export Trades
+                </button>
+                <button onclick="logout()" class="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">
+                    Logout
+                </button>
             </div>
         </div>
     </nav>
@@ -1168,7 +1217,8 @@
     </div>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
+    <div class="content-wrapper">
+        <div class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
         <!-- Loading Indicator -->
         <div id="loadingIndicator" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg shadow-xl text-center">
@@ -1807,9 +1857,10 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
-        <!-- Add Account Modal -->
+    <!-- Add Account Modal -->
     <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="p-6">
