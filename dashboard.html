@@ -11,24 +11,27 @@
         :root {
             --profit: #10b981;
             --loss: #ef4444;
-            --primary: #3b82f6;
-            --bg: #f8fafc;
+            --primary: #2563eb; /* updated accent to match simpler layout */
+            --bg: #f3f4f6; /* lighter page background */
+            --sidebar-bg: #0f172a;
+            --sidebar-text: #e5e7eb;
+            --card-bg: #ffffff;
         }
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
-            color: #1f2937;
+            color: #111827;
             line-height: 1.5;
         }
         
         .card {
-            background: white;
+            background: var(--card-bg);
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(2,6,23,0.06);
             margin-bottom: 20px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid rgba(2,6,23,0.06);
         }
         
         .form-group {
@@ -365,26 +368,27 @@
             z-index: 50;
         }
 
-        /* Sidebar Styles */
+        /* Sidebar Styles (simplified layout/colors) */
         #sidebar {
             display: none;
             position: fixed;
             left: 0;
             top: 0;
             bottom: 0;
-            width: 240px;
-            background: #0f172a;
-            color: #e5e7eb;
+            width: 220px;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
             padding: 1rem;
             z-index: 60;
             overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(2,6,23,0.25);
         }
 
         #sidebar .brand {
             font-size: 1.125rem;
             font-weight: 700;
             margin-bottom: 1rem;
-            color: white;
+            color: var(--sidebar-text);
         }
 
         #sidebar .sidebar-section {
@@ -400,7 +404,7 @@
             margin-bottom: 0.5rem;
             padding: 10px 12px;
             border-radius: 8px;
-            color: #e5e7eb;
+            color: var(--sidebar-text);
             background: transparent;
             border: none;
             cursor: pointer;
@@ -414,6 +418,7 @@
             flex: 0 0 28px;
             text-align: center;
             font-size: 1.05rem;
+            opacity: 0.95;
         }
 
         #sidebar .sidebar-btn .label {
@@ -422,15 +427,40 @@
         }
 
         #sidebar .sidebar-btn:hover {
-            background: rgba(255,255,255,0.04);
+            background: rgba(255,255,255,0.03);
             color: white;
         }
+
+        /* Settings submenu behavior */
+        .sidebar-settings .sidebar-section-title {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-settings .sidebar-submenu {
+            display: none;
+            margin-top: 6px;
+        }
+
+        .sidebar-settings.open .sidebar-submenu {
+            display: block;
+        }
+
+        /* Mobile settings group */
+        .mobile-settings .mobile-submenu { display: none; }
+        .mobile-settings.open .mobile-submenu { display: block; }
+
+        /* Personal info submenu (desktop + mobile) */
+        .personal-submenu { display: none; }
+        .personal-submenu.open { display: block; }
 
         .content-wrapper {
             margin-left: 0;
             transition: margin-left 0.25s ease;
             width: 100%;
-            background: #111827;
+            background: transparent;
             min-height: 100vh;
         }
 
@@ -441,7 +471,7 @@
         }
 
         @media (min-width: 640px) {
-            .content-wrapper { margin-left: 240px; }
+            .content-wrapper { margin-left: 220px; }
             #mobileTopbar { display: none; }
             #sidebar { display: block; }
         }
@@ -1106,10 +1136,30 @@
                     <span class="icon"><i class="fas fa-calendar"></i></span>
                     <span class="label">Calendar</span>
                 </button>
-                <button class="sidebar-btn" onclick="document.getElementById('settingsTab').click();">
-                    <span class="icon"><i class="fas fa-cog"></i></span>
-                    <span class="label">Settings</span>
-                </button>
+                <div class="sidebar-settings" id="desktopSettings">
+                    <button class="sidebar-section-title" id="desktopSettingsToggle" aria-expanded="false" style="font-weight:700; padding:8px 0; color:var(--sidebar-text);">
+                        <span>Settings</span>
+                        <span style="opacity:0.8"><i class="fas fa-chevron-down"></i></span>
+                    </button>
+                    <div class="sidebar-submenu" id="desktopSettingsSubmenu">
+                        <button class="sidebar-btn" onclick="document.getElementById('settingsTab').click();">
+                            <span class="icon"><i class="fas fa-sliders-h"></i></span>
+                            <span class="label">General</span>
+                        </button>
+                        <button class="sidebar-btn" onclick="exportTrades()">
+                            <span class="icon"><i class="fas fa-download"></i></span>
+                            <span class="label">Export</span>
+                        </button>
+
+                        <button id="desktopPersonalToggle" class="sidebar-btn" aria-expanded="false" style="margin-top:6px;">
+                            <span class="icon"><i class="fas fa-user-circle"></i></span>
+                            <span class="label">Personal Information</span>
+                        </button>
+                        <div id="desktopPersonalContent" class="personal-submenu" style="padding-left:14px; padding-top:6px;">
+                            <div id="user-email" class="text-gray-300 text-sm">Loading...</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="sidebar-section" id="accountsDropdown">
@@ -1133,8 +1183,6 @@
             </div>
 
             <div class="sidebar-section">
-                <div id="user-email" class="text-gray-300 text-sm mb-2">Loading...</div>
-                <button onclick="exportTrades()" class="sidebar-btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-download"></i></span><span class="label">Export</span></button>
                 <button onclick="logout()" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
             </div>
         </aside>
@@ -1165,10 +1213,17 @@
                     </button>
                 </div>
                 
-                <div class="text-gray-300 px-3 py-2 text-sm" id="mobile-user-email">Loading...</div>
-                <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">
-                    Export Trades
-                </button>
+                <div class="px-3 py-2 mobile-settings" id="mobileSettings">
+                    <button id="mobileSettingsToggle" class="text-gray-200 font-semibold mb-2 w-full text-left bg-transparent border-0 px-0" aria-expanded="false">Settings <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></button>
+                    <div class="mobile-submenu" id="mobileSettingsSubmenu">
+                        <button onclick="document.getElementById('settingsTab').click();" class="block w-full text-left bg-transparent hover:bg-gray-600 text-white px-3 py-2 rounded text-sm mb-1">General</button>
+                        <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">Export Trades</button>
+                        <button id="mobilePersonalToggle" class="block w-full text-left bg-transparent hover:bg-gray-600 text-white px-3 py-2 rounded text-sm mb-1" aria-expanded="false">Personal Information</button>
+                        <div id="mobilePersonalContent" class="mobile-personal personal-submenu" style="padding-left:8px;">
+                            <div id="mobile-user-email" class="text-gray-300 text-sm py-1">Loading...</div>
+                        </div>
+                    </div>
+                </div>
                 <button onclick="logout()" class="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">
                     Logout
                 </button>
@@ -2097,6 +2152,48 @@
                 setTimeout(()=> btn.innerText = old, 1200);
             }
         }
+
+        // Toggle desktop settings submenu
+        (function(){
+            const desktopToggle = document.getElementById('desktopSettingsToggle');
+            const desktopSettings = document.getElementById('desktopSettings');
+            if(desktopToggle && desktopSettings){
+                desktopToggle.addEventListener('click', ()=>{
+                    const open = desktopSettings.classList.toggle('open');
+                    desktopToggle.setAttribute('aria-expanded', open);
+                });
+            }
+
+            // Desktop personal info toggle
+            const desktopPersonalToggle = document.getElementById('desktopPersonalToggle');
+            const desktopPersonalContent = document.getElementById('desktopPersonalContent');
+            if(desktopPersonalToggle && desktopPersonalContent){
+                desktopPersonalToggle.addEventListener('click', ()=>{
+                    const open = desktopPersonalContent.classList.toggle('open');
+                    desktopPersonalToggle.setAttribute('aria-expanded', open);
+                });
+            }
+
+            // Mobile toggle
+            const mobileToggle = document.getElementById('mobileSettingsToggle');
+            const mobileSettings = document.getElementById('mobileSettings');
+            if(mobileToggle && mobileSettings){
+                mobileToggle.addEventListener('click', ()=>{
+                    const open = mobileSettings.classList.toggle('open');
+                    mobileToggle.setAttribute('aria-expanded', open);
+                });
+            }
+
+            // Mobile personal info toggle
+            const mobilePersonalToggle = document.getElementById('mobilePersonalToggle');
+            const mobilePersonalContent = document.getElementById('mobilePersonalContent');
+            if(mobilePersonalToggle && mobilePersonalContent){
+                mobilePersonalToggle.addEventListener('click', ()=>{
+                    const open = mobilePersonalContent.classList.toggle('open');
+                    mobilePersonalToggle.setAttribute('aria-expanded', open);
+                });
+            }
+        })();
     </script>
     <script type="module" src="./app.js"></script>
 </body>
