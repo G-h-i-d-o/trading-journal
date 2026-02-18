@@ -456,6 +456,71 @@
         .personal-submenu { display: none; }
         .personal-submenu.open { display: block; }
 
+        /* Mobile Menu Styling - Match Desktop Sidebar */
+        #mobileMenu {
+            background: var(--sidebar-bg) !important;
+            color: var(--sidebar-text);
+            border-top-color: rgba(255,255,255,0.1) !important;
+        }
+
+        #mobileTopbar {
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+        }
+
+        #mobileTopbar h1 {
+            color: var(--sidebar-text);
+        }
+
+        #mobileMenuButton {
+            color: var(--sidebar-text);
+        }
+
+        #mobileMenuButton:hover {
+            color: white;
+        }
+
+        /* Mobile menu items styling */
+        #mobileMenu h4 {
+            color: var(--sidebar-text);
+        }
+
+        #mobileMenu .block {
+            color: var(--sidebar-text);
+            transition: all 0.2s ease;
+        }
+
+        #mobileMenu .block:hover {
+            background: rgba(255,255,255,0.05) !important;
+            color: white;
+        }
+
+        #mobileMenu .text-gray-200,
+        #mobileMenu .text-gray-300 {
+            color: var(--sidebar-text);
+        }
+
+        /* Mobile settings toggle styling */
+        #mobileSettingsToggle {
+            color: var(--sidebar-text);
+            transition: all 0.2s ease;
+        }
+
+        #mobileSettingsToggle:hover {
+            background: rgba(255,255,255,0.03);
+            color: white;
+        }
+
+        #mobilePersonalToggle {
+            color: var(--sidebar-text);
+            transition: all 0.2s ease;
+        }
+
+        #mobilePersonalToggle:hover {
+            background: rgba(255,255,255,0.03);
+            color: white;
+        }
+
         .content-wrapper {
             margin-left: 0;
             transition: margin-left 0.25s ease;
@@ -1199,12 +1264,12 @@
             </div>
         </div>
 
-        <!-- Mobile Dropdown Menu (unchanged) -->
-        <div id="mobileMenu" class="sm:hidden hidden bg-gray-700 border-t border-gray-600">
+        <!-- Mobile Dropdown Menu -->
+        <div id="mobileMenu" class="sm:hidden hidden border-t">
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <!-- Mobile Accounts Section -->
                 <div class="px-3 py-2">
-                    <h4 class="text-gray-300 text-sm font-semibold mb-2">Trading Accounts</h4>
+                    <h4 class="text-sm font-semibold mb-2">Trading Accounts</h4>
                     <div id="mobileAccountsList" class="space-y-1">
                         <!-- Mobile accounts will be loaded here -->
                     </div>
@@ -1214,13 +1279,13 @@
                 </div>
                 
                 <div class="px-3 py-2 mobile-settings" id="mobileSettings">
-                    <button id="mobileSettingsToggle" class="text-gray-200 font-semibold mb-2 w-full text-left bg-transparent border-0 px-0" aria-expanded="false">Settings <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></button>
+                    <button id="mobileSettingsToggle" class="font-semibold mb-2 w-full text-left bg-transparent border-0 px-0" aria-expanded="false">Settings <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></button>
                     <div class="mobile-submenu" id="mobileSettingsSubmenu">
-                        <button onclick="document.getElementById('settingsTab').click();" class="block w-full text-left bg-transparent hover:bg-gray-600 text-white px-3 py-2 rounded text-sm mb-1">General</button>
+                        <button onclick="document.getElementById('settingsTab').click();" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1">General</button>
                         <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">Export Trades</button>
-                        <button id="mobilePersonalToggle" class="block w-full text-left bg-transparent hover:bg-gray-600 text-white px-3 py-2 rounded text-sm mb-1" aria-expanded="false">Personal Information</button>
+                        <button id="mobilePersonalToggle" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1" aria-expanded="false">Personal Information</button>
                         <div id="mobilePersonalContent" class="mobile-personal personal-submenu" style="padding-left:8px;">
-                            <div id="mobile-user-email" class="text-gray-300 text-sm py-1">Loading...</div>
+                            <div id="mobile-user-email" class="text-sm py-1">Loading...</div>
                         </div>
                     </div>
                 </div>
