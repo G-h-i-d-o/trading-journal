@@ -3131,12 +3131,21 @@ function renderPerformanceChart(trades) {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { 
-                    mode: 'index', 
+                tooltip: {
+                    mode: 'index',
                     intersect: false,
                     callbacks: {
                         label: function(context) {
-                            return `Balance: ${currencySymbol}${context.parsed.y.toFixed(2)}`;
+                            const idx = context.dataIndex;
+                            const balanceStr = `Balance: ${currencySymbol}${context.parsed.y.toFixed(2)}`;
+                            // First point is the starting balance
+                            if (idx === 0) return balanceStr + ' (Start)';
+                            const trade = sortedTrades[idx - 1];
+                            if (!trade) return balanceStr;
+                            const pl = trade.profit || 0;
+                            const sign = pl > 0 ? '+' : '';
+                            const plStr = `P/L: ${sign}${currencySymbol}${pl.toFixed(2)}`;
+                            return `${balanceStr} — ${plStr}`;
                         }
                     }
                 }
@@ -3150,6 +3159,26 @@ function renderPerformanceChart(trades) {
                     display: true, 
                     title: { display: true, text: `Balance (${currencySymbol})` } 
                 }
+            }
+            ,
+            onClick: (evt, elements) => {
+                // On mobile/tap or click, show trade P/L details for the clicked point
+                if (!elements || elements.length === 0) return;
+                const el = elements[0];
+                const idx = el.index;
+                if (idx === 0) {
+                    alert(`Starting balance: ${currencySymbol}${balanceData[0].toFixed(2)}`);
+                    return;
+                }
+                const trade = sortedTrades[idx - 1];
+                if (!trade) return;
+                const pl = trade.profit || 0;
+                const sign = pl > 0 ? '+' : '';
+                const date = new Date(trade.timestamp).toLocaleString();
+                const symbol = trade.symbol || trade.instrument || 'N/A';
+                const msg = `Trade: ${symbol}\nDate: ${date}\nP/L: ${sign}${currencySymbol}${pl.toFixed(2)}`;
+                // Use alert as a simple mobile-friendly detail popup
+                alert(msg);
             }
         }
     });
