@@ -1518,9 +1518,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Left Column: Performance & Analysis -->
-                <div class="space-y-8">
+            <div class="space-y-8">
+                <!-- Top Row: Performance Analytics and Trading Psychology -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Performance Metrics -->
                     <div class="card">
                         <h3 class="section-title"><i class="fas fa-chart-bar"></i> Performance Analytics</h3>
@@ -1560,6 +1560,36 @@
                         </div>
                     </div>
 
+                    <!-- Psychological Metrics -->
+                    <div class="card">
+                        <h3 class="section-title"><i class="fas fa-brain"></i> Trading Psychology</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="psych-metric">
+                                <div class="psych-value" id="bestMood">-</div>
+                                <div class="psych-label">Best Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="worstMood">-</div>
+                                <div class="psych-label">Worst Mood</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="disciplineScore">0%</div>
+                                <div class="psych-label">Discipline</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="riskAdherence">0%</div>
+                                <div class="psych-label">Risk Adherence</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-600">
+                            <div>Mood Performance:</div>
+                            <div id="moodPerformance" class="mt-1">No data yet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Charts and Time Analysis -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Charts -->
                     <div class="card">
                         <h3 class="section-title"><i class="fas fa-pie-chart"></i> Distribution</h3>
@@ -1593,36 +1623,6 @@
                                 <div class="metric-label">Trades/Month</div>
                                 <div class="metric-value" id="tradesPerMonth">0</div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column: Psychology -->
-                <div class="flex flex-col">
-                    <!-- Psychological Metrics -->
-                    <div class="card flex-1">
-                        <h3 class="section-title"><i class="fas fa-brain"></i> Trading Psychology</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="psych-metric">
-                                <div class="psych-value" id="bestMood">-</div>
-                                <div class="psych-label">Best Mood</div>
-                            </div>
-                            <div class="psych-metric">
-                                <div class="psych-value" id="worstMood">-</div>
-                                <div class="psych-label">Worst Mood</div>
-                            </div>
-                            <div class="psych-metric">
-                                <div class="psych-value" id="disciplineScore">0%</div>
-                                <div class="psych-label">Discipline</div>
-                            </div>
-                            <div class="psych-metric">
-                                <div class="psych-value" id="riskAdherence">0%</div>
-                                <div class="psych-label">Risk Adherence</div>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-xs text-gray-600">
-                            <div>Mood Performance:</div>
-                            <div id="moodPerformance" class="mt-1">No data yet</div>
                         </div>
                     </div>
                 </div>
