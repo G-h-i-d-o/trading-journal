@@ -358,8 +358,13 @@
         nav {
             position: relative;
             z-index: 40;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
         }
+
+        /* Center mobile topbar title and keep menu button on the right */
+        #mobileTopbar { position: relative; }
+        #mobileTopbar h1 { margin: 0 auto; text-align: center; }
+        #mobileTopbar > div { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
 
         #mobileMenu {
             position: absolute;
@@ -390,6 +395,11 @@
             font-weight: 700;
             margin-bottom: 1rem;
             color: var(--sidebar-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            text-align: center;
         }
 
         #sidebar .sidebar-section {
@@ -1186,6 +1196,7 @@
                     <span class="icon"><i class="fas fa-chart-line"></i></span>
                     <span class="label">Dashboard</span>
                 </button>
+                
                 <button class="sidebar-btn" onclick="document.getElementById('addTradeTab').click();">
                     <span class="icon"><i class="fas fa-plus-circle"></i></span>
                     <span class="label">Add Trade</span>
@@ -1255,7 +1266,7 @@
 
         <!-- Mobile Topbar -->
         <div id="mobileTopbar" class="sm:hidden flex items-center justify-between px-3 py-2">
-            <h1 class="text-lg font-bold text-white"><img src="logo_1.png" alt="Trading Journal Logo" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;border-radius:6px;"> Trading Journal</h1>
+            <h1 class="text-lg font-bold text-white"><img src="logo_1.png" alt="Trading Journal Logo" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;border-radius:6px;"> TradeWizer Journal</h1>
             <div class="sm:hidden flex items-center">
                 <button id="mobileMenuButton" class="text-gray-300 hover:text-white p-2">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
