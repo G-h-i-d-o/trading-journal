@@ -361,9 +361,9 @@
             margin-bottom: 2rem;
         }
 
-        /* Center mobile topbar title and keep menu button on the right */
-        #mobileTopbar { position: relative; }
-        #mobileTopbar h1 { margin: 0 auto; text-align: center; }
+        /* Center mobile topbar title and keep menu button on the right - match .brand styling */
+        #mobileTopbar { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        #mobileTopbar h1 { margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center; }
         #mobileTopbar > div { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
 
         #mobileMenu {
@@ -389,17 +389,6 @@
             overflow-y: auto;
             box-shadow: 2px 0 10px rgba(2,6,23,0.25);
         }
-        /* .brand {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--sidebar-text);
-            display: block;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            text-align: center;
-        } */
 
         #sidebar .brand {
             font-size: 1.125rem;
@@ -491,6 +480,8 @@
         }
 
         #mobileTopbar h1 {
+            font-size: 1.125rem;
+            font-weight: 700;
             color: var(--sidebar-text);
         }
 
