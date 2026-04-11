@@ -8,6 +8,7 @@ let currentUser = null;
 let performanceChart = null;
 let winLossChart = null;
 let marketTypeChart = null;
+let confluenceChart = null;
 let editingTradeId = null;
 let currentPage = 1;
 const tradesPerPage = 10;
@@ -1112,6 +1113,7 @@ onAuthStateChanged(auth, async (user) => {
             setupEventListeners();
             setupTabs();
             setupMobileMenu();
+            setupSidebarCollapse();
             setupAccountModalListeners();
             setupCalendar();
             setupMobileViewport();
@@ -1232,6 +1234,7 @@ function setupEventListeners() {
     if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
     
     updateRiskCalculation();
+    setupSidebarCollapse();
     setupAffirmationsEventListeners();
     setupAccountBalanceLock();
     
@@ -2126,6 +2129,48 @@ function setupMobileMenu() {
     }
     
     console.log('✅ Mobile menu setup complete');
+}
+
+function setupSidebarCollapse() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebarToggle');
+    if (!sidebar || !toggle) return;
+
+    const storedCollapsed = localStorage.getItem('sidebarCollapsed');
+    if (storedCollapsed === 'true') {
+        document.body.classList.add('sidebar-collapsed');
+        sidebar.classList.add('collapsed');
+    }
+
+    function updateToggleIcon() {
+        const icon = toggle.querySelector('i');
+        if (!icon) return;
+        if (document.body.classList.contains('sidebar-collapsed')) {
+            icon.classList.remove('fa-angle-double-left');
+            icon.classList.add('fa-angle-double-right');
+            toggle.setAttribute('aria-label', 'Expand sidebar');
+        } else {
+            icon.classList.remove('fa-angle-double-right');
+            icon.classList.add('fa-angle-double-left');
+            toggle.setAttribute('aria-label', 'Collapse sidebar');
+        }
+    }
+
+    updateToggleIcon();
+
+    toggle.addEventListener('click', () => {
+        const collapsed = document.body.classList.toggle('sidebar-collapsed');
+        sidebar.classList.toggle('collapsed', collapsed);
+        localStorage.setItem('sidebarCollapsed', collapsed ? 'true' : 'false');
+        updateToggleIcon();
+    });
+
+    document.querySelectorAll('#sidebar .sidebar-btn').forEach(btn => {
+        const label = btn.querySelector('.label');
+        if (label && !btn.title) {
+            btn.title = label.textContent.trim();
+        }
+    });
 }
 
 // ========== AFFIRMATIONS FUNCTIONS ==========
@@ -3085,6 +3130,7 @@ function calculateAdvancedMetrics(trades) {
     });
 
     calculatePsychologicalMetrics(trades);
+    calculateConfluenceMetrics(trades);
     calculateTimeAnalysis(trades);
 }
 
@@ -3102,10 +3148,14 @@ function resetAdvancedMetrics() {
         'worstMood': '-',
         'disciplineScore': '0%',
         'riskAdherence': '0%',
+        'avgConfluenceScore': '0%',
+        'confluenceCoverage': '0%',
         'bestDay': '-',
         'bestInstrument': '-',
         'avgDuration': '-',
-        'tradesPerMonth': '0'
+        'tradesPerMonth': '0',
+        'worstDay': '-',
+        'worstInstrument': '-'
     };
 
     Object.entries(metrics).forEach(([id, value]) => {
@@ -3185,6 +3235,72 @@ function calculatePsychologicalMetrics(trades) {
     }
 }
 
+function calculateConfluenceMetrics(trades) {
+    const validTrades = trades.filter(t => typeof t.confluenceScore === 'number');
+    const avgConfluenceScore = validTrades.length > 0 ?
+        validTrades.reduce((sum, t) => sum + t.confluenceScore, 0) / validTrades.length : 0;
+    const coverage = trades.length > 0 ? (validTrades.length / trades.length) * 100 : 0;
+
+    const avgConfluenceEl = document.getElementById('avgConfluenceScore');
+    const coverageEl = document.getElementById('confluenceCoverage');
+
+    if (avgConfluenceEl) avgConfluenceEl.textContent = `${avgConfluenceScore.toFixed(0)}%`;
+    if (coverageEl) coverageEl.textContent = `${coverage.toFixed(0)}%`;
+
+    renderConfluenceChart(trades);
+}
+
+function renderConfluenceChart(trades = []) {
+    const ctx = document.getElementById('confluenceChart');
+    if (!ctx) return;
+
+    if (confluenceChart) confluenceChart.destroy();
+
+    const scoreBuckets = [
+        { label: '0-20%', max: 20 },
+        { label: '21-40%', max: 40 },
+        { label: '41-60%', max: 60 },
+        { label: '61-80%', max: 80 },
+        { label: '81-100%', max: 100 }
+    ];
+
+    const bucketCounts = scoreBuckets.map(bucket => 0);
+    const missingCount = trades.filter(t => typeof t.confluenceScore !== 'number').length;
+
+    trades.forEach(trade => {
+        if (typeof trade.confluenceScore !== 'number') return;
+        const score = trade.confluenceScore;
+        const bucketIndex = scoreBuckets.findIndex(bucket => score <= bucket.max);
+        if (bucketIndex >= 0) bucketCounts[bucketIndex]++;
+    });
+
+    confluenceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: scoreBuckets.map(bucket => bucket.label),
+            datasets: [{
+                label: 'Trades by Confluence Score',
+                data: bucketCounts,
+                backgroundColor: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'],
+                borderColor: '#1d4ed8',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function(context) { return `${context.parsed.y} trades`; } } }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+            }
+        }
+    });
+}
+
 function getMoodEmoji(mood) {
     const moodMap = {
         'confident': '😊',
@@ -3231,28 +3347,44 @@ function calculateTimeAnalysis(trades) {
 
     let bestDay = '-';
     let bestDayProfit = -Infinity;
+    let worstDay = '-';
+    let worstDayProfit = Infinity;
+
     Object.entries(dayPerformance).forEach(([day, data]) => {
         const avgProfit = data.total / data.count;
         if (avgProfit > bestDayProfit) {
             bestDayProfit = avgProfit;
             bestDay = day;
         }
+        if (avgProfit < worstDayProfit) {
+            worstDayProfit = avgProfit;
+            worstDay = day;
+        }
     });
 
     let bestInstrument = '-';
     let bestInstrumentProfit = -Infinity;
+    let worstInstrument = '-';
+    let worstInstrumentProfit = Infinity;
+
     Object.entries(instrumentPerformance).forEach(([symbol, data]) => {
         const avgProfit = data.total / data.count;
         if (avgProfit > bestInstrumentProfit) {
             bestInstrumentProfit = avgProfit;
             bestInstrument = symbol;
         }
+        if (avgProfit < worstInstrumentProfit) {
+            worstInstrumentProfit = avgProfit;
+            worstInstrument = symbol;
+        }
     });
 
     const monthlyTrades = trades.length / (getTradingMonths(trades) || 1);
 
     document.getElementById('bestDay').textContent = bestDay;
+    document.getElementById('worstDay').textContent = worstDay;
     document.getElementById('bestInstrument').textContent = bestInstrument;
+    document.getElementById('worstInstrument').textContent = worstInstrument;
     document.getElementById('avgDuration').textContent = 'Intraday';
     document.getElementById('tradesPerMonth').textContent = monthlyTrades.toFixed(1);
 }
@@ -3282,6 +3414,7 @@ function renderCharts(trades = []) {
     renderPerformanceChart(trades);
     renderWinLossChart(trades);
     renderMarketTypeChart(trades);
+    renderConfluenceChart(trades);
 }
 
 function renderPerformanceChart(trades) {

@@ -14,27 +14,32 @@
     <nav class="bg-gray-800 border-b border-gray-700">
         <!-- Desktop Sidebar -->
         <aside id="sidebar" class="hidden sm:flex flex-col">
-            <div class="brand"><img src="logo_1.png" alt="Trading Journal Logo" style="width:100px;height:100px;vertical-align:middle;margin-right:8px;border-radius:6px;"></div>
+            <div class="sidebar-header">
+                <div class="brand"><img src="logo_1.png" alt="Trading Journal Logo" style="width:100px;height:100px;vertical-align:middle;margin-right:8px;border-radius:6px;"></div>
+                <button id="sidebarToggle" class="sidebar-collapse-btn" aria-label="Collapse sidebar">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+            </div>
 
             <div class="sidebar-section">
-                <button class="sidebar-btn" onclick="document.getElementById('dashboardTab').click();">
+                <button class="sidebar-btn" title="Dashboard" onclick="document.getElementById('dashboardTab').click();">
                     <span class="icon"><i class="fas fa-chart-line"></i></span>
                     <span class="label">Dashboard</span>
                 </button>
                 
-                <button class="sidebar-btn" onclick="document.getElementById('addTradeTab').click();">
+                <button class="sidebar-btn" title="Add Trade" onclick="document.getElementById('addTradeTab').click();">
                     <span class="icon"><i class="fas fa-plus-circle"></i></span>
                     <span class="label">Add Trade</span>
                 </button>
-                <button class="sidebar-btn" onclick="document.getElementById('tradesTab').click();">
+                <button class="sidebar-btn" title="Trade History" onclick="document.getElementById('tradesTab').click();">
                     <span class="icon"><i class="fas fa-history"></i></span>
                     <span class="label">Trade History</span>
                 </button>
-                <button class="sidebar-btn" onclick="document.getElementById('affirmationsTab').click();">
+                <button class="sidebar-btn" title="Affirmations" onclick="document.getElementById('affirmationsTab').click();">
                     <span class="icon"><i class="fas fa-star"></i></span>
                     <span class="label">Affirmations</span>
                 </button>
-                <button class="sidebar-btn" onclick="document.getElementById('calendarTab').click();">
+                <button class="sidebar-btn" title="Calendar" onclick="document.getElementById('calendarTab').click();">
                     <span class="icon"><i class="fas fa-calendar"></i></span>
                     <span class="label">Calendar</span>
                 </button>
@@ -44,16 +49,16 @@
                         <span style="opacity:0.8"><i class="fas fa-chevron-down"></i></span>
                     </button>
                     <div class="sidebar-submenu" id="desktopSettingsSubmenu">
-                        <button class="sidebar-btn" onclick="document.getElementById('settingsTab').click();">
+                        <button class="sidebar-btn" title="General settings" onclick="document.getElementById('settingsTab').click();">
                             <span class="icon"><i class="fas fa-sliders-h"></i></span>
                             <span class="label">General</span>
                         </button>
-                        <button class="sidebar-btn" onclick="exportTrades()">
+                        <button class="sidebar-btn" title="Export trades" onclick="exportTrades()">
                             <span class="icon"><i class="fas fa-download"></i></span>
                             <span class="label">Export</span>
                         </button>
 
-                        <button id="desktopPersonalToggle" class="sidebar-btn" aria-expanded="false" style="margin-top:6px;">
+                        <button id="desktopPersonalToggle" class="sidebar-btn" title="Personal information" aria-expanded="false" style="margin-top:6px;">
                             <span class="icon"><i class="fas fa-user-circle"></i></span>
                             <span class="label">Personal Information</span>
                         </button>
@@ -85,7 +90,7 @@
             </div>
 
             <div class="sidebar-section">
-                <button onclick="logout()" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
+                <button onclick="logout()" title="Logout" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
             </div>
         </aside>
 
@@ -417,6 +422,14 @@
                                 <div class="psych-value" id="riskAdherence">0%</div>
                                 <div class="psych-label">Risk Adherence</div>
                             </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="avgConfluenceScore">0%</div>
+                                <div class="psych-label">Avg Confluence Score</div>
+                            </div>
+                            <div class="psych-metric">
+                                <div class="psych-value" id="confluenceCoverage">0%</div>
+                                <div class="psych-label">Confluence Trade Coverage</div>
+                            </div>
                         </div>
                         <div class="mt-4 text-xs text-gray-600">
                             <div>Mood Performance:</div>
@@ -430,12 +443,15 @@
                     <!-- Charts -->
                     <div class="card">
                         <h3 class="section-title"><i class="fas fa-pie-chart"></i> Distribution</h3>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <div>
                                 <canvas id="winLossChart" height="160"></canvas>
                             </div>
                             <div>
                                 <canvas id="marketTypeChart" height="160"></canvas>
+                            </div>
+                            <div>
+                                <canvas id="confluenceChart" height="160"></canvas>
                             </div>
                         </div>
                     </div>
@@ -449,8 +465,16 @@
                                 <div class="metric-value" id="bestDay">-</div>
                             </div>
                             <div class="metric-card">
+                                <div class="metric-label">Worst Day</div>
+                                <div class="metric-value" id="worstDay">-</div>
+                            </div>
+                            <div class="metric-card">
                                 <div class="metric-label">Best Instrument</div>
                                 <div class="metric-value" id="bestInstrument">-</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Worst Instrument</div>
+                                <div class="metric-value" id="worstInstrument">-</div>
                             </div>
                             <div class="metric-card">
                                 <div class="metric-label">Avg Trade Duration</div>
