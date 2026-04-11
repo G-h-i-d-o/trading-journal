@@ -477,7 +477,20 @@
         }
 
         #sidebar.collapsed {
-            --sidebar-width: 72px;
+            width: 72px;
+            min-width: 72px;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+
+        body.sidebar-collapsed #sidebar {
+            width: 72px;
+            min-width: 72px;
+        }
+
+        body.sidebar-collapsed .content-wrapper {
+            margin-left: 72px;
+            width: calc(100% - 72px);
         }
 
         #sidebar.collapsed .sidebar-btn {
