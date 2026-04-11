@@ -529,6 +529,7 @@ function showTradesForDate(dateString) {
                             <div>Entry: ${trade.entryPrice} • SL: ${trade.stopLoss} • TP: ${trade.takeProfit || 'N/A'}</div>
                             <div>Time: ${new Date(trade.timestamp).toLocaleTimeString()}</div>
                         </div>
+                        ${formatConfluenceDetails(trade)}
                     </div>
                 </div>
             </div>
@@ -1134,9 +1135,17 @@ function setupEventListeners() {
         tradeForm.addEventListener('reset', () => {
             setTimeout(() => {
                 document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+                updateConfluenceScoreDisplay();
             }, 0);
         });
     }
+
+    const confluenceCheckboxes = document.querySelectorAll('#confluenceOptions input[type="checkbox"]');
+    confluenceCheckboxes.forEach(input => {
+        input.addEventListener('change', updateConfluenceScoreDisplay);
+    });
+
+    updateConfluenceScoreDisplay();
 
     ['riskPerTrade', 'leverage'].forEach(id => {
         const element = document.getElementById(id);
@@ -1257,6 +1266,9 @@ async function addTrade(e) {
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
         const mood = document.getElementById('mood')?.value || '';
+        const confluenceOptions = Array.from(document.querySelectorAll('#confluenceOptions input[type="checkbox"]:checked')).map(el => el.value);
+        const totalConfluenceOptions = document.querySelectorAll('#confluenceOptions input[type="checkbox"]').length;
+        const confluenceScore = totalConfluenceOptions > 0 ? (confluenceOptions.length / totalConfluenceOptions) * 100 : 0;
         
         const tradeDateTimeInput = document.getElementById('tradeDateTime');
         const selectedDateTime = tradeDateTimeInput.value;
@@ -1268,6 +1280,11 @@ async function addTrade(e) {
 
         if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
             alert('Please fill all required fields');
+            return;
+        }
+
+        if (confluenceOptions.length === 0) {
+            alert('Please select at least one confluence element before saving the trade.');
             return;
         }
 
@@ -1288,6 +1305,8 @@ async function addTrade(e) {
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '', 
+            confluenceOptions,
+            confluenceScore: Number(confluenceScore.toFixed(0)),
             timestamp: tradeTimestamp,
             profit, 
             pipsPoints: pipPointInfo.risk,
@@ -1324,6 +1343,32 @@ function getInstrumentType(symbol) {
 function getPipSize(symbol) {
     return symbol.includes('JPY') ? 0.01 : 0.0001;
 }
+
+function updateConfluenceScoreDisplay() {
+    const selected = Array.from(document.querySelectorAll('#confluenceOptions input[type="checkbox"]:checked')).length;
+    const total = document.querySelectorAll('#confluenceOptions input[type="checkbox"]').length;
+    const score = total > 0 ? Math.round((selected / total) * 100) : 0;
+    const display = document.getElementById('confluenceScoreDisplay');
+    if (display) {
+        display.textContent = `${score}% selected (${selected} of ${total})`;
+    }
+}
+
+function formatConfluenceDetails(trade) {
+    if (!trade?.confluenceOptions || trade.confluenceOptions.length === 0) return '';
+
+    const selectedList = trade.confluenceOptions.map(option => `<span class="inline-flex items-center rounded-full bg-blue-600/10 text-blue-200 px-2 py-1 text-xs font-medium mr-1 mb-1">${option}</span>`).join('');
+    const scoreText = trade.confluenceScore != null ? `${trade.confluenceScore}%` : 'N/A';
+
+    return `
+        <div class="mt-3 p-3 bg-gray-800 rounded-lg border border-gray-700 text-sm text-gray-200">
+            <div class="font-semibold text-white mb-2">Confluence</div>
+            <div class="flex flex-wrap gap-1 mb-2">${selectedList}</div>
+            <div class="text-xs text-gray-400">Confluence Score: ${scoreText}</div>
+        </div>
+    `;
+}
+
 
 function getPointValue(symbol) {
     const pointValues = {'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1};
@@ -1617,6 +1662,7 @@ function displayTrades(trades) {
                         <div><strong>Date:</strong> ${dateString} ${timeString}</div>
                     </div>
                     
+                    ${formatConfluenceDetails(trade)}
                     ${trade.notes ? `
                         <div class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                             <div class="text-xs font-semibold text-gray-700 mb-1">Notes:</div>
