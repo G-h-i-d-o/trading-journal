@@ -560,33 +560,22 @@
                     </div>
 
                     <div class="form-section">
-                        <div class="form-group">
+                        <div class="form-group confluence-group">
                             <label>Trade Confluence</label>
-                            <div id="confluenceOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="checkbox" value="Trend Direction"> Trend Direction
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="checkbox" value="Support/Resistance"> Support/Resistance
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="checkbox" value="Price Action"> Price Action
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="checkbox" value="Volume"> Volume
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="checkbox" value="Market Structure"> Market Structure
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="checkbox" value="Higher Timeframe"> Higher Timeframe
-                                </label>
-                            </div>
+                            <div id="confluenceOptions" class="confluence-options"></div>
                             <small class="text-gray-500 text-xs">Select the confluence elements that apply to this trade.</small>
+
+                            <div class="confluence-manager mt-3">
+                                <div class="flex gap-2">
+                                    <input type="text" id="newConfluenceOption" placeholder="Add a custom confluence option" />
+                                    <button type="button" id="addConfluenceOptionButton" class="btn btn-sm">Add</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-2">Click the ✕ icon to remove a custom confluence option.</div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Confluence Score</label>
-                            <div id="confluenceScoreDisplay" class="text-sm text-gray-50">0% selected</div>
+                            <div id="confluenceScoreDisplay" class="confluence-score-display">0% selected</div>
                         </div>
                     </div>
 

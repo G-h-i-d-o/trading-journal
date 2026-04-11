@@ -39,6 +39,29 @@ const currencySymbols = {
     CHF: 'CHF'
 };
 
+const DEFAULT_CONFLUENCE_OPTIONS = [
+    'Trend Direction',
+    'Support/Resistance',
+    'Price Action',
+    'Volume',
+    'Market Structure',
+    'Higher Timeframe'
+];
+
+function getDeletedConfluenceOptions() {
+    try {
+        const raw = localStorage.getItem('deletedConfluenceOptions');
+        return raw ? JSON.parse(raw) : [];
+    } catch (error) {
+        console.warn('Unable to load deleted confluence options:', error);
+        return [];
+    }
+}
+
+function saveDeletedConfluenceOptions(options) {
+    localStorage.setItem('deletedConfluenceOptions', JSON.stringify(options));
+}
+
 const currencyNames = {
     USD: 'US Dollar',
     EUR: 'Euro',
@@ -1140,10 +1163,33 @@ function setupEventListeners() {
         });
     }
 
-    const confluenceCheckboxes = document.querySelectorAll('#confluenceOptions input[type="checkbox"]');
-    confluenceCheckboxes.forEach(input => {
-        input.addEventListener('change', updateConfluenceScoreDisplay);
-    });
+    const confluenceContainer = document.getElementById('confluenceOptions');
+    if (confluenceContainer) {
+        renderConfluenceOptions();
+        confluenceContainer.addEventListener('change', (event) => {
+            if (event.target.matches('input[type="checkbox"]')) {
+                updateConfluenceScoreDisplay();
+            }
+        });
+        confluenceContainer.addEventListener('click', (event) => {
+            const removeButton = event.target.closest('.remove-confluence-option');
+            if (removeButton) {
+                removeConfluenceOption(removeButton.dataset.option);
+            }
+        });
+    }
+
+    const addConfluenceOptionButton = document.getElementById('addConfluenceOptionButton');
+    const newConfluenceOptionInput = document.getElementById('newConfluenceOption');
+    if (addConfluenceOptionButton && newConfluenceOptionInput) {
+        addConfluenceOptionButton.addEventListener('click', addConfluenceOption);
+        newConfluenceOptionInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addConfluenceOption();
+            }
+        });
+    }
 
     updateConfluenceScoreDisplay();
 
@@ -1352,6 +1398,128 @@ function updateConfluenceScoreDisplay() {
     if (display) {
         display.textContent = `${score}% selected (${selected} of ${total})`;
     }
+}
+
+function getCustomConfluenceOptions() {
+    try {
+        const raw = localStorage.getItem('customConfluenceOptions');
+        return raw ? JSON.parse(raw) : [];
+    } catch (error) {
+        console.warn('Unable to load custom confluence options:', error);
+        return [];
+    }
+}
+
+function saveCustomConfluenceOptions(options) {
+    localStorage.setItem('customConfluenceOptions', JSON.stringify(options));
+}
+
+function getCurrentConfluenceOptions() {
+    const deleted = getDeletedConfluenceOptions();
+    const defaultOptions = DEFAULT_CONFLUENCE_OPTIONS.filter(option => !deleted.includes(option));
+    const customOptions = getCustomConfluenceOptions();
+    const options = [...defaultOptions, ...customOptions];
+    if (!options.includes('Market Structure')) {
+        options.unshift('Market Structure');
+    }
+    return options;
+}
+
+function renderConfluenceOptions() {
+    const container = document.getElementById('confluenceOptions');
+    if (!container) return;
+
+    const currentlySelected = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
+    const options = getCurrentConfluenceOptions();
+    container.innerHTML = '';
+
+    options.forEach(option => {
+        const optionLabel = document.createElement('label');
+        optionLabel.className = 'confluence-option';
+        optionLabel.dataset.option = option;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = option;
+        checkbox.checked = currentlySelected.includes(option);
+
+        const text = document.createElement('span');
+        text.className = 'confluence-option-text';
+        text.textContent = option;
+
+        optionLabel.appendChild(checkbox);
+        optionLabel.appendChild(text);
+
+        if (option !== 'Market Structure') {
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'remove-confluence-option';
+            removeButton.dataset.option = option;
+            removeButton.title = 'Remove this option';
+            removeButton.textContent = '✕';
+            optionLabel.appendChild(removeButton);
+        }
+
+        container.appendChild(optionLabel);
+    });
+}
+
+function addConfluenceOption() {
+    const input = document.getElementById('newConfluenceOption');
+    if (!input) return;
+
+    const newOption = input.value.trim();
+    if (!newOption) {
+        alert('Please enter a confluence option name.');
+        return;
+    }
+
+    const normalizedNewOption = newOption.toLowerCase();
+    const existingOptions = getCurrentConfluenceOptions();
+    if (existingOptions.some(option => option.toLowerCase() === normalizedNewOption)) {
+        alert('This option already exists.');
+        return;
+    }
+
+    const deletedOptions = getDeletedConfluenceOptions();
+    const defaultMatch = DEFAULT_CONFLUENCE_OPTIONS.find(option => option.toLowerCase() === normalizedNewOption);
+    if (defaultMatch) {
+        const restored = deletedOptions.filter(option => option.toLowerCase() !== normalizedNewOption);
+        saveDeletedConfluenceOptions(restored);
+    } else {
+        const customOptions = getCustomConfluenceOptions();
+        customOptions.push(newOption);
+        saveCustomConfluenceOptions(customOptions);
+    }
+
+    input.value = '';
+    renderConfluenceOptions();
+
+    const newCheckbox = Array.from(document.querySelectorAll('#confluenceOptions input[type="checkbox"]')).find(input => input.value === newOption);
+    if (newCheckbox) {
+        newCheckbox.checked = true;
+    }
+    updateConfluenceScoreDisplay();
+    input.focus();
+}
+
+function removeConfluenceOption(option) {
+    if (!option || option === 'Market Structure') return;
+
+    const customOptions = getCustomConfluenceOptions();
+    if (customOptions.includes(option)) {
+        const updatedCustom = customOptions.filter(item => item !== option);
+        saveCustomConfluenceOptions(updatedCustom);
+    } else if (DEFAULT_CONFLUENCE_OPTIONS.includes(option)) {
+        const deleted = getDeletedConfluenceOptions();
+        if (!deleted.includes(option)) {
+            deleted.push(option);
+            saveDeletedConfluenceOptions(deleted);
+        }
+    }
+
+    renderConfluenceOptions();
+    updateConfluenceScoreDisplay();
 }
 
 function formatConfluenceDetails(trade) {
