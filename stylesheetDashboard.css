@@ -470,6 +470,7 @@
             background: var(--sidebar-bg);
             color: var(--sidebar-text);
             padding: 1rem;
+            box-sizing: border-box;
             z-index: 60;
             overflow-y: auto;
             box-shadow: 2px 0 10px rgba(2,6,23,0.25);
