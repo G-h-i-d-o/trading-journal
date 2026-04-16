@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS AND MOBILE RESPONSIVENESS
+// app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS, MT4/5 IMPORT, AND ALL IMPROVEMENTS
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
@@ -48,6 +48,97 @@ const DEFAULT_CONFLUENCE_OPTIONS = [
     'Market Structure',
     'Higher Timeframe'
 ];
+
+// MetaTrader Import Settings
+let mtImportSettings = {
+    useMTProfit: true,
+    includeCommission: false,
+    includeSwap: false,
+    defaultMood: '',
+    autoAddNotes: true
+};
+
+// Store pending MT trades for import
+let pendingMTTrades = [];
+let existingTicketNumbers = new Set();
+let importErrors = [];
+
+// MetaTrader symbol to instrument type mapping
+const mtSymbolMapping = {
+    // Forex pairs
+    'EURUSD': 'EUR/USD', 'GBPUSD': 'GBP/USD', 'USDJPY': 'USD/JPY', 'USDCHF': 'USD/CHF',
+    'AUDUSD': 'AUD/USD', 'USDCAD': 'USD/CAD', 'NZDUSD': 'NZD/USD', 'EURGBP': 'EUR/GBP',
+    'EURJPY': 'EUR/JPY', 'GBPJPY': 'GBP/JPY', 'AUDJPY': 'AUD/JPY', 'AUDCAD': 'AUD/CAD',
+    'AUDCHF': 'AUD/CHF', 'AUDNZD': 'AUD/NZD', 'CADJPY': 'CAD/JPY', 'CHFJPY': 'CHF/JPY',
+    'EURAUD': 'EUR/AUD', 'EURCAD': 'EUR/CAD', 'EURCHF': 'EUR/CHF', 'EURNZD': 'EUR/NZD',
+    'GBPAUD': 'GBP/AUD', 'GBPCAD': 'GBP/CAD', 'GBPCHF': 'GBP/CHF', 'GBPNZD': 'GBP/NZD',
+    'NZDCAD': 'NZD/CAD', 'NZDCHF': 'NZD/CHF', 'NZDJPY': 'NZD/JPY',
+    'USDZAR': 'USD/ZAR', 'USDMXN': 'USD/MXN', 'USDSGD': 'USD/SGD', 'USDHKD': 'USD/HKD',
+    'USDSEK': 'USD/SEK', 'USDNOK': 'USD/NOK',
+    
+    // Metals/Commodities
+    'XAUUSD': 'Gold', 'XAGUSD': 'Silver', 'WTI': 'Oil', 'BRENT': 'Brent',
+    'XAUUSD.': 'Gold', 'XAGUSD.': 'Silver', 'GOLD': 'Gold', 'SILVER': 'Silver',
+    
+    // Indices
+    'US30': 'US30', 'US30.': 'US30', 'US30..': 'US30', 'DJ30': 'US30',
+    'SPX500': 'SPX500', 'SPX500.': 'SPX500', 'US500': 'SPX500',
+    'NAS100': 'NAS100', 'NAS100.': 'NAS100', 'USTEC': 'NAS100', 'US100': 'NAS100',
+    'DE30': 'GE30', 'DE30.': 'GE30', 'GER30': 'GE30', 'DE40': 'GE30',
+    'UK100': 'FTSE100', 'UK100.': 'FTSE100', 'FTSE': 'FTSE100',
+    'JP225': 'NIKKEI225', 'JP225.': 'NIKKEI225', 'JPN225': 'NIKKEI225',
+    'AUS200': 'AUS200', 'AUS200.': 'AUS200',
+    'ESTX50': 'ESTX50', 'EU50': 'ESTX50',
+    'FRA40': 'FRA40', 'FRA40.': 'FRA40',
+    
+    // Deriv Synthetic Indices
+    'Volatility 10 Index': 'Volatility 10 Index',
+    'Volatility 25 Index': 'Volatility 25 Index',
+    'Volatility 50 Index': 'Volatility 50 Index',
+    'Volatility 75 Index': 'Volatility 75 Index',
+    'Volatility 100 Index': 'Volatility 100 Index',
+    'Volatility 10 (1s) Index': 'Volatility 10 (1s) Index',
+    'Volatility 25 (1s) Index': 'Volatility 25 (1s) Index',
+    'Volatility 50 (1s) Index': 'Volatility 50 (1s) Index',
+    'Volatility 75 (1s) Index': 'Volatility 75 (1s) Index',
+    'Volatility 100 (1s) Index': 'Volatility 100 (1s) Index',
+    'Volatility 200 Index': 'Volatility 200 Index',
+    'Volatility 300 Index': 'Volatility 300 Index',
+    'Boom 50 Index': 'Boom 50 Index',
+    'Boom 100 Index': 'Boom 100 Index',
+    'Boom 300 Index': 'Boom 300 Index',
+    'Boom 500 Index': 'Boom 500 Index',
+    'Boom 600 Index': 'Boom 600 Index',
+    'Boom 900 Index': 'Boom 900 Index',
+    'Boom 1000 Index': 'Boom 1000 Index',
+    'Crash 50 Index': 'Crash 50 Index',
+    'Crash 100 Index': 'Crash 100 Index',
+    'Crash 300 Index': 'Crash 300 Index',
+    'Crash 500 Index': 'Crash 500 Index',
+    'Crash 600 Index': 'Crash 600 Index',
+    'Crash 900 Index': 'Crash 900 Index',
+    'Crash 1000 Index': 'Crash 1000 Index',
+    'Jump 10 Index': 'Jump 10 Index',
+    'Jump 25 Index': 'Jump 25 Index',
+    'Jump 50 Index': 'Jump 50 Index',
+    'Jump 75 Index': 'Jump 75 Index',
+    'Jump 100 Index': 'Jump 100 Index',
+    'Jump 150 Index': 'Jump 150 Index',
+    'Jump 200 Index': 'Jump 200 Index',
+    'Range Break 50 Index': 'Range Break 50 Index',
+    'Range Break 100 Index': 'Range Break 100 Index',
+    'Range Break 200 Index': 'Range Break 200 Index',
+    'Step Index': 'Step Index',
+    'Step 200 Index': 'Step 200 Index',
+    'Step 300 Index': 'Step 300 Index',
+    'Step 400 Index': 'Step 400 Index',
+    'Step 500 Index': 'Step 500 Index',
+    'Bear Market Index': 'Bear Market Index',
+    'Bull Market Index': 'Bull Market Index',
+    'Drift Switch 10 Index': 'Drift Switch 10 Index',
+    'Drift Switch 20 Index': 'Drift Switch 20 Index',
+    'Drift Switch 30 Index': 'Drift Switch 30 Index'
+};
 
 function getDeletedConfluenceOptions() {
     try {
@@ -123,10 +214,8 @@ const motivationalQuotes = [
 // ========== MOBILE VIEWPORT SETUP ==========
 
 function setupMobileViewport() {
-    // Prevent zoom on input focus for iOS
     document.addEventListener('touchstart', function() {}, {passive: true});
     
-    // Handle orientation changes
     window.addEventListener('orientationchange', function() {
         setTimeout(() => {
             if (window.visualViewport) {
@@ -135,7 +224,6 @@ function setupMobileViewport() {
         }, 150);
     });
     
-    // Fix viewport height on mobile
     function setViewportHeight() {
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -186,10 +274,152 @@ function getCurrentDateTimeString() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-// ========== INSTRUMENT TYPE FUNCTIONS (UPDATED FOR DERIV) ==========
+// ========== ENHANCED METATRADER DATE PARSER ==========
+
+function parseMTDateTime(dateTimeStr) {
+    if (!dateTimeStr) return new Date().toISOString();
+    
+    const clean = dateTimeStr.trim();
+    
+    const strategies = [
+        // Strategy 1: Try standard Date with hyphens
+        () => {
+            const withHyphens = clean.replace(/\./g, '-').replace(/\//g, '-');
+            const date = new Date(withHyphens);
+            return !isNaN(date.getTime()) ? date : null;
+        },
+        // Strategy 2: European format (DD.MM.YYYY HH:mm:ss)
+        () => {
+            const match = clean.match(/^(\d{2})[.\-\/](\d{2})[.\-\/](\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+            if (match) {
+                return new Date(
+                    parseInt(match[3]),
+                    parseInt(match[2]) - 1,
+                    parseInt(match[1]),
+                    parseInt(match[4]),
+                    parseInt(match[5]),
+                    parseInt(match[6])
+                );
+            }
+            return null;
+        },
+        // Strategy 3: European format without seconds (DD.MM.YYYY HH:mm)
+        () => {
+            const match = clean.match(/^(\d{2})[.\-\/](\d{2})[.\-\/](\d{4})\s+(\d{1,2}):(\d{2})$/);
+            if (match) {
+                return new Date(
+                    parseInt(match[3]),
+                    parseInt(match[2]) - 1,
+                    parseInt(match[1]),
+                    parseInt(match[4]),
+                    parseInt(match[5]),
+                    0
+                );
+            }
+            return null;
+        },
+        // Strategy 4: ISO-like format (YYYY-MM-DD HH:mm:ss)
+        () => {
+            const match = clean.match(/^(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})$/);
+            if (match) {
+                return new Date(
+                    parseInt(match[1]),
+                    parseInt(match[2]) - 1,
+                    parseInt(match[3]),
+                    parseInt(match[4]),
+                    parseInt(match[5]),
+                    parseInt(match[6])
+                );
+            }
+            return null;
+        },
+        // Strategy 5: ISO-like without seconds (YYYY-MM-DD HH:mm)
+        () => {
+            const match = clean.match(/^(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})\s+(\d{1,2}):(\d{2})$/);
+            if (match) {
+                return new Date(
+                    parseInt(match[1]),
+                    parseInt(match[2]) - 1,
+                    parseInt(match[3]),
+                    parseInt(match[4]),
+                    parseInt(match[5]),
+                    0
+                );
+            }
+            return null;
+        },
+        // Strategy 6: Date only (DD.MM.YYYY or YYYY-MM-DD)
+        () => {
+            // Try European date only
+            let match = clean.match(/^(\d{2})[.\-\/](\d{2})[.\-\/](\d{4})$/);
+            if (match) {
+                return new Date(
+                    parseInt(match[3]),
+                    parseInt(match[2]) - 1,
+                    parseInt(match[1]),
+                    0, 0, 0
+                );
+            }
+            // Try ISO date only
+            match = clean.match(/^(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})$/);
+            if (match) {
+                return new Date(
+                    parseInt(match[1]),
+                    parseInt(match[2]) - 1,
+                    parseInt(match[3]),
+                    0, 0, 0
+                );
+            }
+            return null;
+        }
+    ];
+    
+    for (const strategy of strategies) {
+        const result = strategy();
+        if (result && !isNaN(result.getTime())) {
+            return result.toISOString();
+        }
+    }
+    
+    console.warn('[MT IMPORT] Could not parse date:', dateTimeStr);
+    return new Date().toISOString();
+}
+
+// ========== ENHANCED SYMBOL MAPPING ==========
+
+function mapMTSymbol(mtSymbol) {
+    let cleanSymbol = mtSymbol.trim();
+    
+    // Remove common MT4/MT5 suffixes
+    cleanSymbol = cleanSymbol.replace(/[.]+$/, ''); // Remove trailing dots
+    cleanSymbol = cleanSymbol.replace(/\.pro$/i, ''); // Remove .pro
+    cleanSymbol = cleanSymbol.replace(/\.ecn$/i, ''); // Remove .ecn
+    cleanSymbol = cleanSymbol.replace(/\.std$/i, ''); // Remove .std
+    cleanSymbol = cleanSymbol.replace(/[mxic]$/i, ''); // Remove m, x, i, c suffixes
+    
+    // Check direct mapping
+    if (mtSymbolMapping[cleanSymbol]) {
+        return mtSymbolMapping[cleanSymbol];
+    }
+    
+    // Check uppercase version
+    const upperSymbol = cleanSymbol.toUpperCase();
+    if (mtSymbolMapping[upperSymbol]) {
+        return mtSymbolMapping[upperSymbol];
+    }
+    
+    // Check without any non-alphanumeric characters
+    const alphaOnly = cleanSymbol.replace(/[^a-zA-Z0-9]/g, '');
+    if (mtSymbolMapping[alphaOnly]) {
+        return mtSymbolMapping[alphaOnly];
+    }
+    
+    return cleanSymbol;
+}
+
+// ========== INSTRUMENT TYPE FUNCTIONS ==========
 
 function getInstrumentType(symbol) {
-    // Deriv Synthetic Indices - Volatility
     const volatilityIndices = [
         'Volatility 10 Index', 'Volatility 25 Index', 'Volatility 50 Index', 
         'Volatility 75 Index', 'Volatility 100 Index',
@@ -198,7 +428,6 @@ function getInstrumentType(symbol) {
         'Volatility 200 Index', 'Volatility 300 Index'
     ];
     
-    // Deriv Synthetic Indices - Boom/Crash
     const boomCrashIndices = [
         'Boom 50 Index', 'Boom 100 Index', 'Boom 300 Index', 'Boom 500 Index', 
         'Boom 600 Index', 'Boom 900 Index', 'Boom 1000 Index',
@@ -206,35 +435,29 @@ function getInstrumentType(symbol) {
         'Crash 600 Index', 'Crash 900 Index', 'Crash 1000 Index'
     ];
     
-    // Deriv Synthetic Indices - Jump
     const jumpIndices = [
         'Jump 10 Index', 'Jump 25 Index', 'Jump 50 Index', 'Jump 75 Index', 
         'Jump 100 Index', 'Jump 150 Index', 'Jump 200 Index'
     ];
     
-    // Deriv Synthetic Indices - Range Break
     const rangeBreakIndices = [
         'Range Break 50 Index', 'Range Break 100 Index', 'Range Break 200 Index'
     ];
     
-    // Deriv Synthetic Indices - Step
     const stepIndices = [
         'Step Index', 'Step 200 Index', 'Step 300 Index', 'Step 400 Index', 'Step 500 Index'
     ];
     
-    // Deriv Synthetic Indices - Mixed
     const mixedIndices = [
         'Bear Market Index', 'Bull Market Index', 
         'Drift Switch 10 Index', 'Drift Switch 20 Index', 'Drift Switch 30 Index'
     ];
     
-    // All synthetic indices combined
     const syntheticIndices = [
         ...volatilityIndices, ...boomCrashIndices, ...jumpIndices, 
         ...rangeBreakIndices, ...stepIndices, ...mixedIndices
     ];
     
-    // Forex pairs (including Deriv forex)
     const forexPairs = [
         'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
         'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'AUD/CAD', 'AUD/CHF', 'AUD/NZD',
@@ -243,16 +466,13 @@ function getInstrumentType(symbol) {
         'USD/MXN', 'USD/ZAR', 'USD/SEK', 'USD/NOK', 'USD/SGD', 'USD/HKD'
     ];
     
-    // Traditional indices
     const traditionalIndices = [
         'US30', 'SPX500', 'NAS100', 'GE30', 'FTSE100', 'NIKKEI225',
         'AUS200', 'ESTX50', 'FRA40', 'ESP35', 'HKG50'
     ];
     
-    // Commodities
     const commodities = ['Gold', 'Silver', 'Oil', 'Brent', 'Natural Gas', 'Palladium', 'Platinum'];
     
-    // Deriv SmartTrader options
     const smartTrader = [
         'Rise/Fall', 'Higher/Lower', 'Touch/No Touch', 'Ends Between/Out',
         'Stays Between/Goes Out', 'Asians', 'Digits', 'Lookbacks',
@@ -260,7 +480,6 @@ function getInstrumentType(symbol) {
         'Over/Under', 'Turbos', 'Vanillas'
     ];
     
-    // Deriv Accumulator Options
     const accumulator = ['Accumulator Up', 'Accumulator Down'];
 
     if (forexPairs.includes(symbol)) return 'forex';
@@ -270,10 +489,9 @@ function getInstrumentType(symbol) {
     if (smartTrader.includes(symbol)) return 'smarttrader';
     if (accumulator.includes(symbol)) return 'accumulator';
     
-    // Check if it contains "Index" as fallback
     if (symbol.includes('Index')) return 'synthetic';
     
-    return 'forex'; // default fallback
+    return 'forex';
 }
 
 function getPipSize(symbol) {
@@ -282,66 +500,22 @@ function getPipSize(symbol) {
 
 function getPointValue(symbol) {
     const pointValues = {
-        // Traditional indices
-        'US30': 1, 
-        'SPX500': 50, 
-        'NAS100': 20, 
-        'GE30': 1, 
-        'FTSE100': 1, 
-        'NIKKEI225': 1,
-        'AUS200': 1,
-        'ESTX50': 1,
-        'FRA40': 1,
-        'ESP35': 1,
-        'HKG50': 1,
-        
-        // All Deriv synthetic indices (all use 1 point = $1 per lot)
-        'Volatility 10 Index': 1,
-        'Volatility 25 Index': 1,
-        'Volatility 50 Index': 1,
-        'Volatility 75 Index': 1,
-        'Volatility 100 Index': 1,
-        'Volatility 10 (1s) Index': 1,
-        'Volatility 25 (1s) Index': 1,
-        'Volatility 50 (1s) Index': 1,
-        'Volatility 75 (1s) Index': 1,
-        'Volatility 100 (1s) Index': 1,
-        'Volatility 200 Index': 1,
-        'Volatility 300 Index': 1,
-        'Boom 50 Index': 1,
-        'Boom 100 Index': 1,
-        'Boom 300 Index': 1,
-        'Boom 500 Index': 1,
-        'Boom 600 Index': 1,
-        'Boom 900 Index': 1,
-        'Boom 1000 Index': 1,
-        'Crash 50 Index': 1,
-        'Crash 100 Index': 1,
-        'Crash 300 Index': 1,
-        'Crash 500 Index': 1,
-        'Crash 600 Index': 1,
-        'Crash 900 Index': 1,
-        'Crash 1000 Index': 1,
-        'Jump 10 Index': 1,
-        'Jump 25 Index': 1,
-        'Jump 50 Index': 1,
-        'Jump 75 Index': 1,
-        'Jump 100 Index': 1,
-        'Jump 150 Index': 1,
-        'Jump 200 Index': 1,
-        'Range Break 50 Index': 1,
-        'Range Break 100 Index': 1,
-        'Range Break 200 Index': 1,
-        'Step Index': 1,
-        'Step 200 Index': 1,
-        'Step 300 Index': 1,
-        'Step 400 Index': 1,
-        'Step 500 Index': 1,
-        'Bear Market Index': 1,
-        'Bull Market Index': 1,
-        'Drift Switch 10 Index': 1,
-        'Drift Switch 20 Index': 1,
-        'Drift Switch 30 Index': 1
+        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
+        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1,
+        'Volatility 10 Index': 1, 'Volatility 25 Index': 1, 'Volatility 50 Index': 1,
+        'Volatility 75 Index': 1, 'Volatility 100 Index': 1, 'Volatility 10 (1s) Index': 1,
+        'Volatility 25 (1s) Index': 1, 'Volatility 50 (1s) Index': 1, 'Volatility 75 (1s) Index': 1,
+        'Volatility 100 (1s) Index': 1, 'Volatility 200 Index': 1, 'Volatility 300 Index': 1,
+        'Boom 50 Index': 1, 'Boom 100 Index': 1, 'Boom 300 Index': 1, 'Boom 500 Index': 1,
+        'Boom 600 Index': 1, 'Boom 900 Index': 1, 'Boom 1000 Index': 1,
+        'Crash 50 Index': 1, 'Crash 100 Index': 1, 'Crash 300 Index': 1, 'Crash 500 Index': 1,
+        'Crash 600 Index': 1, 'Crash 900 Index': 1, 'Crash 1000 Index': 1,
+        'Jump 10 Index': 1, 'Jump 25 Index': 1, 'Jump 50 Index': 1, 'Jump 75 Index': 1,
+        'Jump 100 Index': 1, 'Jump 150 Index': 1, 'Jump 200 Index': 1,
+        'Range Break 50 Index': 1, 'Range Break 100 Index': 1, 'Range Break 200 Index': 1,
+        'Step Index': 1, 'Step 200 Index': 1, 'Step 300 Index': 1, 'Step 400 Index': 1, 'Step 500 Index': 1,
+        'Bear Market Index': 1, 'Bull Market Index': 1,
+        'Drift Switch 10 Index': 1, 'Drift Switch 20 Index': 1, 'Drift Switch 30 Index': 1
     };
     return pointValues[symbol] || 1;
 }
@@ -356,14 +530,12 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
         if (tp) tpPips = type === 'long' ? (tp - entry) / pipSize : (entry - tp) / pipSize;
         return { risk: Math.abs(slPips), reward: Math.abs(tpPips) };
     } else if (instrumentType === 'synthetic' || instrumentType === 'commodities' || instrumentType === 'indices') {
-        // For synthetic indices, commodities, and traditional indices, we use points
         const slPoints = type === 'long' ? (entry - sl) : (sl - entry);
         let tpPoints = 0;
         if (tp) tpPoints = type === 'long' ? (tp - entry) : (entry - tp);
         return { risk: Math.abs(slPoints), reward: Math.abs(tpPoints) };
     } else if (instrumentType === 'smarttrader' || instrumentType === 'accumulator') {
-        // For binary options and accumulators, risk is fixed
-        return { risk: 1, reward: 0.8 }; // 80% payout ratio
+        return { risk: 1, reward: 0.8 };
     } else {
         const slPoints = type === 'long' ? (entry - sl) : (sl - entry);
         let tpPoints = 0;
@@ -382,14 +554,11 @@ function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
         const profit = pips * pipValue;
         return parseFloat(profit.toFixed(2));
     } else if (instrumentType === 'synthetic') {
-        // Deriv Synthetic Indices calculation
-        // For Volatility, Boom/Crash, Jump, Step indices: 1 point = $1 per standard lot
         const pointValue = 1 * lotSize;
         const points = type === 'long' ? (exit - entry) : (entry - exit);
         const profit = points * pointValue;
         return parseFloat(profit.toFixed(2));
     } else if (instrumentType === 'commodities') {
-        // Gold/Silver/Oil calculation
         let pointValue;
         if (symbol === 'Gold') pointValue = 100;
         else if (symbol === 'Silver') pointValue = 5000;
@@ -401,16 +570,13 @@ function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
         const profit = points * pointValue * lotSize;
         return parseFloat(profit.toFixed(2));
     } else if (instrumentType === 'smarttrader') {
-        // SmartTrader options (binary outcomes)
-        const payout = 0.80; // 80% payout (typical)
+        const payout = 0.80;
         return type === 'long' ? (lotSize * payout) : -lotSize;
     } else if (instrumentType === 'accumulator') {
-        // Accumulator options
-        const multiplier = 2; // Typical multiplier
+        const multiplier = 2;
         const points = type === 'long' ? (exit - entry) : (entry - exit);
         return parseFloat((points * lotSize * multiplier).toFixed(2));
     } else {
-        // Traditional indices
         const pointValue = getPointValue(symbol) * lotSize;
         const points = type === 'long' ? (exit - entry) : (entry - exit);
         const profit = points * pointValue;
@@ -468,40 +634,27 @@ window.updateInstrumentType = () => {
 function setupCalendar() {
     console.log('[CALENDAR] Setting up calendar functionality...');
     
-    // Event listeners for calendar navigation
     const prevMonthBtn = document.getElementById('prevMonth');
     const nextMonthBtn = document.getElementById('nextMonth');
     const viewTypeSelect = document.getElementById('viewType');
     const quickNavSelect = document.getElementById('quickNav');
     const applyCustomRangeBtn = document.getElementById('applyCustomRange');
     
-    if (prevMonthBtn) {
-        prevMonthBtn.addEventListener('click', () => navigateCalendar(-1));
-    }
-    
-    if (nextMonthBtn) {
-        nextMonthBtn.addEventListener('click', () => navigateCalendar(1));
-    }
+    if (prevMonthBtn) prevMonthBtn.addEventListener('click', () => navigateCalendar(-1));
+    if (nextMonthBtn) nextMonthBtn.addEventListener('click', () => navigateCalendar(1));
     
     if (viewTypeSelect) {
         viewTypeSelect.addEventListener('change', (e) => {
             calendarViewType = e.target.value;
             renderCalendar();
-            // Show/hide appropriate view
             document.getElementById('monthView').classList.toggle('hidden', calendarViewType !== 'month');
             document.getElementById('weekView').classList.toggle('hidden', calendarViewType !== 'week');
         });
     }
     
-    if (quickNavSelect) {
-        quickNavSelect.addEventListener('change', handleQuickNavigation);
-    }
+    if (quickNavSelect) quickNavSelect.addEventListener('change', handleQuickNavigation);
+    if (applyCustomRangeBtn) applyCustomRangeBtn.addEventListener('click', handleCustomRangeApply);
     
-    if (applyCustomRangeBtn) {
-        applyCustomRangeBtn.addEventListener('click', handleCustomRangeApply);
-    }
-    
-    // Initialize calendar
     renderCalendar();
     console.log('[SUCCESS] Calendar setup complete');
 }
@@ -525,22 +678,14 @@ function handleCustomRangeApply() {
         return;
     }
     
-    // Set current calendar date to the start of the range
     currentCalendarDate = new Date(startDate);
-    
-    // Hide custom range inputs
     document.getElementById('customRangeContainer').classList.add('hidden');
     
-    // Reset quick nav to current
     const quickNavSelect = document.getElementById('quickNav');
-    if (quickNavSelect) {
-        quickNavSelect.value = 'current';
-    }
+    if (quickNavSelect) quickNavSelect.value = 'current';
     
-    // Render calendar with custom range
     renderCalendar();
     
-    // Show success message
     const startFormatted = startDate.toLocaleDateString();
     const endFormatted = endDate.toLocaleDateString();
     showSuccessMessage(`Calendar showing custom range: ${startFormatted} to ${endFormatted}`);
@@ -565,14 +710,11 @@ function handleQuickNavigation(e) {
             break;
         case 'custom':
             document.getElementById('customRangeContainer').classList.remove('hidden');
-            
-            // Set default dates for custom range (last 30 days)
             const startDateInput = document.getElementById('startDate');
             const endDateInput = document.getElementById('endDate');
             if (startDateInput && endDateInput) {
                 const thirtyDaysAgo = new Date();
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                
                 startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
                 endDateInput.value = new Date().toISOString().split('T')[0];
             }
@@ -606,31 +748,25 @@ function renderMonthView() {
     
     if (!monthGrid || !currentMonthYear) return;
     
-    // Update header
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
     currentMonthYear.textContent = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
     
-    // Get first day of month and number of days
     const firstDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1);
     const lastDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const startingDay = firstDay.getDay();
     
-    // Get trades for this month
     const monthTrades = getTradesForMonth(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
     
-    // Generate calendar grid
     let calendarHTML = '';
     
-    // Previous month days
     const prevMonthLastDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 0).getDate();
     for (let i = startingDay - 1; i >= 0; i--) {
         const day = prevMonthLastDay - i;
         calendarHTML += createCalendarDay(day, 'other-month', []);
     }
     
-    // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
         const dayTrades = monthTrades.filter(trade => {
             const tradeDate = new Date(trade.timestamp);
@@ -639,8 +775,7 @@ function renderMonthView() {
         calendarHTML += createCalendarDay(day, 'current-month', dayTrades);
     }
     
-    // Next month days
-    const totalCells = 42; // 6 weeks * 7 days
+    const totalCells = 42;
     const remainingCells = totalCells - (startingDay + daysInMonth);
     for (let day = 1; day <= remainingCells; day++) {
         calendarHTML += createCalendarDay(day, 'other-month', []);
@@ -648,7 +783,6 @@ function renderMonthView() {
     
     monthGrid.innerHTML = calendarHTML;
     
-    // Add click event listeners to days
     monthGrid.querySelectorAll('.calendar-day').forEach(dayElement => {
         dayElement.addEventListener('click', handleDayClick);
     });
@@ -700,7 +834,6 @@ function renderWeekView() {
     
     if (!weekGrid || !currentMonthYear) return;
     
-    // Update header
     const startOfWeek = new Date(currentCalendarDate);
     startOfWeek.setDate(currentCalendarDate.getDate() - currentCalendarDate.getDay());
     const endOfWeek = new Date(startOfWeek);
@@ -709,10 +842,8 @@ function renderWeekView() {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     currentMonthYear.textContent = `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
     
-    // Get trades for this week
     const weekTrades = getTradesForWeek(startOfWeek);
     
-    // Generate time slots (8 AM to 8 PM)
     let weekHTML = '';
     const timeSlots = [];
     
@@ -720,7 +851,6 @@ function renderWeekView() {
         timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
     }
     
-    // Create time slots and day columns
     timeSlots.forEach(time => {
         weekHTML += `<div class="week-time-slot">${time}</div>`;
         
@@ -783,15 +913,9 @@ function handleDayClick(e) {
     
     if (!dateString) return;
     
-    // Remove selection from other days
-    document.querySelectorAll('.calendar-day').forEach(day => {
-        day.classList.remove('selected');
-    });
-    
-    // Add selection to clicked day
+    document.querySelectorAll('.calendar-day').forEach(day => day.classList.remove('selected'));
     dayElement.classList.add('selected');
     
-    // Show trades for selected day
     showTradesForDate(dateString);
 }
 
@@ -883,10 +1007,7 @@ async function initializeAccounts() {
 
 async function loadUserAccounts() {
     try {
-        if (!currentUser) {
-            console.log('[ERROR] No user for accounts');
-            throw new Error('No authenticated user');
-        }
+        if (!currentUser) throw new Error('No authenticated user');
 
         console.log('📁 Loading accounts from Firestore for user:', currentUser.uid);
         const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
@@ -1020,13 +1141,8 @@ function setupAccountsDropdown() {
             renderAccountsList();
         });
         
-        document.addEventListener('click', () => {
-            accountsMenu.classList.add('hidden');
-        });
-        
-        accountsMenu.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        document.addEventListener('click', () => accountsMenu.classList.add('hidden'));
+        accountsMenu.addEventListener('click', (e) => e.stopPropagation());
     }
 }
 
@@ -1066,9 +1182,7 @@ function updateCurrentAccountDisplay() {
     if (!currentAccount) return;
     
     const currentAccountName = document.getElementById('currentAccountName');
-    if (currentAccountName) {
-        currentAccountName.textContent = currentAccount.name;
-    }
+    if (currentAccountName) currentAccountName.textContent = currentAccount.name;
     
     updateAccountSettingsForm(currentAccount);
 }
@@ -1077,12 +1191,8 @@ function updateAccountSettingsForm(account) {
     const accountSizeInput = document.getElementById('accountSize');
     const accountCurrencySelect = document.getElementById('accountCurrency');
     
-    if (accountSizeInput) {
-        accountSizeInput.value = account.balance;
-    }
-    if (accountCurrencySelect) {
-        accountCurrencySelect.value = account.currency;
-    }
+    if (accountSizeInput) accountSizeInput.value = account.balance;
+    if (accountCurrencySelect) accountCurrencySelect.value = account.currency;
     
     updateCurrencyDisplay();
 }
@@ -1115,14 +1225,10 @@ async function saveCurrentAccountData() {
     const currentAccount = getCurrentAccount();
     
     const accountSizeInput = document.getElementById('accountSize');
-    if (accountSizeInput) {
-        currentAccount.balance = parseFloat(accountSizeInput.value) || 10000;
-    }
+    if (accountSizeInput) currentAccount.balance = parseFloat(accountSizeInput.value) || 10000;
     
     const accountCurrencySelect = document.getElementById('accountCurrency');
-    if (accountCurrencySelect) {
-        currentAccount.currency = accountCurrencySelect.value;
-    }
+    if (accountCurrencySelect) currentAccount.currency = accountCurrencySelect.value;
     
     await saveUserAccounts();
 }
@@ -1137,9 +1243,7 @@ async function loadAccountData() {
             currentAccountId = userAccounts[0]?.id;
             localStorage.setItem('currentAccountId', currentAccountId);
             
-            if (!currentAccountId) {
-                throw new Error('No valid accounts available');
-            }
+            if (!currentAccountId) throw new Error('No valid accounts available');
         }
 
         await loadTrades();
@@ -1348,9 +1452,7 @@ function showSuccessMessage(message) {
     successDiv.innerHTML = message;
     document.body.appendChild(successDiv);
     
-    setTimeout(() => {
-        successDiv.remove();
-    }, 3000);
+    setTimeout(() => successDiv.remove(), 3000);
 }
 
 // ========== AUTHENTICATION ==========
@@ -1446,9 +1548,7 @@ function setupEventListeners() {
         });
         confluenceContainer.addEventListener('click', (event) => {
             const removeButton = event.target.closest('.remove-confluence-option');
-            if (removeButton) {
-                removeConfluenceOption(removeButton.dataset.option);
-            }
+            if (removeButton) removeConfluenceOption(removeButton.dataset.option);
         });
     }
 
@@ -1518,17 +1618,12 @@ async function loadTrades() {
     try {
         console.log('[TRADES] Loading trades for account:', currentAccountId);
         
-        if (!currentUser) {
-            console.log('❌ No user for trades');
-            throw new Error('No authenticated user');
-        }
+        if (!currentUser) throw new Error('No authenticated user');
 
         if (!currentAccountId) {
             console.warn('⚠️ No currentAccountId, using first account');
             currentAccountId = userAccounts[0]?.id;
-            if (!currentAccountId) {
-                throw new Error('No accounts available');
-            }
+            if (!currentAccountId) throw new Error('No accounts available');
         }
 
         const q = query(
@@ -1614,13 +1709,7 @@ async function addTrade(e) {
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
 
         const tradeData = {
-            symbol, 
-            type: tradeType, 
-            instrumentType, 
-            entryPrice, 
-            stopLoss, 
-            takeProfit, 
-            lotSize,
+            symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
             mood: mood,
             beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
             afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
@@ -1632,8 +1721,7 @@ async function addTrade(e) {
             pipsPoints: pipPointInfo.risk,
             riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
             riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
-            accountSize, 
-            leverage, 
+            accountSize, leverage, 
             userId: currentUser.uid,
             accountId: currentAccountId
         };
@@ -1659,9 +1747,7 @@ function updateConfluenceScoreDisplay() {
     const total = document.querySelectorAll('#confluenceOptions input[type="checkbox"]').length;
     const score = total > 0 ? Math.round((selected / total) * 100) : 0;
     const display = document.getElementById('confluenceScoreDisplay');
-    if (display) {
-        display.textContent = `${score}% selected (${selected} of ${total})`;
-    }
+    if (display) display.textContent = `${score}% selected (${selected} of ${total})`;
 }
 
 function getCustomConfluenceOptions() {
@@ -1683,9 +1769,7 @@ function getCurrentConfluenceOptions() {
     const defaultOptions = DEFAULT_CONFLUENCE_OPTIONS.filter(option => !deleted.includes(option));
     const customOptions = getCustomConfluenceOptions();
     const options = [...defaultOptions, ...customOptions];
-    if (!options.includes('Market Structure')) {
-        options.unshift('Market Structure');
-    }
+    if (!options.includes('Market Structure')) options.unshift('Market Structure');
     return options;
 }
 
@@ -1760,9 +1844,7 @@ function addConfluenceOption() {
     renderConfluenceOptions();
 
     const newCheckbox = Array.from(document.querySelectorAll('#confluenceOptions input[type="checkbox"]')).find(input => input.value === newOption);
-    if (newCheckbox) {
-        newCheckbox.checked = true;
-    }
+    if (newCheckbox) newCheckbox.checked = true;
     updateConfluenceScoreDisplay();
     input.focus();
 }
@@ -1887,22 +1969,12 @@ function renderPagination() {
 
     let paginationHTML = '';
     
-    // Previous button
     if (currentPage > 1) {
-        paginationHTML += `
-            <button type="button" class="pagination-btn pagination-prev" data-page="${currentPage - 1}">
-                ← Previous
-            </button>
-        `;
+        paginationHTML += `<button type="button" class="pagination-btn pagination-prev" data-page="${currentPage - 1}">← Previous</button>`;
     } else {
-        paginationHTML += `
-            <button type="button" class="pagination-btn pagination-disabled" disabled>
-                ← Previous
-            </button>
-        `;
+        paginationHTML += `<button type="button" class="pagination-btn pagination-disabled" disabled>← Previous</button>`;
     }
     
-    // Page numbers
     const maxPagesToShow = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
@@ -1911,57 +1983,31 @@ function renderPagination() {
         startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
     
-    // First page + ellipsis
     if (startPage > 1) {
-        paginationHTML += `
-            <button type="button" class="pagination-btn" data-page="1">1</button>
-        `;
-        if (startPage > 2) {
-            paginationHTML += `<span class="pagination-ellipsis">...</span>`;
-        }
+        paginationHTML += `<button type="button" class="pagination-btn" data-page="1">1</button>`;
+        if (startPage > 2) paginationHTML += `<span class="pagination-ellipsis">...</span>`;
     }
     
-    // Page numbers
     for (let i = startPage; i <= endPage; i++) {
         if (i === currentPage) {
-            paginationHTML += `
-                <span class="pagination-current">${i}</span>
-            `;
+            paginationHTML += `<span class="pagination-current">${i}</span>`;
         } else {
-            paginationHTML += `
-                <button type="button" class="pagination-btn" data-page="${i}">${i}</button>
-            `;
+            paginationHTML += `<button type="button" class="pagination-btn" data-page="${i}">${i}</button>`;
         }
     }
     
-    // Last page + ellipsis
     if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            paginationHTML += `<span class="pagination-ellipsis">...</span>`;
-        }
-        paginationHTML += `
-            <button type="button" class="pagination-btn" data-page="${totalPages}">${totalPages}</button>
-        `;
+        if (endPage < totalPages - 1) paginationHTML += `<span class="pagination-ellipsis">...</span>`;
+        paginationHTML += `<button type="button" class="pagination-btn" data-page="${totalPages}">${totalPages}</button>`;
     }
     
-    // Next button
     if (currentPage < totalPages) {
-        paginationHTML += `
-            <button type="button" class="pagination-btn pagination-next" data-page="${currentPage + 1}">
-                Next →
-            </button>
-        `;
+        paginationHTML += `<button type="button" class="pagination-btn pagination-next" data-page="${currentPage + 1}">Next →</button>`;
     } else {
-        paginationHTML += `
-            <button type="button" class="pagination-btn pagination-disabled" disabled>
-                Next →
-            </button>
-        `;
+        paginationHTML += `<button type="button" class="pagination-btn pagination-disabled" disabled>Next →</button>`;
     }
     
     paginationContainer.innerHTML = paginationHTML;
-    
-    // Add event listeners to the new buttons
     attachPaginationEventListeners();
 }
 
@@ -2189,14 +2235,10 @@ function updateCurrencyDisplay() {
     const currencySymbol = getCurrencySymbol();
     
     const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
-    if (accountBalanceLabel) {
-        accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
-    }
+    if (accountBalanceLabel) accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
     
     const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
-    if (balanceStat) {
-        balanceStat.textContent = `Balance (${currencySymbol})`;
-    }
+    if (balanceStat) balanceStat.textContent = `Balance (${currencySymbol})`;
 }
 
 // ========== TAB MANAGEMENT ==========
@@ -2215,7 +2257,6 @@ function setupTabs() {
     const calendarContent = document.getElementById('calendarContent');
     const settingsContent = document.getElementById('settingsContent');
 
-    // Hide all tab contents first
     [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
         if (content) {
             content.classList.remove('active');
@@ -2224,7 +2265,6 @@ function setupTabs() {
     });
 
     function switchToTab(tabName) {
-        // Hide all tab contents
         [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
@@ -2232,12 +2272,10 @@ function setupTabs() {
             }
         });
 
-        // Remove active class from all tabs
         [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
-        // Show the selected tab content and activate the tab
         switch(tabName) {
             case 'dashboard':
                 if (dashboardContent) {
@@ -2286,27 +2324,13 @@ function setupTabs() {
         }
     }
 
-    // Set up event listeners
-    if (dashboardTab) {
-        dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
-    }
-    if (addTradeTab) {
-        addTradeTab.addEventListener('click', () => switchToTab('addTrade'));
-    }
-    if (tradesTab) {
-        tradesTab.addEventListener('click', () => switchToTab('trades'));
-    }
-    if (affirmationsTab) {
-        affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
-    }
-    if (calendarTab) {
-        calendarTab.addEventListener('click', () => switchToTab('calendar'));
-    }
-    if (settingsTab) {
-        settingsTab.addEventListener('click', () => switchToTab('settings'));
-    }
+    if (dashboardTab) dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
+    if (addTradeTab) addTradeTab.addEventListener('click', () => switchToTab('addTrade'));
+    if (tradesTab) tradesTab.addEventListener('click', () => switchToTab('trades'));
+    if (affirmationsTab) affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
+    if (calendarTab) calendarTab.addEventListener('click', () => switchToTab('calendar'));
+    if (settingsTab) settingsTab.addEventListener('click', () => switchToTab('settings'));
     
-    // Start with dashboard tab active
     switchToTab('dashboard');
     
     console.log('✅ Tabs setup complete');
@@ -2324,7 +2348,6 @@ function setupMobileMenu() {
             mobileMenu.classList.toggle('hidden');
             renderAccountsList();
             
-            // Prevent body scroll when menu is open
             if (!mobileMenu.classList.contains('hidden')) {
                 document.body.style.overflow = 'hidden';
             } else {
@@ -2332,7 +2355,6 @@ function setupMobileMenu() {
             }
         });
 
-        // Close menu when clicking outside or on a link
         document.addEventListener('click', (e) => {
             if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
                 mobileMenu.classList.add('hidden');
@@ -2340,7 +2362,6 @@ function setupMobileMenu() {
             }
         });
 
-        // Close menu when clicking on menu items (except the accounts list)
         mobileMenu.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') {
                 if (!e.target.closest('#mobileAccountsList')) {
@@ -2350,7 +2371,6 @@ function setupMobileMenu() {
             }
         });
 
-        // Handle escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
                 mobileMenu.classList.add('hidden');
@@ -2370,7 +2390,6 @@ function setupSidebarCollapse() {
         return;
     }
 
-    // Check if sidebar was previously collapsed
     const storedCollapsed = localStorage.getItem('sidebarCollapsed');
     if (storedCollapsed === 'true') {
         document.body.classList.add('sidebar-collapsed');
@@ -2395,14 +2414,11 @@ function setupSidebarCollapse() {
         }
     }
 
-    // Set initial icon state
     updateToggleIcon();
 
-    // Remove any existing click listeners to prevent duplicates
     const newToggle = toggle.cloneNode(true);
     toggle.parentNode.replaceChild(newToggle, toggle);
     
-    // Add click event listener
     newToggle.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -2419,7 +2435,6 @@ function setupSidebarCollapse() {
         
         updateToggleIcon();
         
-        // Dispatch event for other components
         window.dispatchEvent(new CustomEvent('sidebarToggled', { 
             detail: { collapsed: !isCollapsed } 
         }));
@@ -2427,7 +2442,6 @@ function setupSidebarCollapse() {
         console.log('📂 Sidebar collapsed:', !isCollapsed);
     });
 
-    // Add tooltips for collapsed sidebar items
     document.querySelectorAll('#sidebar .sidebar-btn').forEach(btn => {
         const label = btn.querySelector('.label');
         if (label && !btn.hasAttribute('title')) {
@@ -2442,54 +2456,36 @@ function setupSidebarCollapse() {
 
 function setupAffirmationsEventListeners() {
     const affirmationForm = document.getElementById('affirmationForm');
-    if (affirmationForm) {
-        affirmationForm.addEventListener('submit', handleAffirmationSubmit);
-    }
+    if (affirmationForm) affirmationForm.addEventListener('submit', handleAffirmationSubmit);
 
     const affirmationText = document.getElementById('affirmationText');
-    if (affirmationText) {
-        affirmationText.addEventListener('input', updateCharCount);
-    }
+    if (affirmationText) affirmationText.addEventListener('input', updateCharCount);
 
     const categoryFilters = document.querySelectorAll('.category-filter');
-    categoryFilters.forEach(filter => {
-        filter.addEventListener('click', handleCategoryFilter);
-    });
+    categoryFilters.forEach(filter => filter.addEventListener('click', handleCategoryFilter));
 
     const searchInput = document.getElementById('searchAffirmations');
-    if (searchInput) {
-        searchInput.addEventListener('input', handleSearchAffirmations);
-    }
+    if (searchInput) searchInput.addEventListener('input', handleSearchAffirmations);
 
     const sortSelect = document.getElementById('sortAffirmations');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', handleSortAffirmations);
-    }
+    if (sortSelect) sortSelect.addEventListener('change', handleSortAffirmations);
 }
 
 async function loadAffirmations() {
     try {
-        if (!currentUser) {
-            console.log('❌ No user for affirmations');
-            return;
-        }
+        if (!currentUser) return;
 
         console.log('📖 Loading affirmations...');
         const q = query(collection(db, 'affirmations'), where('userId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
         
         const affirmations = [];
-        querySnapshot.forEach((doc) => {
-            affirmations.push({ id: doc.id, ...doc.data() });
-        });
+        querySnapshot.forEach((doc) => affirmations.push({ id: doc.id, ...doc.data() }));
 
         if (affirmations.length === 0) {
             console.log('[AFFIRMATIONS] No affirmations found, creating sample data...');
             for (const sampleAffirmation of sampleAffirmations) {
-                const affirmationData = {
-                    ...sampleAffirmation,
-                    userId: currentUser.uid
-                };
+                const affirmationData = { ...sampleAffirmation, userId: currentUser.uid };
                 await addDoc(collection(db, 'affirmations'), affirmationData);
             }
             await loadAffirmations();
@@ -2580,24 +2576,16 @@ function renderAffirmationsGrid(filteredAffirmations = null) {
 
 function getCategoryColor(category) {
     const colors = {
-        'confidence': 'green',
-        'discipline': 'purple',
-        'patience': 'yellow',
-        'risk-management': 'red',
-        'mindset': 'indigo',
-        'general': 'blue'
+        'confidence': 'green', 'discipline': 'purple', 'patience': 'yellow',
+        'risk-management': 'red', 'mindset': 'indigo', 'general': 'blue'
     };
     return colors[category] || 'blue';
 }
 
 function getCategoryDisplayName(category) {
     const names = {
-        'confidence': 'Confidence',
-        'discipline': 'Discipline',
-        'patience': 'Patience',
-        'risk-management': 'Risk Management',
-        'mindset': 'Mindset',
-        'general': 'General'
+        'confidence': 'Confidence', 'discipline': 'Discipline', 'patience': 'Patience',
+        'risk-management': 'Risk Management', 'mindset': 'Mindset', 'general': 'General'
     };
     return names[category] || 'General';
 }
@@ -2668,12 +2656,8 @@ async function handleAffirmationSubmit(e) {
     }
     
     const affirmationData = {
-        text,
-        category,
-        isFavorite,
-        isActive,
-        usageCount: 0,
-        lastUsed: null,
+        text, category, isFavorite, isActive,
+        usageCount: 0, lastUsed: null,
         createdAt: new Date().toISOString(),
         strength: Math.floor(Math.random() * 20) + 80,
         userId: currentUser.uid
@@ -2685,16 +2669,10 @@ async function handleAffirmationSubmit(e) {
             await updateDoc(affirmationRef, affirmationData);
             
             const index = allAffirmations.findIndex(a => a.id === editingAffirmationId);
-            if (index !== -1) {
-                allAffirmations[index] = { ...allAffirmations[index], ...affirmationData };
-            }
+            if (index !== -1) allAffirmations[index] = { ...allAffirmations[index], ...affirmationData };
         } else {
             const docRef = await addDoc(collection(db, 'affirmations'), affirmationData);
-            
-            const newAffirmation = {
-                id: docRef.id,
-                ...affirmationData
-            };
+            const newAffirmation = { id: docRef.id, ...affirmationData };
             allAffirmations.unshift(newAffirmation);
         }
         
@@ -2746,13 +2724,9 @@ window.toggleFavorite = async (id) => {
     try {
         const affirmation = allAffirmations.find(a => a.id === id);
         if (affirmation) {
-            const updatedData = {
-                isFavorite: !affirmation.isFavorite
-            };
-            
+            const updatedData = { isFavorite: !affirmation.isFavorite };
             const affirmationRef = doc(db, 'affirmations', id);
             await updateDoc(affirmationRef, updatedData);
-            
             affirmation.isFavorite = updatedData.isFavorite;
             renderAffirmationsGrid();
         }
@@ -2766,9 +2740,7 @@ window.deleteAffirmation = async (id) => {
     if (confirm('Are you sure you want to delete this affirmation?')) {
         try {
             await deleteDoc(doc(db, 'affirmations', id));
-            
             allAffirmations = allAffirmations.filter(a => a.id !== id);
-            
             updateAffirmationStats();
             renderAffirmationsGrid();
             showSuccessMessage('Affirmation deleted successfully!');
@@ -2909,9 +2881,7 @@ function convertAffirmationsToCSV(affirmations) {
 function handleCategoryFilter(e) {
     const category = e.target.dataset.category;
     
-    document.querySelectorAll('.category-filter').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    document.querySelectorAll('.category-filter').forEach(btn => btn.classList.remove('active'));
     e.target.classList.add('active');
     
     let filteredAffirmations;
@@ -2926,9 +2896,7 @@ function handleCategoryFilter(e) {
 
 function handleSearchAffirmations(e) {
     const searchTerm = e.target.value.toLowerCase();
-    const filteredAffirmations = allAffirmations.filter(a => 
-        a.text.toLowerCase().includes(searchTerm)
-    );
+    const filteredAffirmations = allAffirmations.filter(a => a.text.toLowerCase().includes(searchTerm));
     renderAffirmationsGrid(filteredAffirmations);
 }
 
@@ -3012,9 +2980,7 @@ function parseCSV(csvText) {
             const getValue = (possibleHeaders) => {
                 for (const header of possibleHeaders) {
                     const index = headers.indexOf(header);
-                    if (index !== -1 && values[index] !== undefined) {
-                        return values[index];
-                    }
+                    if (index !== -1 && values[index] !== undefined) return values[index];
                 }
                 return '';
             };
@@ -3022,8 +2988,7 @@ function parseCSV(csvText) {
             const symbol = getValue(['Symbol', 'symbol']);
             const entryPrice = parseFloat(getValue(['Entry', 'entryPrice', 'Entry Price']));
             const stopLoss = parseFloat(getValue(['SL', 'stopLoss', 'Stop Loss']));
-            const takeProfit = getValue(['TP', 'takeProfit', 'Take Profit']) ? 
-                parseFloat(getValue(['TP', 'takeProfit', 'Take Profit'])) : null;
+            const takeProfit = getValue(['TP', 'takeProfit', 'Take Profit']) ? parseFloat(getValue(['TP', 'takeProfit', 'Take Profit'])) : null;
             const lotSize = parseFloat(getValue(['Lots', 'lotSize', 'Lot Size']) || '0.01');
             const tradeType = getValue(['Type', 'type']) || 'long';
             const instrumentType = getValue(['InstrumentType', 'instrumentType']) || getInstrumentType(symbol);
@@ -3038,13 +3003,7 @@ function parseCSV(csvText) {
             const currentAccount = getCurrentAccount();
             
             const trade = {
-                symbol: symbol,
-                type: tradeType,
-                instrumentType: instrumentType,
-                entryPrice: entryPrice,
-                stopLoss: stopLoss,
-                takeProfit: takeProfit,
-                lotSize: lotSize,
+                symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
                 mood: getValue(['Mood', 'mood']) || '',
                 beforeScreenshot: getValue(['BeforeScreenshot', 'beforeScreenshot']) || '',
                 afterScreenshot: getValue(['AfterScreenshot', 'afterScreenshot']) || '',
@@ -3105,32 +3064,13 @@ async function importTradesToFirestore(trades) {
     const importPromises = trades.map(async (trade) => {
         if (trade.symbol && trade.entryPrice && trade.stopLoss) {
             if (trade.profit === 0 && trade.takeProfit) {
-                trade.profit = calculateProfitLoss(
-                    trade.entryPrice, 
-                    trade.takeProfit, 
-                    trade.lotSize, 
-                    trade.symbol, 
-                    trade.type
-                );
+                trade.profit = calculateProfitLoss(trade.entryPrice, trade.takeProfit, trade.lotSize, trade.symbol, trade.type);
             }
             
-            trade.riskAmount = Math.abs(calculateProfitLoss(
-                trade.entryPrice, 
-                trade.stopLoss, 
-                trade.lotSize, 
-                trade.symbol, 
-                trade.type
-            ));
-            
+            trade.riskAmount = Math.abs(calculateProfitLoss(trade.entryPrice, trade.stopLoss, trade.lotSize, trade.symbol, trade.type));
             trade.riskPercent = (trade.riskAmount / trade.accountSize) * 100;
             
-            const pipPointInfo = calculatePipsPoints(
-                trade.entryPrice, 
-                trade.stopLoss, 
-                trade.takeProfit, 
-                trade.symbol, 
-                trade.type
-            );
+            const pipPointInfo = calculatePipsPoints(trade.entryPrice, trade.stopLoss, trade.takeProfit, trade.symbol, trade.type);
             trade.pipsPoints = pipPointInfo.risk;
         }
         
@@ -3176,7 +3116,7 @@ function convertToCSV(trades) {
         'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
         'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
         'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
-        'Notes', 'AccountSize', 'Leverage', 'Timestamp', 'AccountId'
+        'Notes', 'AccountSize', 'Leverage', 'Timestamp', 'AccountId', 'MTTicket'
     ];
     const csvRows = [headers.join(',')];
     
@@ -3201,7 +3141,8 @@ function convertToCSV(trades) {
             trade.accountSize,
             trade.leverage,
             trade.timestamp,
-            trade.accountId || ''
+            trade.accountId || '',
+            trade.mtTicket || ''
         ];
         csvRows.push(row.join(','));
     });
@@ -3226,234 +3167,29 @@ window.deleteTrade = async (tradeId) => {
 
 // ========== METATRADER 4/5 IMPORT FUNCTIONS ==========
 
-// Store parsed MT trades for import
-let pendingMTTrades = [];
-let existingTicketNumbers = new Set();
-
-// MetaTrader symbol to instrument type mapping
-const mtSymbolMapping = {
-    // Forex pairs
-    'EURUSD': 'EUR/USD', 'GBPUSD': 'GBP/USD', 'USDJPY': 'USD/JPY', 'USDCHF': 'USD/CHF',
-    'AUDUSD': 'AUD/USD', 'USDCAD': 'USD/CAD', 'NZDUSD': 'NZD/USD', 'EURGBP': 'EUR/GBP',
-    'EURJPY': 'EUR/JPY', 'GBPJPY': 'GBP/JPY', 'AUDJPY': 'AUD/JPY', 'AUDCAD': 'AUD/CAD',
-    'AUDCHF': 'AUD/CHF', 'AUDNZD': 'AUD/NZD', 'CADJPY': 'CAD/JPY', 'CHFJPY': 'CHF/JPY',
-    'EURAUD': 'EUR/AUD', 'EURCAD': 'EUR/CAD', 'EURCHF': 'EUR/CHF', 'EURNZD': 'EUR/NZD',
-    'GBPAUD': 'GBP/AUD', 'GBPCAD': 'GBP/CAD', 'GBPCHF': 'GBP/CHF', 'GBPNZD': 'GBP/NZD',
-    'NZDCAD': 'NZD/CAD', 'NZDCHF': 'NZD/CHF', 'NZDJPY': 'NZD/JPY',
-    
-    // Metals/Commodities
-    'XAUUSD': 'Gold', 'XAGUSD': 'Silver', 'WTI': 'Oil', 'BRENT': 'Brent',
-    'XAUUSD.': 'Gold', 'XAGUSD.': 'Silver',
-    
-    // Indices
-    'US30': 'US30', 'US30.': 'US30', 'US30..': 'US30',
-    'SPX500': 'SPX500', 'SPX500.': 'SPX500',
-    'NAS100': 'NAS100', 'NAS100.': 'NAS100',
-    'DE30': 'GE30', 'DE30.': 'GE30', 'GER30': 'GE30',
-    'UK100': 'FTSE100', 'UK100.': 'FTSE100',
-    'JP225': 'NIKKEI225', 'JP225.': 'NIKKEI225',
-    
-    // Deriv Synthetic Indices
-    'Volatility 10 Index': 'Volatility 10 Index',
-    'Volatility 25 Index': 'Volatility 25 Index',
-    'Volatility 50 Index': 'Volatility 50 Index',
-    'Volatility 75 Index': 'Volatility 75 Index',
-    'Volatility 100 Index': 'Volatility 100 Index',
-    'Boom 300 Index': 'Boom 300 Index',
-    'Boom 500 Index': 'Boom 500 Index',
-    'Boom 1000 Index': 'Boom 1000 Index',
-    'Crash 300 Index': 'Crash 300 Index',
-    'Crash 500 Index': 'Crash 500 Index',
-    'Crash 1000 Index': 'Crash 1000 Index',
-    'Step Index': 'Step Index',
-    'Jump 10 Index': 'Jump 10 Index',
-    'Jump 25 Index': 'Jump 25 Index',
-    'Jump 50 Index': 'Jump 50 Index',
-    'Jump 75 Index': 'Jump 75 Index',
-    'Jump 100 Index': 'Jump 100 Index',
-    'Range Break 100 Index': 'Range Break 100 Index',
-    'Range Break 200 Index': 'Range Break 200 Index'
-};
-
-// Map MT4/MT5 symbol to journal symbol
-function mapMTSymbol(mtSymbol) {
-    // Clean the symbol (remove suffixes like ., .., etc.)
-    let cleanSymbol = mtSymbol.trim();
-    
-    // Check direct mapping
-    if (mtSymbolMapping[cleanSymbol]) {
-        return mtSymbolMapping[cleanSymbol];
+async function loadExistingTicketNumbers() {
+    try {
+        if (!currentUser) return;
+        
+        const q = query(
+            collection(db, 'trades'),
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        existingTicketNumbers.clear();
+        querySnapshot.forEach((doc) => {
+            const trade = doc.data();
+            if (trade.mtTicket) existingTicketNumbers.add(trade.mtTicket);
+        });
+        
+        console.log('[MT IMPORT] Loaded', existingTicketNumbers.size, 'existing ticket numbers');
+    } catch (error) {
+        console.error('[MT IMPORT] Error loading existing tickets:', error);
     }
-    
-    // Check without suffixes
-    const baseSymbol = cleanSymbol.replace(/[.+]+$/, '');
-    if (mtSymbolMapping[baseSymbol]) {
-        return mtSymbolMapping[baseSymbol];
-    }
-    
-    // Return as-is if no mapping found
-    return cleanSymbol;
 }
 
-// Parse MetaTrader datetime format (2024.01.15 10:30:00 or 2024-01-15 10:30:00)
-function parseMTDateTime(dateTimeStr) {
-    if (!dateTimeStr) return new Date().toISOString();
-    
-    // Replace dots with hyphens for standard format
-    let standardized = dateTimeStr.replace(/\./g, '-');
-    
-    // Parse the date
-    const date = new Date(standardized);
-    
-    // Check if valid
-    if (!isNaN(date.getTime())) {
-        return date.toISOString();
-    }
-    
-    // Try manual parsing if Date constructor fails
-    const parts = dateTimeStr.split(/[\s.-]+/);
-    if (parts.length >= 6) {
-        const year = parseInt(parts[0]);
-        const month = parseInt(parts[1]) - 1;
-        const day = parseInt(parts[2]);
-        const hour = parseInt(parts[3]);
-        const minute = parseInt(parts[4]);
-        const second = parseInt(parts[5]);
-        
-        return new Date(year, month, day, hour, minute, second).toISOString();
-    }
-    
-    return new Date().toISOString();
-}
-
-// Detect MT4/MT5 CSV format and parse
-function parseMetaTraderCSV(csvText) {
-    const lines = csvText.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
-    
-    // Detect delimiter (comma or tab)
-    const firstLine = lines[0];
-    const delimiter = firstLine.includes('\t') ? '\t' : ',';
-    
-    // Parse headers
-    const headers = firstLine.split(delimiter).map(h => h.trim().replace(/"/g, ''));
-    console.log('[MT IMPORT] Headers detected:', headers);
-    
-    const trades = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        // Parse CSV line handling quotes
-        const values = parseCSVLineWithDelimiter(line, delimiter);
-        if (values.length < headers.length) continue;
-        
-        try {
-            // Helper to get value by possible header names
-            const getValue = (possibleNames) => {
-                for (const name of possibleNames) {
-                    const index = headers.findIndex(h => h === name);
-                    if (index !== -1 && values[index] !== undefined) {
-                        return values[index].replace(/"/g, '').trim();
-                    }
-                }
-                return '';
-            };
-            
-            // Extract trade data
-            const ticket = getValue(['Ticket', 'ticket', 'Order', 'order']);
-            const openTime = getValue(['Open Time', 'openTime', 'OpenTime', 'Time']);
-            const type = getValue(['Type', 'type', 'Action']).toLowerCase();
-            const size = getValue(['Size', 'size', 'Volume', 'volume', 'Lots', 'lots']);
-            const item = getValue(['Item', 'item', 'Symbol', 'symbol', 'Instrument']);
-            const openPrice = getValue(['Open Price', 'openPrice', 'Open', 'Price']);
-            const sl = getValue(['S/L', 'SL', 'Stop Loss', 'stopLoss', 'StopLoss']);
-            const tp = getValue(['T/P', 'TP', 'Take Profit', 'takeProfit', 'TakeProfit']);
-            const closeTime = getValue(['Close Time', 'closeTime', 'CloseTime']);
-            const closePrice = getValue(['Close Price', 'closePrice', 'Close']);
-            const commission = getValue(['Commission', 'commission', 'Commis']);
-            const swap = getValue(['Swap', 'swap', 'Storage']);
-            const profit = getValue(['Profit', 'profit', 'P/L']);
-            const comment = getValue(['Comment', 'comment', 'Note']);
-            
-            // Only process closed trades (must have close time)
-            if (!closeTime || closeTime === '') {
-                console.log('[MT IMPORT] Skipping open trade:', ticket);
-                continue;
-            }
-            
-            // Skip if no ticket (might be a summary row)
-            if (!ticket) continue;
-            
-            // Map the trade
-            const mappedSymbol = mapMTSymbol(item);
-            const tradeType = type.includes('buy') ? 'long' : 'short';
-            
-            const trade = {
-                mtTicket: ticket,
-                symbol: mappedSymbol,
-                type: tradeType,
-                instrumentType: getInstrumentType(mappedSymbol),
-                entryPrice: parseFloat(openPrice) || 0,
-                stopLoss: parseFloat(sl) || 0,
-                takeProfit: parseFloat(tp) || null,
-                lotSize: parseFloat(size) || 0.01,
-                closePrice: parseFloat(closePrice) || 0,
-                profit: parseFloat(profit) || 0,
-                commission: parseFloat(commission) || 0,
-                swap: parseFloat(swap) || 0,
-                netProfit: (parseFloat(profit) || 0) + (parseFloat(commission) || 0) + (parseFloat(swap) || 0),
-                openTime: parseMTDateTime(openTime),
-                closeTime: parseMTDateTime(closeTime),
-                comment: comment || '',
-                mood: '',
-                beforeScreenshot: '',
-                afterScreenshot: '',
-                notes: comment || ''
-            };
-            
-            // Calculate risk metrics
-            if (trade.entryPrice > 0 && trade.stopLoss > 0) {
-                trade.riskAmount = Math.abs(calculateProfitLoss(
-                    trade.entryPrice, 
-                    trade.stopLoss, 
-                    trade.lotSize, 
-                    trade.symbol, 
-                    trade.type
-                ));
-                
-                const currentAccount = getCurrentAccount();
-                trade.riskPercent = (trade.riskAmount / currentAccount.balance) * 100;
-                
-                const pipPointInfo = calculatePipsPoints(
-                    trade.entryPrice, 
-                    trade.stopLoss, 
-                    trade.takeProfit, 
-                    trade.symbol, 
-                    trade.type
-                );
-                trade.pipsPoints = pipPointInfo.risk;
-            } else {
-                trade.riskAmount = Math.abs(trade.profit);
-                trade.riskPercent = (trade.riskAmount / getCurrentAccount().balance) * 100;
-                trade.pipsPoints = 0;
-            }
-            
-            // Only add if we have valid data
-            if (trade.symbol && !isNaN(trade.entryPrice) && trade.entryPrice > 0) {
-                trades.push(trade);
-            }
-            
-        } catch (error) {
-            console.warn('[MT IMPORT] Error parsing row:', error, line);
-        }
-    }
-    
-    return trades;
-}
-
-// Parse CSV line with custom delimiter
 function parseCSVLineWithDelimiter(line, delimiter) {
     const values = [];
     let current = '';
@@ -3476,33 +3212,127 @@ function parseCSVLineWithDelimiter(line, delimiter) {
     return values;
 }
 
-// Load existing ticket numbers for duplicate detection
-async function loadExistingTicketNumbers() {
-    try {
-        if (!currentUser) return;
+function parseMetaTraderCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    
+    const headers = firstLine.split(delimiter).map(h => h.trim().replace(/"/g, ''));
+    console.log('[MT IMPORT] Headers detected:', headers);
+    
+    const trades = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
         
-        const q = query(
-            collection(db, 'trades'),
-            where('userId', '==', currentUser.uid),
-            where('accountId', '==', currentAccountId)
-        );
-        const querySnapshot = await getDocs(q);
+        const values = parseCSVLineWithDelimiter(line, delimiter);
+        if (values.length < headers.length) continue;
         
-        existingTicketNumbers.clear();
-        querySnapshot.forEach((doc) => {
-            const trade = doc.data();
-            if (trade.mtTicket) {
-                existingTicketNumbers.add(trade.mtTicket);
+        try {
+            const getValue = (possibleNames) => {
+                for (const name of possibleNames) {
+                    const index = headers.findIndex(h => h === name);
+                    if (index !== -1 && values[index] !== undefined) {
+                        return values[index].replace(/"/g, '').trim();
+                    }
+                }
+                return '';
+            };
+            
+            const ticket = getValue(['Ticket', 'ticket', 'Order', 'order']);
+            const openTime = getValue(['Open Time', 'openTime', 'OpenTime', 'Time']);
+            const type = getValue(['Type', 'type', 'Action']).toLowerCase();
+            const size = getValue(['Size', 'size', 'Volume', 'volume', 'Lots', 'lots']);
+            const item = getValue(['Item', 'item', 'Symbol', 'symbol', 'Instrument']);
+            const openPrice = getValue(['Open Price', 'openPrice', 'Open', 'Price']);
+            const sl = getValue(['S/L', 'SL', 'Stop Loss', 'stopLoss', 'StopLoss']);
+            const tp = getValue(['T/P', 'TP', 'Take Profit', 'takeProfit', 'TakeProfit']);
+            const closeTime = getValue(['Close Time', 'closeTime', 'CloseTime']);
+            const closePrice = getValue(['Close Price', 'closePrice', 'Close']);
+            const commission = getValue(['Commission', 'commission', 'Commis']);
+            const swap = getValue(['Swap', 'swap', 'Storage']);
+            const profit = getValue(['Profit', 'profit', 'P/L']);
+            const comment = getValue(['Comment', 'comment', 'Note']);
+            
+            if (!closeTime || closeTime === '') {
+                console.log('[MT IMPORT] Skipping open trade:', ticket);
+                continue;
             }
-        });
-        
-        console.log('[MT IMPORT] Loaded', existingTicketNumbers.size, 'existing ticket numbers');
-    } catch (error) {
-        console.error('[MT IMPORT] Error loading existing tickets:', error);
+            
+            if (!ticket) continue;
+            
+            const mappedSymbol = mapMTSymbol(item);
+            const tradeType = type.includes('buy') ? 'long' : 'short';
+            
+            let finalProfit = parseFloat(profit) || 0;
+            
+            if (mtImportSettings.useMTProfit) {
+                if (mtImportSettings.includeCommission) finalProfit += parseFloat(commission) || 0;
+                if (mtImportSettings.includeSwap) finalProfit += parseFloat(swap) || 0;
+            } else {
+                const exitPrice = parseFloat(closePrice) || 0;
+                const entryPriceVal = parseFloat(openPrice) || 0;
+                const lotSizeVal = parseFloat(size) || 0.01;
+                if (exitPrice > 0 && entryPriceVal > 0) {
+                    finalProfit = calculateProfitLoss(entryPriceVal, exitPrice, lotSizeVal, mappedSymbol, tradeType);
+                }
+            }
+            
+            const trade = {
+                mtTicket: ticket,
+                symbol: mappedSymbol,
+                type: tradeType,
+                instrumentType: getInstrumentType(mappedSymbol),
+                entryPrice: parseFloat(openPrice) || 0,
+                stopLoss: parseFloat(sl) || 0,
+                takeProfit: parseFloat(tp) || null,
+                lotSize: parseFloat(size) || 0.01,
+                closePrice: parseFloat(closePrice) || 0,
+                profit: finalProfit,
+                commission: parseFloat(commission) || 0,
+                swap: parseFloat(swap) || 0,
+                openTime: parseMTDateTime(openTime),
+                closeTime: parseMTDateTime(closeTime),
+                comment: comment || '',
+                mood: mtImportSettings.defaultMood,
+                beforeScreenshot: '',
+                afterScreenshot: '',
+                notes: mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${comment || ''}` : (comment || '')
+            };
+            
+            if (trade.entryPrice > 0 && trade.stopLoss > 0) {
+                trade.riskAmount = Math.abs(calculateProfitLoss(
+                    trade.entryPrice, trade.stopLoss, trade.lotSize, trade.symbol, trade.type
+                ));
+                
+                const currentAccount = getCurrentAccount();
+                trade.riskPercent = (trade.riskAmount / currentAccount.balance) * 100;
+                
+                const pipPointInfo = calculatePipsPoints(
+                    trade.entryPrice, trade.stopLoss, trade.takeProfit, trade.symbol, trade.type
+                );
+                trade.pipsPoints = pipPointInfo.risk;
+            } else {
+                trade.riskAmount = Math.abs(trade.profit);
+                trade.riskPercent = (trade.riskAmount / getCurrentAccount().balance) * 100;
+                trade.pipsPoints = 0;
+            }
+            
+            if (trade.symbol && !isNaN(trade.entryPrice) && trade.entryPrice > 0) {
+                trades.push(trade);
+            }
+            
+        } catch (error) {
+            console.warn('[MT IMPORT] Error parsing row:', error, line);
+        }
     }
+    
+    return trades;
 }
 
-// Main import function - called from button
 window.importMetaTraderTrades = () => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -3515,10 +3345,8 @@ window.importMetaTraderTrades = () => {
         try {
             showLoading();
             
-            // Load existing tickets first
             await loadExistingTicketNumbers();
             
-            // Read and parse file
             const text = await file.text();
             const trades = parseMetaTraderCSV(text);
             
@@ -3528,7 +3356,6 @@ window.importMetaTraderTrades = () => {
                 return;
             }
             
-            // Check for duplicates
             const newTrades = [];
             const duplicates = [];
             
@@ -3540,10 +3367,8 @@ window.importMetaTraderTrades = () => {
                 }
             });
             
-            // Store for import
             pendingMTTrades = newTrades;
             
-            // Show preview modal
             showMTImportPreview(newTrades, duplicates, trades.length);
             
         } catch (error) {
@@ -3557,7 +3382,6 @@ window.importMetaTraderTrades = () => {
     fileInput.click();
 };
 
-// Show import preview modal
 function showMTImportPreview(newTrades, duplicates, totalTrades) {
     const modal = document.getElementById('mtImportModal');
     const summaryEl = document.getElementById('mtImportSummary');
@@ -3569,7 +3393,6 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
     
     if (!modal) return;
     
-    // Update summary
     const totalProfit = newTrades.reduce((sum, t) => sum + t.profit, 0);
     const winningTrades = newTrades.filter(t => t.profit > 0).length;
     const losingTrades = newTrades.filter(t => t.profit < 0).length;
@@ -3595,9 +3418,54 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
                 </div>
             </div>
         </div>
+        <div class="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+            <div class="flex flex-wrap gap-4 text-sm">
+                <label class="flex items-center">
+                    <input type="checkbox" id="mtUseMTProfit" ${mtImportSettings.useMTProfit ? 'checked' : ''}>
+                    <span class="ml-2">Use MetaTrader's profit calculation</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="mtIncludeCommission" ${mtImportSettings.includeCommission ? 'checked' : ''}>
+                    <span class="ml-2">Include commission in profit</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="mtIncludeSwap" ${mtImportSettings.includeSwap ? 'checked' : ''}>
+                    <span class="ml-2">Include swap in profit</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="mtAutoAddNotes" ${mtImportSettings.autoAddNotes ? 'checked' : ''}>
+                    <span class="ml-2">Add "Imported from MT4/5" to notes</span>
+                </label>
+            </div>
+        </div>
     `;
     
-    // Show duplicates warning if any
+    document.getElementById('mtUseMTProfit').addEventListener('change', (e) => {
+        mtImportSettings.useMTProfit = e.target.checked;
+        recalculateMTPendingTrades();
+        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+    });
+    
+    document.getElementById('mtIncludeCommission').addEventListener('change', (e) => {
+        mtImportSettings.includeCommission = e.target.checked;
+        recalculateMTPendingTrades();
+        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+    });
+    
+    document.getElementById('mtIncludeSwap').addEventListener('change', (e) => {
+        mtImportSettings.includeSwap = e.target.checked;
+        recalculateMTPendingTrades();
+        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+    });
+    
+    document.getElementById('mtAutoAddNotes').addEventListener('change', (e) => {
+        mtImportSettings.autoAddNotes = e.target.checked;
+        pendingMTTrades.forEach(trade => {
+            trade.notes = mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${trade.comment || ''}` : (trade.comment || '');
+        });
+        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+    });
+    
     if (duplicates.length > 0) {
         duplicatesWarning.classList.remove('hidden');
         duplicatesMessage.textContent = `${duplicates.length} duplicate trade(s) detected and will be skipped.`;
@@ -3605,7 +3473,6 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
         duplicatesWarning.classList.add('hidden');
     }
     
-    // Populate preview table (show first 20 trades)
     const previewTrades = newTrades.slice(0, 20);
     previewBody.innerHTML = previewTrades.map(trade => `
         <tr>
@@ -3642,27 +3509,39 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
         `;
     }
     
-    // Update stats
     statsEl.textContent = `${newTrades.length} trade(s) ready to import (${duplicates.length} duplicate(s) skipped)`;
     
-    // Enable/disable confirm button
-    if (newTrades.length > 0) {
-        confirmBtn.disabled = false;
-    } else {
-        confirmBtn.disabled = true;
-    }
+    confirmBtn.disabled = newTrades.length === 0;
     
-    // Show modal
     modal.classList.remove('hidden');
 }
 
-// Close modal
+function recalculateMTPendingTrades() {
+    pendingMTTrades.forEach(trade => {
+        let finalProfit = trade.profit;
+        
+        if (!mtImportSettings.useMTProfit) {
+            const exitPrice = trade.closePrice || 0;
+            const entryPrice = trade.entryPrice || 0;
+            if (exitPrice > 0 && entryPrice > 0) {
+                finalProfit = calculateProfitLoss(entryPrice, exitPrice, trade.lotSize, trade.symbol, trade.type);
+            }
+        } else {
+            finalProfit = trade.profit;
+            if (mtImportSettings.includeCommission) finalProfit += trade.commission;
+            if (mtImportSettings.includeSwap) finalProfit += trade.swap;
+        }
+        
+        trade.profit = finalProfit;
+    });
+}
+
 window.closeMTImportModal = () => {
     document.getElementById('mtImportModal').classList.add('hidden');
     pendingMTTrades = [];
+    importErrors = [];
 };
 
-// Confirm and execute import
 window.confirmMTImport = async () => {
     if (pendingMTTrades.length === 0) {
         closeMTImportModal();
@@ -3674,12 +3553,15 @@ window.confirmMTImport = async () => {
     confirmBtn.innerHTML = '<div class="loading-spinner"></div> Importing...';
     confirmBtn.disabled = true;
     
+    importErrors = [];
+    
     try {
         const currentAccount = getCurrentAccount();
         const leverage = parseInt(localStorage.getItem('leverage') || '50');
         
         let imported = 0;
         let failed = 0;
+        const total = pendingMTTrades.length;
         
         for (const trade of pendingMTTrades) {
             try {
@@ -3706,7 +3588,6 @@ window.confirmMTImport = async () => {
                     leverage: leverage,
                     userId: currentUser.uid,
                     accountId: currentAccountId,
-                    // MetaTrader specific fields
                     mtTicket: trade.mtTicket,
                     mtCommission: trade.commission,
                     mtSwap: trade.swap,
@@ -3716,19 +3597,30 @@ window.confirmMTImport = async () => {
                 await addDoc(collection(db, 'trades'), tradeData);
                 imported++;
                 
+                if (imported % 10 === 0) {
+                    confirmBtn.innerHTML = `<div class="loading-spinner"></div> Importing ${imported}/${total}...`;
+                }
+                
             } catch (error) {
                 console.error('[MT IMPORT] Error importing trade:', trade.mtTicket, error);
                 failed++;
+                importErrors.push({
+                    ticket: trade.mtTicket,
+                    symbol: trade.symbol,
+                    error: error.message
+                });
             }
         }
         
-        // Reload trades
         await loadTrades();
         
-        // Show success message
-        showSuccessMessage(`✅ Successfully imported ${imported} MetaTrader trade(s)! ${failed > 0 ? `(${failed} failed)` : ''}`);
+        let message = `✅ Successfully imported ${imported} MetaTrader trade(s)!`;
+        if (failed > 0) {
+            message += `\n❌ ${failed} trade(s) failed to import.`;
+            console.error('[MT IMPORT] Failed trades:', importErrors);
+        }
+        showSuccessMessage(message);
         
-        // Close modal
         closeMTImportModal();
         
     } catch (error) {
@@ -3740,7 +3632,6 @@ window.confirmMTImport = async () => {
     }
 };
 
-// Add click outside to close modal
 document.addEventListener('click', (e) => {
     const modal = document.getElementById('mtImportModal');
     if (modal && e.target === modal) {
@@ -3795,18 +3686,12 @@ window.viewScreenshot = (url) => {
                 if (!isKnownDomain) {
                     setTimeout(() => {
                         if (!hasLoaded) {
-                            alert('Failed to load screenshot. This could be due to:\n\n• CORS restrictions (common with some image hosts)\n• The image being deleted or moved\n• Network connectivity issues\n\nTry uploading to a different image hosting service like Imgur.');
+                            alert('Failed to load screenshot. This could be due to:\n\n• CORS restrictions\n• The image being deleted or moved\n• Network connectivity issues');
                         }
                     }, 1000);
                 }
             }
         };
-        
-        setTimeout(() => {
-            if (!hasLoaded && !errorShown) {
-                console.log('Screenshot loading taking longer than expected:', cleanedUrl);
-            }
-        }, 3000);
         
         image.src = cleanedUrl;
     }
@@ -3897,11 +3782,7 @@ function calculateAdvancedMetrics(trades) {
         trades.reduce((sum, trade) => {
             if (trade.takeProfit && trade.riskAmount > 0) {
                 const potentialProfit = Math.abs(calculateProfitLoss(
-                    trade.entryPrice, 
-                    trade.takeProfit, 
-                    trade.lotSize, 
-                    trade.symbol, 
-                    trade.type
+                    trade.entryPrice, trade.takeProfit, trade.lotSize, trade.symbol, trade.type
                 ));
                 const riskReward = potentialProfit / trade.riskAmount;
                 return sum + riskReward;
@@ -4092,13 +3973,8 @@ function renderConfluenceChart(trades = []) {
 
 function getMoodEmoji(mood) {
     const moodMap = {
-        'confident': '😊',
-        'neutral': '😐',
-        'anxious': '😰',
-        'greedy': '😈',
-        'fearful': '😨',
-        'disciplined': '📋',
-        'impulsive': '⚡'
+        'confident': '😊', 'neutral': '😐', 'anxious': '😰', 'greedy': '😈',
+        'fearful': '😨', 'disciplined': '📋', 'impulsive': '⚡'
     };
     return moodMap[mood] || mood;
 }
@@ -4219,11 +4095,7 @@ function renderPerformanceChart(trades) {
         performanceChart = new Chart(ctx, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
         return;
     }
@@ -4241,10 +4113,7 @@ function renderPerformanceChart(trades) {
         balanceData.push(balance);
         
         const tradeDate = new Date(trade.timestamp);
-        const dateLabel = tradeDate.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric'
-        });
+        const dateLabel = tradeDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         labels.push(dateLabel);
     });
 
@@ -4286,14 +4155,8 @@ function renderPerformanceChart(trades) {
                 }
             },
             scales: {
-                x: { 
-                    display: true, 
-                    title: { display: true, text: 'Date' }
-                },
-                y: { 
-                    display: true, 
-                    title: { display: true, text: `Balance (${currencySymbol})` } 
-                }
+                x: { display: true, title: { display: true, text: 'Date' } },
+                y: { display: true, title: { display: true, text: `Balance (${currencySymbol})` } }
             },
             onClick: (evt, elements) => {
                 if (!elements || elements.length === 0) return;
@@ -4308,7 +4171,7 @@ function renderPerformanceChart(trades) {
                 const pl = trade.profit || 0;
                 const sign = pl > 0 ? '+' : '';
                 const date = new Date(trade.timestamp).toLocaleString();
-                const symbol = trade.symbol || trade.instrument || 'N/A';
+                const symbol = trade.symbol || 'N/A';
                 const msg = `Trade: ${symbol}\nDate: ${date}\nP/L: ${sign}${currencySymbol}${pl.toFixed(2)}`;
                 alert(msg);
             }
@@ -4385,54 +4248,18 @@ function renderMarketTypeChart(trades) {
     const data = [];
     const colors = [];
 
-    if (typeCounts.forex > 0) {
-        labels.push(`Forex (${typeCounts.forex})`);
-        data.push(typeCounts.forex);
-        colors.push('#3b82f6');
-    }
-    if (typeCounts.indices > 0) {
-        labels.push(`Indices (${typeCounts.indices})`);
-        data.push(typeCounts.indices);
-        colors.push('#8b5cf6');
-    }
-    if (typeCounts.synthetic > 0) {
-        labels.push(`Synthetic (${typeCounts.synthetic})`);
-        data.push(typeCounts.synthetic);
-        colors.push('#ec4899');
-    }
-    if (typeCounts.commodities > 0) {
-        labels.push(`Commodities (${typeCounts.commodities})`);
-        data.push(typeCounts.commodities);
-        colors.push('#f59e0b');
-    }
-    if (typeCounts.smarttrader > 0) {
-        labels.push(`SmartTrader (${typeCounts.smarttrader})`);
-        data.push(typeCounts.smarttrader);
-        colors.push('#06b6d4');
-    }
-    if (typeCounts.accumulator > 0) {
-        labels.push(`Accumulator (${typeCounts.accumulator})`);
-        data.push(typeCounts.accumulator);
-        colors.push('#ef4444');
-    }
+    if (typeCounts.forex > 0) { labels.push(`Forex (${typeCounts.forex})`); data.push(typeCounts.forex); colors.push('#3b82f6'); }
+    if (typeCounts.indices > 0) { labels.push(`Indices (${typeCounts.indices})`); data.push(typeCounts.indices); colors.push('#8b5cf6'); }
+    if (typeCounts.synthetic > 0) { labels.push(`Synthetic (${typeCounts.synthetic})`); data.push(typeCounts.synthetic); colors.push('#ec4899'); }
+    if (typeCounts.commodities > 0) { labels.push(`Commodities (${typeCounts.commodities})`); data.push(typeCounts.commodities); colors.push('#f59e0b'); }
+    if (typeCounts.smarttrader > 0) { labels.push(`SmartTrader (${typeCounts.smarttrader})`); data.push(typeCounts.smarttrader); colors.push('#06b6d4'); }
+    if (typeCounts.accumulator > 0) { labels.push(`Accumulator (${typeCounts.accumulator})`); data.push(typeCounts.accumulator); colors.push('#ef4444'); }
 
-    if (labels.length === 0) {
-        labels.push('No Trades');
-        data.push(1);
-        colors.push('#9ca3af');
-    }
+    if (labels.length === 0) { labels.push('No Trades'); data.push(1); colors.push('#9ca3af'); }
 
     marketTypeChart = new Chart(ctx, {
         type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: colors,
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 2, borderColor: '#ffffff' }] },
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -4447,6 +4274,6 @@ function renderMarketTypeChart(trades) {
 // ========== INITIALIZATION ==========
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Deriv Instruments, Multi-Account Support, and Calendar View initialized');
+    console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
     hideLoading();
 });
