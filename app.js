@@ -2365,20 +2365,24 @@ function setupMobileMenu() {
 function setupSidebarCollapse() {
     const sidebar = document.getElementById('sidebar');
     const toggle = document.getElementById('sidebarToggle');
-    if (!sidebar || !toggle) return;
+    if (!sidebar || !toggle) {
+        console.warn('⚠️ Sidebar or toggle button not found');
+        return;
+    }
 
     // Check if sidebar was previously collapsed
     const storedCollapsed = localStorage.getItem('sidebarCollapsed');
     if (storedCollapsed === 'true') {
         document.body.classList.add('sidebar-collapsed');
-        sidebar.classList.add('collapsed');
     }
 
     function updateToggleIcon() {
         const icon = toggle.querySelector('i');
         if (!icon) return;
         
-        if (document.body.classList.contains('sidebar-collapsed')) {
+        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+        
+        if (isCollapsed) {
             icon.classList.remove('fa-angle-double-left');
             icon.classList.add('fa-angle-double-right');
             toggle.setAttribute('aria-label', 'Expand sidebar');
@@ -2391,9 +2395,15 @@ function setupSidebarCollapse() {
         }
     }
 
+    // Set initial icon state
     updateToggleIcon();
 
-    toggle.addEventListener('click', (e) => {
+    // Remove any existing click listeners to prevent duplicates
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Add click event listener
+    newToggle.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         
@@ -2401,19 +2411,20 @@ function setupSidebarCollapse() {
         
         if (isCollapsed) {
             document.body.classList.remove('sidebar-collapsed');
-            sidebar.classList.remove('collapsed');
+            localStorage.setItem('sidebarCollapsed', 'false');
         } else {
             document.body.classList.add('sidebar-collapsed');
-            sidebar.classList.add('collapsed');
+            localStorage.setItem('sidebarCollapsed', 'true');
         }
         
-        localStorage.setItem('sidebarCollapsed', !isCollapsed ? 'true' : 'false');
         updateToggleIcon();
         
-        // Dispatch a custom event for any other components that need to know
+        // Dispatch event for other components
         window.dispatchEvent(new CustomEvent('sidebarToggled', { 
             detail: { collapsed: !isCollapsed } 
         }));
+        
+        console.log('📂 Sidebar collapsed:', !isCollapsed);
     });
 
     // Add tooltips for collapsed sidebar items
@@ -2424,7 +2435,7 @@ function setupSidebarCollapse() {
         }
     });
     
-    console.log('✅ Sidebar collapse setup complete');
+    console.log('✅ Sidebar collapse setup complete - Initial state:', storedCollapsed === 'true' ? 'collapsed' : 'expanded');
 }
 
 // ========== AFFIRMATIONS FUNCTIONS ==========

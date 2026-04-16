@@ -1409,4 +1409,135 @@
                 padding: 12px;
             }
         }
-   
+        /* Sidebar Collapse Styles - VERIFIED WORKING */
+        #sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: var(--sidebar-width, 240px);
+        }
+
+        /* Collapsed state */
+        body.sidebar-collapsed #sidebar {
+            width: 72px !important;
+        }
+
+        body.sidebar-collapsed .content-wrapper {
+            margin-left: 72px !important;
+            width: calc(100% - 72px) !important;
+        }
+
+        /* Hide labels when collapsed */
+        body.sidebar-collapsed #sidebar .sidebar-btn .label,
+        body.sidebar-collapsed #sidebar .sidebar-section-title span:first-child,
+        body.sidebar-collapsed #sidebar #currentAccountName,
+        body.sidebar-collapsed #sidebar .sidebar-submenu,
+        body.sidebar-collapsed #sidebar .personal-submenu {
+            display: none !important;
+        }
+
+        /* Center icons when collapsed */
+        body.sidebar-collapsed #sidebar .sidebar-btn {
+            justify-content: center;
+            padding: 12px 8px;
+        }
+
+        body.sidebar-collapsed #sidebar .sidebar-btn .icon {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        /* Brand/Logo adjustments */
+        body.sidebar-collapsed #sidebar .brand {
+            justify-content: center;
+        }
+
+        body.sidebar-collapsed #sidebar .brand img {
+            margin-right: 0 !important;
+        }
+
+        /* Sidebar toggle button */
+        #sidebarToggle {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--sidebar-text, #e5e7eb);
+        }
+
+        #sidebarToggle:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        #sidebarToggle:active {
+            transform: scale(0.95);
+        }
+
+        #sidebarToggle i {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        /* Tooltip on hover for collapsed items */
+        body.sidebar-collapsed #sidebar .sidebar-btn {
+            position: relative;
+        }
+
+        body.sidebar-collapsed #sidebar .sidebar-btn:hover::after {
+            content: attr(title);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-left: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+        }
+
+        /* Accounts dropdown adjustment */
+        body.sidebar-collapsed #sidebar #accountsDropdown {
+            display: flex;
+            justify-content: center;
+        }
+
+        body.sidebar-collapsed #sidebar #accountsToggle {
+            justify-content: center;
+            padding: 12px;
+        }
+
+        body.sidebar-collapsed #sidebar #accountsToggle .icon {
+            margin: 0;
+        }
+
+        /* Content wrapper transition */
+        .content-wrapper {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-left: var(--sidebar-width, 240px);
+            width: calc(100% - var(--sidebar-width, 240px));
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 640px) {
+            .content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            
+            body.sidebar-collapsed .content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+        }
