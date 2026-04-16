@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH MOBILE RESPONSIVENESS
+// app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS AND MOBILE RESPONSIVENESS
 import { 
     auth, db, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
@@ -186,6 +186,283 @@ function getCurrentDateTimeString() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+// ========== INSTRUMENT TYPE FUNCTIONS (UPDATED FOR DERIV) ==========
+
+function getInstrumentType(symbol) {
+    // Deriv Synthetic Indices - Volatility
+    const volatilityIndices = [
+        'Volatility 10 Index', 'Volatility 25 Index', 'Volatility 50 Index', 
+        'Volatility 75 Index', 'Volatility 100 Index',
+        'Volatility 10 (1s) Index', 'Volatility 25 (1s) Index', 'Volatility 50 (1s) Index',
+        'Volatility 75 (1s) Index', 'Volatility 100 (1s) Index',
+        'Volatility 200 Index', 'Volatility 300 Index'
+    ];
+    
+    // Deriv Synthetic Indices - Boom/Crash
+    const boomCrashIndices = [
+        'Boom 50 Index', 'Boom 100 Index', 'Boom 300 Index', 'Boom 500 Index', 
+        'Boom 600 Index', 'Boom 900 Index', 'Boom 1000 Index',
+        'Crash 50 Index', 'Crash 100 Index', 'Crash 300 Index', 'Crash 500 Index', 
+        'Crash 600 Index', 'Crash 900 Index', 'Crash 1000 Index'
+    ];
+    
+    // Deriv Synthetic Indices - Jump
+    const jumpIndices = [
+        'Jump 10 Index', 'Jump 25 Index', 'Jump 50 Index', 'Jump 75 Index', 
+        'Jump 100 Index', 'Jump 150 Index', 'Jump 200 Index'
+    ];
+    
+    // Deriv Synthetic Indices - Range Break
+    const rangeBreakIndices = [
+        'Range Break 50 Index', 'Range Break 100 Index', 'Range Break 200 Index'
+    ];
+    
+    // Deriv Synthetic Indices - Step
+    const stepIndices = [
+        'Step Index', 'Step 200 Index', 'Step 300 Index', 'Step 400 Index', 'Step 500 Index'
+    ];
+    
+    // Deriv Synthetic Indices - Mixed
+    const mixedIndices = [
+        'Bear Market Index', 'Bull Market Index', 
+        'Drift Switch 10 Index', 'Drift Switch 20 Index', 'Drift Switch 30 Index'
+    ];
+    
+    // All synthetic indices combined
+    const syntheticIndices = [
+        ...volatilityIndices, ...boomCrashIndices, ...jumpIndices, 
+        ...rangeBreakIndices, ...stepIndices, ...mixedIndices
+    ];
+    
+    // Forex pairs (including Deriv forex)
+    const forexPairs = [
+        'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
+        'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'AUD/CAD', 'AUD/CHF', 'AUD/NZD',
+        'CAD/JPY', 'CHF/JPY', 'EUR/AUD', 'EUR/CAD', 'EUR/CHF', 'EUR/NZD',
+        'GBP/AUD', 'GBP/CAD', 'GBP/CHF', 'GBP/NZD', 'NZD/CAD', 'NZD/CHF', 'NZD/JPY',
+        'USD/MXN', 'USD/ZAR', 'USD/SEK', 'USD/NOK', 'USD/SGD', 'USD/HKD'
+    ];
+    
+    // Traditional indices
+    const traditionalIndices = [
+        'US30', 'SPX500', 'NAS100', 'GE30', 'FTSE100', 'NIKKEI225',
+        'AUS200', 'ESTX50', 'FRA40', 'ESP35', 'HKG50'
+    ];
+    
+    // Commodities
+    const commodities = ['Gold', 'Silver', 'Oil', 'Brent', 'Natural Gas', 'Palladium', 'Platinum'];
+    
+    // Deriv SmartTrader options
+    const smartTrader = [
+        'Rise/Fall', 'Higher/Lower', 'Touch/No Touch', 'Ends Between/Out',
+        'Stays Between/Goes Out', 'Asians', 'Digits', 'Lookbacks',
+        'Reset Call/Put', 'Call/Put Spreads', 'Multipliers', 'Even/Odd', 
+        'Over/Under', 'Turbos', 'Vanillas'
+    ];
+    
+    // Deriv Accumulator Options
+    const accumulator = ['Accumulator Up', 'Accumulator Down'];
+
+    if (forexPairs.includes(symbol)) return 'forex';
+    if (traditionalIndices.includes(symbol)) return 'indices';
+    if (syntheticIndices.includes(symbol)) return 'synthetic';
+    if (commodities.includes(symbol)) return 'commodities';
+    if (smartTrader.includes(symbol)) return 'smarttrader';
+    if (accumulator.includes(symbol)) return 'accumulator';
+    
+    // Check if it contains "Index" as fallback
+    if (symbol.includes('Index')) return 'synthetic';
+    
+    return 'forex'; // default fallback
+}
+
+function getPipSize(symbol) {
+    return symbol.includes('JPY') ? 0.01 : 0.0001;
+}
+
+function getPointValue(symbol) {
+    const pointValues = {
+        // Traditional indices
+        'US30': 1, 
+        'SPX500': 50, 
+        'NAS100': 20, 
+        'GE30': 1, 
+        'FTSE100': 1, 
+        'NIKKEI225': 1,
+        'AUS200': 1,
+        'ESTX50': 1,
+        'FRA40': 1,
+        'ESP35': 1,
+        'HKG50': 1,
+        
+        // All Deriv synthetic indices (all use 1 point = $1 per lot)
+        'Volatility 10 Index': 1,
+        'Volatility 25 Index': 1,
+        'Volatility 50 Index': 1,
+        'Volatility 75 Index': 1,
+        'Volatility 100 Index': 1,
+        'Volatility 10 (1s) Index': 1,
+        'Volatility 25 (1s) Index': 1,
+        'Volatility 50 (1s) Index': 1,
+        'Volatility 75 (1s) Index': 1,
+        'Volatility 100 (1s) Index': 1,
+        'Volatility 200 Index': 1,
+        'Volatility 300 Index': 1,
+        'Boom 50 Index': 1,
+        'Boom 100 Index': 1,
+        'Boom 300 Index': 1,
+        'Boom 500 Index': 1,
+        'Boom 600 Index': 1,
+        'Boom 900 Index': 1,
+        'Boom 1000 Index': 1,
+        'Crash 50 Index': 1,
+        'Crash 100 Index': 1,
+        'Crash 300 Index': 1,
+        'Crash 500 Index': 1,
+        'Crash 600 Index': 1,
+        'Crash 900 Index': 1,
+        'Crash 1000 Index': 1,
+        'Jump 10 Index': 1,
+        'Jump 25 Index': 1,
+        'Jump 50 Index': 1,
+        'Jump 75 Index': 1,
+        'Jump 100 Index': 1,
+        'Jump 150 Index': 1,
+        'Jump 200 Index': 1,
+        'Range Break 50 Index': 1,
+        'Range Break 100 Index': 1,
+        'Range Break 200 Index': 1,
+        'Step Index': 1,
+        'Step 200 Index': 1,
+        'Step 300 Index': 1,
+        'Step 400 Index': 1,
+        'Step 500 Index': 1,
+        'Bear Market Index': 1,
+        'Bull Market Index': 1,
+        'Drift Switch 10 Index': 1,
+        'Drift Switch 20 Index': 1,
+        'Drift Switch 30 Index': 1
+    };
+    return pointValues[symbol] || 1;
+}
+
+function calculatePipsPoints(entry, sl, tp, symbol, type) {
+    const instrumentType = getInstrumentType(symbol);
+    
+    if (instrumentType === 'forex') {
+        const pipSize = getPipSize(symbol);
+        const slPips = type === 'long' ? (entry - sl) / pipSize : (sl - entry) / pipSize;
+        let tpPips = 0;
+        if (tp) tpPips = type === 'long' ? (tp - entry) / pipSize : (entry - tp) / pipSize;
+        return { risk: Math.abs(slPips), reward: Math.abs(tpPips) };
+    } else if (instrumentType === 'synthetic' || instrumentType === 'commodities' || instrumentType === 'indices') {
+        // For synthetic indices, commodities, and traditional indices, we use points
+        const slPoints = type === 'long' ? (entry - sl) : (sl - entry);
+        let tpPoints = 0;
+        if (tp) tpPoints = type === 'long' ? (tp - entry) : (entry - tp);
+        return { risk: Math.abs(slPoints), reward: Math.abs(tpPoints) };
+    } else if (instrumentType === 'smarttrader' || instrumentType === 'accumulator') {
+        // For binary options and accumulators, risk is fixed
+        return { risk: 1, reward: 0.8 }; // 80% payout ratio
+    } else {
+        const slPoints = type === 'long' ? (entry - sl) : (sl - entry);
+        let tpPoints = 0;
+        if (tp) tpPoints = type === 'long' ? (tp - entry) : (entry - tp);
+        return { risk: Math.abs(slPoints), reward: Math.abs(tpPoints) };
+    }
+}
+
+function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
+    const instrumentType = getInstrumentType(symbol);
+    
+    if (instrumentType === 'forex') {
+        const pipValue = 10 * lotSize;
+        const pipSize = getPipSize(symbol);
+        const pips = type === 'long' ? (exit - entry) / pipSize : (entry - exit) / pipSize;
+        const profit = pips * pipValue;
+        return parseFloat(profit.toFixed(2));
+    } else if (instrumentType === 'synthetic') {
+        // Deriv Synthetic Indices calculation
+        // For Volatility, Boom/Crash, Jump, Step indices: 1 point = $1 per standard lot
+        const pointValue = 1 * lotSize;
+        const points = type === 'long' ? (exit - entry) : (entry - exit);
+        const profit = points * pointValue;
+        return parseFloat(profit.toFixed(2));
+    } else if (instrumentType === 'commodities') {
+        // Gold/Silver/Oil calculation
+        let pointValue;
+        if (symbol === 'Gold') pointValue = 100;
+        else if (symbol === 'Silver') pointValue = 5000;
+        else if (symbol === 'Oil' || symbol === 'Brent') pointValue = 1000;
+        else if (symbol === 'Natural Gas') pointValue = 10000;
+        else pointValue = 100;
+        
+        const points = type === 'long' ? (exit - entry) : (entry - exit);
+        const profit = points * pointValue * lotSize;
+        return parseFloat(profit.toFixed(2));
+    } else if (instrumentType === 'smarttrader') {
+        // SmartTrader options (binary outcomes)
+        const payout = 0.80; // 80% payout (typical)
+        return type === 'long' ? (lotSize * payout) : -lotSize;
+    } else if (instrumentType === 'accumulator') {
+        // Accumulator options
+        const multiplier = 2; // Typical multiplier
+        const points = type === 'long' ? (exit - entry) : (entry - exit);
+        return parseFloat((points * lotSize * multiplier).toFixed(2));
+    } else {
+        // Traditional indices
+        const pointValue = getPointValue(symbol) * lotSize;
+        const points = type === 'long' ? (exit - entry) : (entry - exit);
+        const profit = points * pointValue;
+        return parseFloat(profit.toFixed(2));
+    }
+}
+
+window.updateInstrumentType = () => {
+    const symbol = document.getElementById('symbol')?.value;
+    if (symbol) {
+        const instrumentType = getInstrumentType(symbol);
+        let displayText = '';
+        let badgeClass = '';
+        
+        switch(instrumentType) {
+            case 'forex':
+                displayText = 'Forex';
+                badgeClass = 'forex-badge';
+                break;
+            case 'indices':
+                displayText = 'Traditional Index';
+                badgeClass = 'indices-badge';
+                break;
+            case 'synthetic':
+                displayText = 'Deriv Synthetic';
+                badgeClass = 'synthetic-badge';
+                break;
+            case 'commodities':
+                displayText = 'Commodity';
+                badgeClass = 'commodities-badge';
+                break;
+            case 'smarttrader':
+                displayText = 'SmartTrader';
+                badgeClass = 'smarttrader-badge';
+                break;
+            case 'accumulator':
+                displayText = 'Accumulator';
+                badgeClass = 'accumulator-badge';
+                break;
+            default:
+                displayText = 'Forex';
+                badgeClass = 'forex-badge';
+        }
+        
+        const displayElement = document.getElementById('instrumentTypeDisplay');
+        if (displayElement) {
+            displayElement.innerHTML = `<span class="market-type-badge ${badgeClass}">${displayText}</span>`;
+        }
+        updateRiskCalculation();
+    }
+};
+
 // ========== CALENDAR FUNCTIONS ==========
 
 function setupCalendar() {
@@ -210,6 +487,9 @@ function setupCalendar() {
         viewTypeSelect.addEventListener('change', (e) => {
             calendarViewType = e.target.value;
             renderCalendar();
+            // Show/hide appropriate view
+            document.getElementById('monthView').classList.toggle('hidden', calendarViewType !== 'month');
+            document.getElementById('weekView').classList.toggle('hidden', calendarViewType !== 'week');
         });
     }
     
@@ -490,7 +770,6 @@ function getTradesForWeek(startDate) {
     });
 }
 
-// Add this function to handle viewing trade details
 window.viewTradeDetails = (tradeId) => {
     const trade = allTrades.find(t => t.id === tradeId);
     if (trade) {
@@ -865,17 +1144,9 @@ async function loadAccountData() {
 
         await loadTrades();
         
-        // Don't load affirmations here - they'll load when the tab is activated
-        // await loadAffirmations();
-        
         updateStats(allTrades);
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
-        
-        // Don't render calendar here - it'll render when the tab is activated
-        // if (document.getElementById('calendarContent').classList.contains('active')) {
-        //     renderCalendar();
-        // }
         
         console.log('[SUCCESS] Account data loaded successfully');
         
@@ -1074,7 +1345,7 @@ function formatCurrency(amount, currencyCode = null) {
 function showSuccessMessage(message) {
     const successDiv = document.createElement('div');
     successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-    successDiv.textContent = message;
+    successDiv.innerHTML = message;
     document.body.appendChild(successDiv);
     
     setTimeout(() => {
@@ -1383,16 +1654,6 @@ async function addTrade(e) {
     }
 }
 
-function getInstrumentType(symbol) {
-    const forexPairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'];
-    const indices = ['US30', 'SPX500', 'NAS100', 'GE30', 'FTSE100', 'NIKKEI225'];
-    return forexPairs.includes(symbol) ? 'forex' : indices.includes(symbol) ? 'indices' : 'forex';
-}
-
-function getPipSize(symbol) {
-    return symbol.includes('JPY') ? 0.01 : 0.0001;
-}
-
 function updateConfluenceScoreDisplay() {
     const selected = Array.from(document.querySelectorAll('#confluenceOptions input[type="checkbox"]:checked')).length;
     const total = document.querySelectorAll('#confluenceOptions input[type="checkbox"]').length;
@@ -1540,45 +1801,6 @@ function formatConfluenceDetails(trade) {
     `;
 }
 
-
-function getPointValue(symbol) {
-    const pointValues = {'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1};
-    return pointValues[symbol] || 1;
-}
-
-function calculatePipsPoints(entry, sl, tp, symbol, type) {
-    const instrumentType = getInstrumentType(symbol);
-    if (instrumentType === 'forex') {
-        const pipSize = getPipSize(symbol);
-        const slPips = type === 'long' ? (entry - sl) / pipSize : (sl - entry) / pipSize;
-        let tpPips = 0;
-        if (tp) tpPips = type === 'long' ? (tp - entry) / pipSize : (entry - tp) / pipSize;
-        return { risk: Math.abs(slPips), reward: Math.abs(tpPips) };
-    } else {
-        const slPoints = type === 'long' ? (entry - sl) : (sl - entry);
-        let tpPoints = 0;
-        if (tp) tpPoints = type === 'long' ? (tp - entry) : (entry - tp);
-        return { risk: Math.abs(slPoints), reward: Math.abs(tpPoints) };
-    }
-}
-
-function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
-    const instrumentType = getInstrumentType(symbol);
-    
-    if (instrumentType === 'forex') {
-        const pipValue = 10 * lotSize;
-        const pipSize = getPipSize(symbol);
-        const pips = type === 'long' ? (exit - entry) / pipSize : (entry - exit) / pipSize;
-        const profit = pips * pipValue;
-        return parseFloat(profit.toFixed(2));
-    } else {
-        const pointValue = getPointValue(symbol) * lotSize;
-        const points = type === 'long' ? (exit - entry) : (entry - exit);
-        const profit = points * pointValue;
-        return parseFloat(profit.toFixed(2));
-    }
-}
-
 function updateRiskCalculation() {
     const symbol = document.getElementById('symbol')?.value;
     const entryPrice = parseFloat(document.getElementById('entryPrice')?.value) || 0;
@@ -1626,18 +1848,6 @@ function updateRiskCalculation() {
         });
     }
 }
-
-window.updateInstrumentType = () => {
-    const symbol = document.getElementById('symbol')?.value;
-    if (symbol) {
-        const instrumentType = getInstrumentType(symbol);
-        const displayText = instrumentType === 'forex' ? 'Forex' : 'Index';
-        const badgeClass = instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
-        const displayElement = document.getElementById('instrumentTypeDisplay');
-        if (displayElement) displayElement.innerHTML = `<span class="market-type-badge ${badgeClass}">${displayText}</span>`;
-        updateRiskCalculation();
-    }
-};
 
 // ========== PAGINATION FUNCTIONS ==========
 
@@ -1801,8 +2011,8 @@ function displayTrades(trades) {
     }
 
     container.innerHTML = trades.map(trade => {
-        const badgeClass = trade.instrumentType === 'forex' ? 'forex-badge' : 'indices-badge';
-        const badgeText = trade.instrumentType === 'forex' ? 'FX' : 'IDX';
+        const badgeClass = getBadgeClass(trade.instrumentType);
+        const badgeText = getBadgeText(trade.instrumentType);
         const profitClass = trade.profit >= 0 ? 'profit' : 'loss';
         const moodEmoji = getMoodEmoji(trade.mood);
         const tradeDate = new Date(trade.timestamp);
@@ -1865,7 +2075,30 @@ function displayTrades(trades) {
     }).join('');
 }
 
-// Make functions globally accessible
+function getBadgeClass(instrumentType) {
+    const classes = {
+        'forex': 'forex-badge',
+        'indices': 'indices-badge',
+        'synthetic': 'synthetic-badge',
+        'commodities': 'commodities-badge',
+        'smarttrader': 'smarttrader-badge',
+        'accumulator': 'accumulator-badge'
+    };
+    return classes[instrumentType] || 'forex-badge';
+}
+
+function getBadgeText(instrumentType) {
+    const texts = {
+        'forex': 'FX',
+        'indices': 'IDX',
+        'synthetic': 'SYN',
+        'commodities': 'CMD',
+        'smarttrader': 'SMT',
+        'accumulator': 'ACC'
+    };
+    return texts[instrumentType] || 'FX';
+}
+
 window.displayTradesPage = displayTradesPage;
 
 // ========== ACCOUNT BALANCE LOCK SYSTEM ==========
@@ -2031,7 +2264,6 @@ function setupTabs() {
                 if (affirmationsContent) {
                     affirmationsContent.classList.add('active');
                     affirmationsContent.style.display = 'block';
-                    // Only load affirmations when the tab is activated
                     loadAffirmations();
                 }
                 if (affirmationsTab) affirmationsTab.classList.add('active');
@@ -2040,7 +2272,6 @@ function setupTabs() {
                 if (calendarContent) {
                     calendarContent.classList.add('active');
                     calendarContent.style.display = 'block';
-                    // Only render calendar when the tab is activated
                     renderCalendar();
                 }
                 if (calendarTab) calendarTab.classList.add('active');
@@ -2136,6 +2367,7 @@ function setupSidebarCollapse() {
     const toggle = document.getElementById('sidebarToggle');
     if (!sidebar || !toggle) return;
 
+    // Check if sidebar was previously collapsed
     const storedCollapsed = localStorage.getItem('sidebarCollapsed');
     if (storedCollapsed === 'true') {
         document.body.classList.add('sidebar-collapsed');
@@ -2145,32 +2377,54 @@ function setupSidebarCollapse() {
     function updateToggleIcon() {
         const icon = toggle.querySelector('i');
         if (!icon) return;
+        
         if (document.body.classList.contains('sidebar-collapsed')) {
             icon.classList.remove('fa-angle-double-left');
             icon.classList.add('fa-angle-double-right');
             toggle.setAttribute('aria-label', 'Expand sidebar');
+            toggle.setAttribute('title', 'Expand sidebar');
         } else {
             icon.classList.remove('fa-angle-double-right');
             icon.classList.add('fa-angle-double-left');
             toggle.setAttribute('aria-label', 'Collapse sidebar');
+            toggle.setAttribute('title', 'Collapse sidebar');
         }
     }
 
     updateToggleIcon();
 
-    toggle.addEventListener('click', () => {
-        const collapsed = document.body.classList.toggle('sidebar-collapsed');
-        sidebar.classList.toggle('collapsed', collapsed);
-        localStorage.setItem('sidebarCollapsed', collapsed ? 'true' : 'false');
+    toggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+        
+        if (isCollapsed) {
+            document.body.classList.remove('sidebar-collapsed');
+            sidebar.classList.remove('collapsed');
+        } else {
+            document.body.classList.add('sidebar-collapsed');
+            sidebar.classList.add('collapsed');
+        }
+        
+        localStorage.setItem('sidebarCollapsed', !isCollapsed ? 'true' : 'false');
         updateToggleIcon();
+        
+        // Dispatch a custom event for any other components that need to know
+        window.dispatchEvent(new CustomEvent('sidebarToggled', { 
+            detail: { collapsed: !isCollapsed } 
+        }));
     });
 
+    // Add tooltips for collapsed sidebar items
     document.querySelectorAll('#sidebar .sidebar-btn').forEach(btn => {
         const label = btn.querySelector('.label');
-        if (label && !btn.title) {
-            btn.title = label.textContent.trim();
+        if (label && !btn.hasAttribute('title')) {
+            btn.setAttribute('title', label.textContent.trim());
         }
     });
+    
+    console.log('✅ Sidebar collapse setup complete');
 }
 
 // ========== AFFIRMATIONS FUNCTIONS ==========
@@ -3485,7 +3739,6 @@ function renderPerformanceChart(trades) {
                         label: function(context) {
                             const idx = context.dataIndex;
                             const balanceStr = `Balance: ${currencySymbol}${context.parsed.y.toFixed(2)}`;
-                            // First point is the starting balance
                             if (idx === 0) return balanceStr + ' (Start)';
                             const trade = sortedTrades[idx - 1];
                             if (!trade) return balanceStr;
@@ -3506,10 +3759,8 @@ function renderPerformanceChart(trades) {
                     display: true, 
                     title: { display: true, text: `Balance (${currencySymbol})` } 
                 }
-            }
-            ,
+            },
             onClick: (evt, elements) => {
-                // On mobile/tap or click, show trade P/L details for the clicked point
                 if (!elements || elements.length === 0) return;
                 const el = elements[0];
                 const idx = el.index;
@@ -3524,7 +3775,6 @@ function renderPerformanceChart(trades) {
                 const date = new Date(trade.timestamp).toLocaleString();
                 const symbol = trade.symbol || trade.instrument || 'N/A';
                 const msg = `Trade: ${symbol}\nDate: ${date}\nP/L: ${sign}${currencySymbol}${pl.toFixed(2)}`;
-                // Use alert as a simple mobile-friendly detail popup
                 alert(msg);
             }
         }
@@ -3587,16 +3837,63 @@ function renderMarketTypeChart(trades) {
         return;
     }
 
-    const forexTrades = trades.filter(t => t.instrumentType === 'forex');
-    const indicesTrades = trades.filter(t => t.instrumentType === 'indices');
+    const typeCounts = {
+        'forex': trades.filter(t => t.instrumentType === 'forex').length,
+        'indices': trades.filter(t => t.instrumentType === 'indices').length,
+        'synthetic': trades.filter(t => t.instrumentType === 'synthetic').length,
+        'commodities': trades.filter(t => t.instrumentType === 'commodities').length,
+        'smarttrader': trades.filter(t => t.instrumentType === 'smarttrader').length,
+        'accumulator': trades.filter(t => t.instrumentType === 'accumulator').length
+    };
+
+    const labels = [];
+    const data = [];
+    const colors = [];
+
+    if (typeCounts.forex > 0) {
+        labels.push(`Forex (${typeCounts.forex})`);
+        data.push(typeCounts.forex);
+        colors.push('#3b82f6');
+    }
+    if (typeCounts.indices > 0) {
+        labels.push(`Indices (${typeCounts.indices})`);
+        data.push(typeCounts.indices);
+        colors.push('#8b5cf6');
+    }
+    if (typeCounts.synthetic > 0) {
+        labels.push(`Synthetic (${typeCounts.synthetic})`);
+        data.push(typeCounts.synthetic);
+        colors.push('#ec4899');
+    }
+    if (typeCounts.commodities > 0) {
+        labels.push(`Commodities (${typeCounts.commodities})`);
+        data.push(typeCounts.commodities);
+        colors.push('#f59e0b');
+    }
+    if (typeCounts.smarttrader > 0) {
+        labels.push(`SmartTrader (${typeCounts.smarttrader})`);
+        data.push(typeCounts.smarttrader);
+        colors.push('#06b6d4');
+    }
+    if (typeCounts.accumulator > 0) {
+        labels.push(`Accumulator (${typeCounts.accumulator})`);
+        data.push(typeCounts.accumulator);
+        colors.push('#ef4444');
+    }
+
+    if (labels.length === 0) {
+        labels.push('No Trades');
+        data.push(1);
+        colors.push('#9ca3af');
+    }
 
     marketTypeChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: [`Forex (${forexTrades.length})`, `Indices (${indicesTrades.length})`],
+            labels: labels,
             datasets: [{
-                data: [forexTrades.length, indicesTrades.length],
-                backgroundColor: ['#3b82f6', '#8b5cf6'],
+                data: data,
+                backgroundColor: colors,
                 borderWidth: 2,
                 borderColor: '#ffffff'
             }]
@@ -3615,6 +3912,6 @@ function renderMarketTypeChart(trades) {
 // ========== INITIALIZATION ==========
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Trading Journal with Mobile Responsiveness, Multi-Account Support, Date Feature, Fixed Pagination, and Calendar View initialized');
+    console.log('Trading Journal with Deriv Instruments, Multi-Account Support, and Calendar View initialized');
     hideLoading();
 });

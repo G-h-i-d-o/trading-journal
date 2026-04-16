@@ -529,17 +529,153 @@
                             <label>Instrument</label>
                             <select id="symbol" required>
                                 <option value="">Select Instrument</option>
-                                <optgroup label="Forex">
+                                
+                                <!-- Deriv Synthetic Indices - Complete List -->
+                                <optgroup label="📊 Deriv Synthetic Indices - Volatility">
+                                    <option value="Volatility 10 Index">Volatility 10 Index</option>
+                                    <option value="Volatility 25 Index">Volatility 25 Index</option>
+                                    <option value="Volatility 50 Index">Volatility 50 Index</option>
+                                    <option value="Volatility 75 Index">Volatility 75 Index</option>
+                                    <option value="Volatility 100 Index">Volatility 100 Index</option>
+                                    <option value="Volatility 10 (1s) Index">Volatility 10 (1s) Index</option>
+                                    <option value="Volatility 25 (1s) Index">Volatility 25 (1s) Index</option>
+                                    <option value="Volatility 50 (1s) Index">Volatility 50 (1s) Index</option>
+                                    <option value="Volatility 75 (1s) Index">Volatility 75 (1s) Index</option>
+                                    <option value="Volatility 100 (1s) Index">Volatility 100 (1s) Index</option>
+                                    <option value="Volatility 200 Index">Volatility 200 Index</option>
+                                    <option value="Volatility 300 Index">Volatility 300 Index</option>
+                                </optgroup>
+                                
+                                <optgroup label="📊 Deriv Synthetic Indices - Boom/Crash">
+                                    <option value="Boom 50 Index">Boom 50 Index</option>
+                                    <option value="Boom 100 Index">Boom 100 Index</option>
+                                    <option value="Boom 300 Index">Boom 300 Index</option>
+                                    <option value="Boom 500 Index">Boom 500 Index</option>
+                                    <option value="Boom 600 Index">Boom 600 Index</option>
+                                    <option value="Boom 900 Index">Boom 900 Index</option>
+                                    <option value="Boom 1000 Index">Boom 1000 Index</option>
+                                    <option value="Crash 50 Index">Crash 50 Index</option>
+                                    <option value="Crash 100 Index">Crash 100 Index</option>
+                                    <option value="Crash 300 Index">Crash 300 Index</option>
+                                    <option value="Crash 500 Index">Crash 500 Index</option>
+                                    <option value="Crash 600 Index">Crash 600 Index</option>
+                                    <option value="Crash 900 Index">Crash 900 Index</option>
+                                    <option value="Crash 1000 Index">Crash 1000 Index</option>
+                                </optgroup>
+                                
+                                <optgroup label="📊 Deriv Synthetic Indices - Jump">
+                                    <option value="Jump 10 Index">Jump 10 Index</option>
+                                    <option value="Jump 25 Index">Jump 25 Index</option>
+                                    <option value="Jump 50 Index">Jump 50 Index</option>
+                                    <option value="Jump 75 Index">Jump 75 Index</option>
+                                    <option value="Jump 100 Index">Jump 100 Index</option>
+                                    <option value="Jump 150 Index">Jump 150 Index</option>
+                                    <option value="Jump 200 Index">Jump 200 Index</option>
+                                </optgroup>
+                                
+                                <optgroup label="📊 Deriv Synthetic Indices - Range Break">
+                                    <option value="Range Break 50 Index">Range Break 50 Index</option>
+                                    <option value="Range Break 100 Index">Range Break 100 Index</option>
+                                    <option value="Range Break 200 Index">Range Break 200 Index</option>
+                                </optgroup>
+                                
+                                <optgroup label="📊 Deriv Synthetic Indices - Step">
+                                    <option value="Step Index">Step Index</option>
+                                    <option value="Step 200 Index">Step 200 Index</option>
+                                    <option value="Step 300 Index">Step 300 Index</option>
+                                    <option value="Step 400 Index">Step 400 Index</option>
+                                    <option value="Step 500 Index">Step 500 Index</option>
+                                </optgroup>
+                                
+                                <optgroup label="📊 Deriv Synthetic Indices - Mixed">
+                                    <option value="Bear Market Index">Bear Market Index</option>
+                                    <option value="Bull Market Index">Bull Market Index</option>
+                                    <option value="Drift Switch 10 Index">Drift Switch 10 Index</option>
+                                    <option value="Drift Switch 20 Index">Drift Switch 20 Index</option>
+                                    <option value="Drift Switch 30 Index">Drift Switch 30 Index</option>
+                                </optgroup>
+                                
+                                <optgroup label="💱 Forex (Deriv)">
                                     <option value="EUR/USD">EUR/USD</option>
                                     <option value="GBP/USD">GBP/USD</option>
                                     <option value="USD/JPY">USD/JPY</option>
                                     <option value="AUD/USD">AUD/USD</option>
+                                    <option value="USD/CAD">USD/CAD</option>
+                                    <option value="USD/CHF">USD/CHF</option>
+                                    <option value="NZD/USD">NZD/USD</option>
+                                    <option value="EUR/GBP">EUR/GBP</option>
+                                    <option value="EUR/JPY">EUR/JPY</option>
+                                    <option value="GBP/JPY">GBP/JPY</option>
+                                    <option value="AUD/JPY">AUD/JPY</option>
+                                    <option value="AUD/CAD">AUD/CAD</option>
+                                    <option value="AUD/CHF">AUD/CHF</option>
+                                    <option value="AUD/NZD">AUD/NZD</option>
+                                    <option value="CAD/JPY">CAD/JPY</option>
+                                    <option value="CHF/JPY">CHF/JPY</option>
+                                    <option value="EUR/AUD">EUR/AUD</option>
+                                    <option value="EUR/CAD">EUR/CAD</option>
+                                    <option value="EUR/CHF">EUR/CHF</option>
+                                    <option value="EUR/NZD">EUR/NZD</option>
+                                    <option value="GBP/AUD">GBP/AUD</option>
+                                    <option value="GBP/CAD">GBP/CAD</option>
+                                    <option value="GBP/CHF">GBP/CHF</option>
+                                    <option value="GBP/NZD">GBP/NZD</option>
+                                    <option value="NZD/CAD">NZD/CAD</option>
+                                    <option value="NZD/CHF">NZD/CHF</option>
+                                    <option value="NZD/JPY">NZD/JPY</option>
+                                    <option value="USD/MXN">USD/MXN</option>
+                                    <option value="USD/ZAR">USD/ZAR</option>
+                                    <option value="USD/SEK">USD/SEK</option>
+                                    <option value="USD/NOK">USD/NOK</option>
+                                    <option value="USD/SGD">USD/SGD</option>
+                                    <option value="USD/HKD">USD/HKD</option>
                                 </optgroup>
-                                <optgroup label="Indices">
-                                    <option value="US30">US30</option>
+                                
+                                <optgroup label="📈 Traditional Indices">
+                                    <option value="US30">US30 (Dow Jones)</option>
                                     <option value="SPX500">S&P 500</option>
-                                    <option value="NAS100">NASDAQ</option>
+                                    <option value="NAS100">NASDAQ 100</option>
                                     <option value="GE30">DAX 30</option>
+                                    <option value="FTSE100">FTSE 100</option>
+                                    <option value="NIKKEI225">Nikkei 225</option>
+                                    <option value="AUS200">ASX 200</option>
+                                    <option value="ESTX50">Euro Stoxx 50</option>
+                                    <option value="FRA40">CAC 40</option>
+                                    <option value="ESP35">IBEX 35</option>
+                                    <option value="HKG50">Hang Seng</option>
+                                </optgroup>
+                                
+                                <optgroup label="💰 Commodities (Deriv)">
+                                    <option value="Gold">Gold (XAU/USD)</option>
+                                    <option value="Silver">Silver (XAG/USD)</option>
+                                    <option value="Oil">Crude Oil</option>
+                                    <option value="Brent">Brent Crude</option>
+                                    <option value="Natural Gas">Natural Gas</option>
+                                    <option value="Palladium">Palladium</option>
+                                    <option value="Platinum">Platinum</option>
+                                </optgroup>
+                                
+                                <optgroup label="📊 Deriv SmartTrader">
+                                    <option value="Rise/Fall">Rise/Fall</option>
+                                    <option value="Higher/Lower">Higher/Lower</option>
+                                    <option value="Touch/No Touch">Touch/No Touch</option>
+                                    <option value="Ends Between/Out">Ends Between/Out</option>
+                                    <option value="Stays Between/Goes Out">Stays Between/Goes Out</option>
+                                    <option value="Asians">Asians</option>
+                                    <option value="Digits">Digits</option>
+                                    <option value="Lookbacks">Lookbacks</option>
+                                    <option value="Reset Call/Put">Reset Call/Put</option>
+                                    <option value="Call/Put Spreads">Call/Put Spreads</option>
+                                    <option value="Multipliers">Multipliers</option>
+                                    <option value="Even/Odd">Even/Odd</option>
+                                    <option value="Over/Under">Over/Under</option>
+                                    <option value="Turbos">Turbos</option>
+                                    <option value="Vanillas">Vanillas</option>
+                                </optgroup>
+                                
+                                <optgroup label="🎯 Deriv Accumulator Options">
+                                    <option value="Accumulator Up">Accumulator Up</option>
+                                    <option value="Accumulator Down">Accumulator Down</option>
                                 </optgroup>
                             </select>
                             <div id="instrumentTypeDisplay" class="pip-display"></div>
@@ -1090,7 +1226,6 @@
             const name = document.getElementById('fullName')?.value || '';
             const email = document.getElementById('settingsEmail')?.value || '';
             console.log('Saved personal info', { name, email });
-            // Basic UX feedback
             const btn = document.querySelector('#personalInfoForm button');
             if(btn){
                 const old = btn.innerText;
@@ -1099,7 +1234,6 @@
             }
         }
 
-        // Toggle desktop settings submenu
         (function(){
             const desktopToggle = document.getElementById('desktopSettingsToggle');
             const desktopSettings = document.getElementById('desktopSettings');
@@ -1110,7 +1244,6 @@
                 });
             }
 
-            // Desktop personal info toggle
             const desktopPersonalToggle = document.getElementById('desktopPersonalToggle');
             const desktopPersonalContent = document.getElementById('desktopPersonalContent');
             if(desktopPersonalToggle && desktopPersonalContent){
@@ -1120,7 +1253,6 @@
                 });
             }
 
-            // Mobile toggle
             const mobileToggle = document.getElementById('mobileSettingsToggle');
             const mobileSettings = document.getElementById('mobileSettings');
             if(mobileToggle && mobileSettings){
@@ -1130,7 +1262,6 @@
                 });
             }
 
-            // Mobile personal info toggle
             const mobilePersonalToggle = document.getElementById('mobilePersonalToggle');
             const mobilePersonalContent = document.getElementById('mobilePersonalContent');
             if(mobilePersonalToggle && mobilePersonalContent){

@@ -26,7 +26,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         showError(getAuthErrorMessage(error));
         
         // Reset button state
-        loginText.textContent = '🚀 Sign In';
+        loginText.textContent = 'Sign In';
         loginSpinner.classList.add('hidden');
     }
 });
@@ -52,7 +52,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
         showError(getAuthErrorMessage(error));
         
         // Reset button state
-        signupText.textContent = '🎯 Create Account';
+        signupText.textContent = 'Create Account';
         signupSpinner.classList.add('hidden');
     }
 });
