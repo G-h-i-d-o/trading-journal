@@ -783,6 +783,10 @@
                     <h3 class="section-title mb-0">📋 Trade History</h3>
                     <div class="flex items-center space-x-2">
                         <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
+                        <!-- MetaTrader Import Button -->
+                        <button onclick="importMetaTraderTrades()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1">
+                            <i class="fas fa-file-import"></i> Import MT4/MT5
+                        </button>
                         <button onclick="importTrades()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
                             <i class="fas fa-download"></i> Import CSV
                         </button>
@@ -1217,6 +1221,77 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MetaTrader Import Preview Modal -->
+    <div id="mtImportModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-file-import text-purple-600 mr-2"></i>
+                        Import MetaTrader Trades
+                    </h3>
+                    <button onclick="closeMTImportModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                        ×
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <!-- Import Summary -->
+                <div id="mtImportSummary" class="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <!-- Summary will be populated here -->
+                </div>
+                
+                <!-- Trades Preview Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mtImportPreviewBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Preview rows will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Duplicates Warning -->
+                <div id="mtDuplicatesWarning" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg hidden">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-triangle text-yellow-600 mr-3 mt-1"></i>
+                        <div>
+                            <h4 class="font-semibold text-yellow-800">Duplicate Trades Detected</h4>
+                            <p class="text-sm text-yellow-700" id="mtDuplicatesMessage"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 border-t border-gray-200 flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    <span id="mtImportStats">0 trades ready to import</span>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="closeMTImportModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button onclick="confirmMTImport()" id="mtImportConfirmBtn" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Import Trades
+                    </button>
+                </div>
             </div>
         </div>
     </div>

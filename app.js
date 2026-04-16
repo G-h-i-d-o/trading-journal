@@ -3224,6 +3224,530 @@ window.deleteTrade = async (tradeId) => {
     }
 };
 
+// ========== METATRADER 4/5 IMPORT FUNCTIONS ==========
+
+// Store parsed MT trades for import
+let pendingMTTrades = [];
+let existingTicketNumbers = new Set();
+
+// MetaTrader symbol to instrument type mapping
+const mtSymbolMapping = {
+    // Forex pairs
+    'EURUSD': 'EUR/USD', 'GBPUSD': 'GBP/USD', 'USDJPY': 'USD/JPY', 'USDCHF': 'USD/CHF',
+    'AUDUSD': 'AUD/USD', 'USDCAD': 'USD/CAD', 'NZDUSD': 'NZD/USD', 'EURGBP': 'EUR/GBP',
+    'EURJPY': 'EUR/JPY', 'GBPJPY': 'GBP/JPY', 'AUDJPY': 'AUD/JPY', 'AUDCAD': 'AUD/CAD',
+    'AUDCHF': 'AUD/CHF', 'AUDNZD': 'AUD/NZD', 'CADJPY': 'CAD/JPY', 'CHFJPY': 'CHF/JPY',
+    'EURAUD': 'EUR/AUD', 'EURCAD': 'EUR/CAD', 'EURCHF': 'EUR/CHF', 'EURNZD': 'EUR/NZD',
+    'GBPAUD': 'GBP/AUD', 'GBPCAD': 'GBP/CAD', 'GBPCHF': 'GBP/CHF', 'GBPNZD': 'GBP/NZD',
+    'NZDCAD': 'NZD/CAD', 'NZDCHF': 'NZD/CHF', 'NZDJPY': 'NZD/JPY',
+    
+    // Metals/Commodities
+    'XAUUSD': 'Gold', 'XAGUSD': 'Silver', 'WTI': 'Oil', 'BRENT': 'Brent',
+    'XAUUSD.': 'Gold', 'XAGUSD.': 'Silver',
+    
+    // Indices
+    'US30': 'US30', 'US30.': 'US30', 'US30..': 'US30',
+    'SPX500': 'SPX500', 'SPX500.': 'SPX500',
+    'NAS100': 'NAS100', 'NAS100.': 'NAS100',
+    'DE30': 'GE30', 'DE30.': 'GE30', 'GER30': 'GE30',
+    'UK100': 'FTSE100', 'UK100.': 'FTSE100',
+    'JP225': 'NIKKEI225', 'JP225.': 'NIKKEI225',
+    
+    // Deriv Synthetic Indices
+    'Volatility 10 Index': 'Volatility 10 Index',
+    'Volatility 25 Index': 'Volatility 25 Index',
+    'Volatility 50 Index': 'Volatility 50 Index',
+    'Volatility 75 Index': 'Volatility 75 Index',
+    'Volatility 100 Index': 'Volatility 100 Index',
+    'Boom 300 Index': 'Boom 300 Index',
+    'Boom 500 Index': 'Boom 500 Index',
+    'Boom 1000 Index': 'Boom 1000 Index',
+    'Crash 300 Index': 'Crash 300 Index',
+    'Crash 500 Index': 'Crash 500 Index',
+    'Crash 1000 Index': 'Crash 1000 Index',
+    'Step Index': 'Step Index',
+    'Jump 10 Index': 'Jump 10 Index',
+    'Jump 25 Index': 'Jump 25 Index',
+    'Jump 50 Index': 'Jump 50 Index',
+    'Jump 75 Index': 'Jump 75 Index',
+    'Jump 100 Index': 'Jump 100 Index',
+    'Range Break 100 Index': 'Range Break 100 Index',
+    'Range Break 200 Index': 'Range Break 200 Index'
+};
+
+// Map MT4/MT5 symbol to journal symbol
+function mapMTSymbol(mtSymbol) {
+    // Clean the symbol (remove suffixes like ., .., etc.)
+    let cleanSymbol = mtSymbol.trim();
+    
+    // Check direct mapping
+    if (mtSymbolMapping[cleanSymbol]) {
+        return mtSymbolMapping[cleanSymbol];
+    }
+    
+    // Check without suffixes
+    const baseSymbol = cleanSymbol.replace(/[.+]+$/, '');
+    if (mtSymbolMapping[baseSymbol]) {
+        return mtSymbolMapping[baseSymbol];
+    }
+    
+    // Return as-is if no mapping found
+    return cleanSymbol;
+}
+
+// Parse MetaTrader datetime format (2024.01.15 10:30:00 or 2024-01-15 10:30:00)
+function parseMTDateTime(dateTimeStr) {
+    if (!dateTimeStr) return new Date().toISOString();
+    
+    // Replace dots with hyphens for standard format
+    let standardized = dateTimeStr.replace(/\./g, '-');
+    
+    // Parse the date
+    const date = new Date(standardized);
+    
+    // Check if valid
+    if (!isNaN(date.getTime())) {
+        return date.toISOString();
+    }
+    
+    // Try manual parsing if Date constructor fails
+    const parts = dateTimeStr.split(/[\s.-]+/);
+    if (parts.length >= 6) {
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        const day = parseInt(parts[2]);
+        const hour = parseInt(parts[3]);
+        const minute = parseInt(parts[4]);
+        const second = parseInt(parts[5]);
+        
+        return new Date(year, month, day, hour, minute, second).toISOString();
+    }
+    
+    return new Date().toISOString();
+}
+
+// Detect MT4/MT5 CSV format and parse
+function parseMetaTraderCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    // Detect delimiter (comma or tab)
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    
+    // Parse headers
+    const headers = firstLine.split(delimiter).map(h => h.trim().replace(/"/g, ''));
+    console.log('[MT IMPORT] Headers detected:', headers);
+    
+    const trades = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Parse CSV line handling quotes
+        const values = parseCSVLineWithDelimiter(line, delimiter);
+        if (values.length < headers.length) continue;
+        
+        try {
+            // Helper to get value by possible header names
+            const getValue = (possibleNames) => {
+                for (const name of possibleNames) {
+                    const index = headers.findIndex(h => h === name);
+                    if (index !== -1 && values[index] !== undefined) {
+                        return values[index].replace(/"/g, '').trim();
+                    }
+                }
+                return '';
+            };
+            
+            // Extract trade data
+            const ticket = getValue(['Ticket', 'ticket', 'Order', 'order']);
+            const openTime = getValue(['Open Time', 'openTime', 'OpenTime', 'Time']);
+            const type = getValue(['Type', 'type', 'Action']).toLowerCase();
+            const size = getValue(['Size', 'size', 'Volume', 'volume', 'Lots', 'lots']);
+            const item = getValue(['Item', 'item', 'Symbol', 'symbol', 'Instrument']);
+            const openPrice = getValue(['Open Price', 'openPrice', 'Open', 'Price']);
+            const sl = getValue(['S/L', 'SL', 'Stop Loss', 'stopLoss', 'StopLoss']);
+            const tp = getValue(['T/P', 'TP', 'Take Profit', 'takeProfit', 'TakeProfit']);
+            const closeTime = getValue(['Close Time', 'closeTime', 'CloseTime']);
+            const closePrice = getValue(['Close Price', 'closePrice', 'Close']);
+            const commission = getValue(['Commission', 'commission', 'Commis']);
+            const swap = getValue(['Swap', 'swap', 'Storage']);
+            const profit = getValue(['Profit', 'profit', 'P/L']);
+            const comment = getValue(['Comment', 'comment', 'Note']);
+            
+            // Only process closed trades (must have close time)
+            if (!closeTime || closeTime === '') {
+                console.log('[MT IMPORT] Skipping open trade:', ticket);
+                continue;
+            }
+            
+            // Skip if no ticket (might be a summary row)
+            if (!ticket) continue;
+            
+            // Map the trade
+            const mappedSymbol = mapMTSymbol(item);
+            const tradeType = type.includes('buy') ? 'long' : 'short';
+            
+            const trade = {
+                mtTicket: ticket,
+                symbol: mappedSymbol,
+                type: tradeType,
+                instrumentType: getInstrumentType(mappedSymbol),
+                entryPrice: parseFloat(openPrice) || 0,
+                stopLoss: parseFloat(sl) || 0,
+                takeProfit: parseFloat(tp) || null,
+                lotSize: parseFloat(size) || 0.01,
+                closePrice: parseFloat(closePrice) || 0,
+                profit: parseFloat(profit) || 0,
+                commission: parseFloat(commission) || 0,
+                swap: parseFloat(swap) || 0,
+                netProfit: (parseFloat(profit) || 0) + (parseFloat(commission) || 0) + (parseFloat(swap) || 0),
+                openTime: parseMTDateTime(openTime),
+                closeTime: parseMTDateTime(closeTime),
+                comment: comment || '',
+                mood: '',
+                beforeScreenshot: '',
+                afterScreenshot: '',
+                notes: comment || ''
+            };
+            
+            // Calculate risk metrics
+            if (trade.entryPrice > 0 && trade.stopLoss > 0) {
+                trade.riskAmount = Math.abs(calculateProfitLoss(
+                    trade.entryPrice, 
+                    trade.stopLoss, 
+                    trade.lotSize, 
+                    trade.symbol, 
+                    trade.type
+                ));
+                
+                const currentAccount = getCurrentAccount();
+                trade.riskPercent = (trade.riskAmount / currentAccount.balance) * 100;
+                
+                const pipPointInfo = calculatePipsPoints(
+                    trade.entryPrice, 
+                    trade.stopLoss, 
+                    trade.takeProfit, 
+                    trade.symbol, 
+                    trade.type
+                );
+                trade.pipsPoints = pipPointInfo.risk;
+            } else {
+                trade.riskAmount = Math.abs(trade.profit);
+                trade.riskPercent = (trade.riskAmount / getCurrentAccount().balance) * 100;
+                trade.pipsPoints = 0;
+            }
+            
+            // Only add if we have valid data
+            if (trade.symbol && !isNaN(trade.entryPrice) && trade.entryPrice > 0) {
+                trades.push(trade);
+            }
+            
+        } catch (error) {
+            console.warn('[MT IMPORT] Error parsing row:', error, line);
+        }
+    }
+    
+    return trades;
+}
+
+// Parse CSV line with custom delimiter
+function parseCSVLineWithDelimiter(line, delimiter) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    values.push(current.trim());
+    return values;
+}
+
+// Load existing ticket numbers for duplicate detection
+async function loadExistingTicketNumbers() {
+    try {
+        if (!currentUser) return;
+        
+        const q = query(
+            collection(db, 'trades'),
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        existingTicketNumbers.clear();
+        querySnapshot.forEach((doc) => {
+            const trade = doc.data();
+            if (trade.mtTicket) {
+                existingTicketNumbers.add(trade.mtTicket);
+            }
+        });
+        
+        console.log('[MT IMPORT] Loaded', existingTicketNumbers.size, 'existing ticket numbers');
+    } catch (error) {
+        console.error('[MT IMPORT] Error loading existing tickets:', error);
+    }
+}
+
+// Main import function - called from button
+window.importMetaTraderTrades = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv,text/csv,text/plain';
+    
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            showLoading();
+            
+            // Load existing tickets first
+            await loadExistingTicketNumbers();
+            
+            // Read and parse file
+            const text = await file.text();
+            const trades = parseMetaTraderCSV(text);
+            
+            if (trades.length === 0) {
+                alert('No valid closed trades found in the MetaTrader export file.\n\nPlease ensure:\n• The file contains closed trades\n• The CSV format is correct\n• Trades have both Open and Close times');
+                hideLoading();
+                return;
+            }
+            
+            // Check for duplicates
+            const newTrades = [];
+            const duplicates = [];
+            
+            trades.forEach(trade => {
+                if (existingTicketNumbers.has(trade.mtTicket)) {
+                    duplicates.push(trade);
+                } else {
+                    newTrades.push(trade);
+                }
+            });
+            
+            // Store for import
+            pendingMTTrades = newTrades;
+            
+            // Show preview modal
+            showMTImportPreview(newTrades, duplicates, trades.length);
+            
+        } catch (error) {
+            console.error('[MT IMPORT] Error:', error);
+            alert('Error parsing MetaTrader file: ' + error.message);
+        } finally {
+            hideLoading();
+        }
+    };
+    
+    fileInput.click();
+};
+
+// Show import preview modal
+function showMTImportPreview(newTrades, duplicates, totalTrades) {
+    const modal = document.getElementById('mtImportModal');
+    const summaryEl = document.getElementById('mtImportSummary');
+    const previewBody = document.getElementById('mtImportPreviewBody');
+    const duplicatesWarning = document.getElementById('mtDuplicatesWarning');
+    const duplicatesMessage = document.getElementById('mtDuplicatesMessage');
+    const statsEl = document.getElementById('mtImportStats');
+    const confirmBtn = document.getElementById('mtImportConfirmBtn');
+    
+    if (!modal) return;
+    
+    // Update summary
+    const totalProfit = newTrades.reduce((sum, t) => sum + t.profit, 0);
+    const winningTrades = newTrades.filter(t => t.profit > 0).length;
+    const losingTrades = newTrades.filter(t => t.profit < 0).length;
+    
+    summaryEl.innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <div class="text-sm text-gray-500">Total Trades</div>
+                <div class="text-2xl font-bold">${newTrades.length}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">Winning</div>
+                <div class="text-2xl font-bold text-green-600">${winningTrades}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">Losing</div>
+                <div class="text-2xl font-bold text-red-600">${losingTrades}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-500">Total P/L</div>
+                <div class="text-2xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}">
+                    ${formatCurrency(totalProfit)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Show duplicates warning if any
+    if (duplicates.length > 0) {
+        duplicatesWarning.classList.remove('hidden');
+        duplicatesMessage.textContent = `${duplicates.length} duplicate trade(s) detected and will be skipped.`;
+    } else {
+        duplicatesWarning.classList.add('hidden');
+    }
+    
+    // Populate preview table (show first 20 trades)
+    const previewTrades = newTrades.slice(0, 20);
+    previewBody.innerHTML = previewTrades.map(trade => `
+        <tr>
+            <td class="px-4 py-2 text-sm text-gray-900">${trade.mtTicket}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${trade.symbol}</td>
+            <td class="px-4 py-2 text-sm">
+                <span class="${trade.type === 'long' ? 'text-green-600' : 'text-red-600'} font-semibold">
+                    ${trade.type.toUpperCase()}
+                </span>
+            </td>
+            <td class="px-4 py-2 text-sm text-gray-900">${trade.lotSize}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${trade.entryPrice}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${trade.closePrice}</td>
+            <td class="px-4 py-2 text-sm">
+                <span class="${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'} font-semibold">
+                    ${formatCurrency(trade.profit)}
+                </span>
+            </td>
+            <td class="px-4 py-2 text-sm">
+                <span class="text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs font-semibold">
+                    Ready
+                </span>
+            </td>
+        </tr>
+    `).join('');
+    
+    if (newTrades.length > 20) {
+        previewBody.innerHTML += `
+            <tr>
+                <td colspan="8" class="px-4 py-3 text-center text-gray-500 text-sm">
+                    ... and ${newTrades.length - 20} more trades
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Update stats
+    statsEl.textContent = `${newTrades.length} trade(s) ready to import (${duplicates.length} duplicate(s) skipped)`;
+    
+    // Enable/disable confirm button
+    if (newTrades.length > 0) {
+        confirmBtn.disabled = false;
+    } else {
+        confirmBtn.disabled = true;
+    }
+    
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+// Close modal
+window.closeMTImportModal = () => {
+    document.getElementById('mtImportModal').classList.add('hidden');
+    pendingMTTrades = [];
+};
+
+// Confirm and execute import
+window.confirmMTImport = async () => {
+    if (pendingMTTrades.length === 0) {
+        closeMTImportModal();
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('mtImportConfirmBtn');
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<div class="loading-spinner"></div> Importing...';
+    confirmBtn.disabled = true;
+    
+    try {
+        const currentAccount = getCurrentAccount();
+        const leverage = parseInt(localStorage.getItem('leverage') || '50');
+        
+        let imported = 0;
+        let failed = 0;
+        
+        for (const trade of pendingMTTrades) {
+            try {
+                const tradeData = {
+                    symbol: trade.symbol,
+                    type: trade.type,
+                    instrumentType: trade.instrumentType,
+                    entryPrice: trade.entryPrice,
+                    stopLoss: trade.stopLoss,
+                    takeProfit: trade.takeProfit,
+                    lotSize: trade.lotSize,
+                    mood: trade.mood,
+                    beforeScreenshot: trade.beforeScreenshot,
+                    afterScreenshot: trade.afterScreenshot,
+                    notes: trade.notes,
+                    confluenceOptions: [],
+                    confluenceScore: 0,
+                    timestamp: trade.openTime,
+                    profit: trade.profit,
+                    pipsPoints: trade.pipsPoints || 0,
+                    riskAmount: trade.riskAmount || 0,
+                    riskPercent: trade.riskPercent || 0,
+                    accountSize: currentAccount.balance,
+                    leverage: leverage,
+                    userId: currentUser.uid,
+                    accountId: currentAccountId,
+                    // MetaTrader specific fields
+                    mtTicket: trade.mtTicket,
+                    mtCommission: trade.commission,
+                    mtSwap: trade.swap,
+                    mtCloseTime: trade.closeTime
+                };
+                
+                await addDoc(collection(db, 'trades'), tradeData);
+                imported++;
+                
+            } catch (error) {
+                console.error('[MT IMPORT] Error importing trade:', trade.mtTicket, error);
+                failed++;
+            }
+        }
+        
+        // Reload trades
+        await loadTrades();
+        
+        // Show success message
+        showSuccessMessage(`✅ Successfully imported ${imported} MetaTrader trade(s)! ${failed > 0 ? `(${failed} failed)` : ''}`);
+        
+        // Close modal
+        closeMTImportModal();
+        
+    } catch (error) {
+        console.error('[MT IMPORT] Import error:', error);
+        alert('Error importing trades: ' + error.message);
+    } finally {
+        confirmBtn.innerHTML = originalText;
+        confirmBtn.disabled = false;
+    }
+};
+
+// Add click outside to close modal
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('mtImportModal');
+    if (modal && e.target === modal) {
+        closeMTImportModal();
+    }
+});
+
 // ========== SCREENSHOT FUNCTIONS ==========
 
 window.viewScreenshot = (url) => {
