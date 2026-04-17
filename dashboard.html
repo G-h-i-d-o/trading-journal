@@ -360,6 +360,78 @@
                 </div>
             </div>
 
+            <!-- Add this to dashboard.html - Place it after the Stats Grid section in Dashboard tab -->
+
+            <!-- AI Trading Assistant Section -->
+            <div class="card bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-indigo-200 mt-6">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="bg-indigo-600 text-white p-3 rounded-xl">
+                                <i class="fas fa-robot text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">AI Trading Assistant</h3>
+                                <p class="text-sm text-gray-600">Personalized insights based on your trading performance</p>
+                            </div>
+                            <button onclick="refreshAISuggestions()" class="ml-auto bg-white hover:bg-gray-100 text-indigo-600 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh Analysis
+                            </button>
+                        </div>
+                        
+                        <!-- Key Insight Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <!-- Primary Insight -->
+                            <div id="primaryInsight" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-indigo-500">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-lightbulb text-yellow-500"></i>
+                                    <span class="font-semibold text-gray-700">Primary Focus</span>
+                                </div>
+                                <p id="primaryInsightText" class="text-gray-800">Loading analysis...</p>
+                            </div>
+                            
+                            <!-- Risk Assessment -->
+                            <div id="riskInsight" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-shield-alt text-red-500"></i>
+                                    <span class="font-semibold text-gray-700">Risk Assessment</span>
+                                </div>
+                                <p id="riskInsightText" class="text-gray-800">Loading analysis...</p>
+                            </div>
+                            
+                            <!-- Performance Trend -->
+                            <div id="trendInsight" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-green-500">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-chart-line text-green-500"></i>
+                                    <span class="font-semibold text-gray-700">Performance Trend</span>
+                                </div>
+                                <p id="trendInsightText" class="text-gray-800">Loading analysis...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Detailed Suggestions -->
+                        <div class="bg-white rounded-xl p-5 shadow-sm">
+                            <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                <i class="fas fa-list-check text-indigo-500"></i>
+                                Actionable Recommendations
+                            </h4>
+                            <div id="aiRecommendations" class="space-y-3">
+                                <!-- Recommendations will be populated here -->
+                                <div class="text-gray-500 text-center py-4">
+                                    <div class="loading-spinner mx-auto"></div>
+                                    <p class="mt-2">Analyzing your trading data...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Metrics Summary -->
+                        <div id="aiMetricsSummary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
+                            <!-- Metrics summary will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="space-y-8">
                 <!-- Top Row: Performance Analytics and Trading Psychology -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">

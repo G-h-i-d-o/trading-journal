@@ -1251,6 +1251,8 @@ async function loadAccountData() {
         updateStats(allTrades);
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
+        // In loadAccountData function, after calculateAdvancedMetrics(allTrades);
+        initializeAISuggestions();
         
         console.log('[SUCCESS] Account data loaded successfully');
         
@@ -4271,9 +4273,669 @@ function renderMarketTypeChart(trades) {
     });
 }
 
+// ========== AI SUGGESTION SYSTEM ==========
+
+// AI Analysis configuration
+const aiConfig = {
+    riskThresholds: {
+        low: 0.5,
+        optimal: 1.0,
+        high: 2.0,
+        dangerous: 3.0
+    },
+    winRateThresholds: {
+        poor: 30,
+        belowAverage: 40,
+        average: 50,
+        good: 60,
+        excellent: 70
+    },
+    profitFactorThresholds: {
+        poor: 0.8,
+        breakEven: 1.0,
+        good: 1.5,
+        excellent: 2.0
+    },
+    consistencyThresholds: {
+        poor: 30,
+        average: 50,
+        good: 70
+    }
+};
+
+// Main AI analysis function
+function generateAISuggestions() {
+    const trades = allTrades;
+    
+    if (!trades || trades.length === 0) {
+        showEmptyAISuggestions();
+        return;
+    }
+    
+    // Calculate all metrics
+    const metrics = calculateAllMetrics(trades);
+    const currentAccount = getCurrentAccount();
+    
+    // Generate insights
+    const primaryInsight = generatePrimaryInsight(metrics, trades);
+    const riskInsight = generateRiskInsight(metrics, currentAccount);
+    const trendInsight = generateTrendInsight(metrics, trades);
+    const recommendations = generateRecommendations(metrics, trades);
+    
+    // Update UI
+    updateAISuggestionsUI(primaryInsight, riskInsight, trendInsight, recommendations, metrics);
+}
+
+// Calculate comprehensive metrics
+function calculateAllMetrics(trades) {
+    const winningTrades = trades.filter(t => t.profit > 0);
+    const losingTrades = trades.filter(t => t.profit < 0);
+    const breakevenTrades = trades.filter(t => t.profit === 0);
+    
+    const totalTrades = trades.length;
+    const winRate = totalTrades > 0 ? (winningTrades.length / totalTrades) * 100 : 0;
+    const lossRate = totalTrades > 0 ? (losingTrades.length / totalTrades) * 100 : 0;
+    
+    const totalProfit = winningTrades.reduce((sum, t) => sum + t.profit, 0);
+    const totalLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.profit, 0));
+    const netProfit = totalProfit - totalLoss;
+    
+    const avgWin = winningTrades.length > 0 ? totalProfit / winningTrades.length : 0;
+    const avgLoss = losingTrades.length > 0 ? totalLoss / losingTrades.length : 0;
+    
+    const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : (totalProfit > 0 ? 999 : 0);
+    
+    const avgRiskReward = trades.reduce((sum, t) => {
+        if (t.takeProfit && t.riskAmount > 0) {
+            const potentialProfit = Math.abs(calculateProfitLoss(
+                t.entryPrice, t.takeProfit, t.lotSize, t.symbol, t.type
+            ));
+            return sum + (potentialProfit / t.riskAmount);
+        }
+        return sum;
+    }, 0) / trades.filter(t => t.takeProfit && t.riskAmount > 0).length || 0;
+    
+    const avgRiskPercent = trades.length > 0 ? 
+        trades.reduce((sum, t) => sum + (t.riskPercent || 0), 0) / trades.length : 0;
+    
+    const maxDrawdown = calculateMaxDrawdown(trades);
+    
+    const consecutiveWins = calculateMaxConsecutive(trades, 'win');
+    const consecutiveLosses = calculateMaxConsecutive(trades, 'loss');
+    
+    const expectancy = (winRate / 100) * avgWin - (lossRate / 100) * avgLoss;
+    
+    const weeklyPerformance = calculateWeeklyPerformance(trades);
+    const consistency = weeklyPerformance.length > 0 ?
+        (weeklyPerformance.filter(w => w.profit > 0).length / weeklyPerformance.length) * 100 : 0;
+    
+    // Time-based metrics
+    const recentTrades = trades.slice(0, Math.min(10, trades.length));
+    const recentWinRate = recentTrades.length > 0 ?
+        (recentTrades.filter(t => t.profit > 0).length / recentTrades.length) * 100 : 0;
+    
+    // Instrument performance
+    const instrumentPerformance = analyzeInstrumentPerformance(trades);
+    
+    // Mood correlation
+    const moodCorrelation = analyzeMoodCorrelation(trades);
+    
+    // Session performance
+    const sessionPerformance = analyzeSessionPerformance(trades);
+    
+    return {
+        totalTrades, winRate, lossRate, totalProfit, totalLoss, netProfit,
+        avgWin, avgLoss, profitFactor, avgRiskReward, avgRiskPercent,
+        maxDrawdown, consecutiveWins, consecutiveLosses, expectancy,
+        consistency, recentWinRate, weeklyPerformance,
+        winningTradesCount: winningTrades.length,
+        losingTradesCount: losingTrades.length,
+        breakevenTradesCount: breakevenTrades.length,
+        instrumentPerformance,
+        moodCorrelation,
+        sessionPerformance
+    };
+}
+
+function calculateMaxDrawdown(trades) {
+    if (trades.length === 0) return 0;
+    
+    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    let peak = getCurrentAccount().balance;
+    let maxDrawdown = 0;
+    let currentBalance = peak;
+    
+    sortedTrades.forEach(trade => {
+        currentBalance += trade.profit;
+        if (currentBalance > peak) {
+            peak = currentBalance;
+        }
+        const drawdown = ((peak - currentBalance) / peak) * 100;
+        if (drawdown > maxDrawdown) {
+            maxDrawdown = drawdown;
+        }
+    });
+    
+    return maxDrawdown;
+}
+
+function calculateMaxConsecutive(trades, type) {
+    let maxStreak = 0;
+    let currentStreak = 0;
+    
+    const sortedTrades = [...trades].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    sortedTrades.forEach(trade => {
+        const isWin = trade.profit > 0;
+        const isLoss = trade.profit < 0;
+        
+        if ((type === 'win' && isWin) || (type === 'loss' && isLoss)) {
+            currentStreak++;
+            if (currentStreak > maxStreak) {
+                maxStreak = currentStreak;
+            }
+        } else {
+            currentStreak = 0;
+        }
+    });
+    
+    return maxStreak;
+}
+
+function analyzeInstrumentPerformance(trades) {
+    const performance = {};
+    
+    trades.forEach(trade => {
+        if (!performance[trade.symbol]) {
+            performance[trade.symbol] = { total: 0, count: 0, wins: 0 };
+        }
+        performance[trade.symbol].total += trade.profit;
+        performance[trade.symbol].count++;
+        if (trade.profit > 0) performance[trade.symbol].wins++;
+    });
+    
+    // Find best and worst
+    let bestSymbol = null, worstSymbol = null;
+    let bestAvg = -Infinity, worstAvg = Infinity;
+    
+    Object.entries(performance).forEach(([symbol, data]) => {
+        const avg = data.total / data.count;
+        if (avg > bestAvg && data.count >= 3) {
+            bestAvg = avg;
+            bestSymbol = symbol;
+        }
+        if (avg < worstAvg && data.count >= 3) {
+            worstAvg = avg;
+            worstSymbol = symbol;
+        }
+    });
+    
+    return { bestSymbol, bestAvg, worstSymbol, worstAvg, details: performance };
+}
+
+function analyzeMoodCorrelation(trades) {
+    const moodPerformance = {};
+    
+    trades.forEach(trade => {
+        if (trade.mood) {
+            if (!moodPerformance[trade.mood]) {
+                moodPerformance[trade.mood] = { total: 0, count: 0, wins: 0 };
+            }
+            moodPerformance[trade.mood].total += trade.profit;
+            moodPerformance[trade.mood].count++;
+            if (trade.profit > 0) moodPerformance[trade.mood].wins++;
+        }
+    });
+    
+    let bestMood = null, worstMood = null;
+    let bestAvg = -Infinity, worstAvg = Infinity;
+    
+    Object.entries(moodPerformance).forEach(([mood, data]) => {
+        const avg = data.total / data.count;
+        if (avg > bestAvg && data.count >= 2) {
+            bestAvg = avg;
+            bestMood = mood;
+        }
+        if (avg < worstAvg && data.count >= 2) {
+            worstAvg = avg;
+            worstMood = mood;
+        }
+    });
+    
+    return { bestMood, bestAvg, worstMood, worstAvg };
+}
+
+function analyzeSessionPerformance(trades) {
+    const sessions = {
+        'Asian': { start: 0, end: 8 },
+        'London': { start: 8, end: 16 },
+        'New York': { start: 13, end: 21 }
+    };
+    
+    const performance = {};
+    
+    trades.forEach(trade => {
+        const hour = new Date(trade.timestamp).getUTCHours();
+        
+        Object.entries(sessions).forEach(([session, times]) => {
+            if (hour >= times.start && hour < times.end) {
+                if (!performance[session]) {
+                    performance[session] = { total: 0, count: 0, wins: 0 };
+                }
+                performance[session].total += trade.profit;
+                performance[session].count++;
+                if (trade.profit > 0) performance[session].wins++;
+            }
+        });
+    });
+    
+    return performance;
+}
+
+// Generate insights
+function generatePrimaryInsight(metrics, trades) {
+    const { winRate, profitFactor, recentWinRate, consecutiveLosses } = metrics;
+    
+    // Check for concerning patterns first
+    if (consecutiveLosses >= 5) {
+        return {
+            type: 'warning',
+            title: '⚠️ Consecutive Losses Detected',
+            message: `You've had ${consecutiveLosses} consecutive losses. Consider taking a break and reviewing your strategy.`,
+            action: 'Step away from trading for at least 24 hours. Review your last 10 trades for patterns.'
+        };
+    }
+    
+    if (recentWinRate < 30 && metrics.totalTrades >= 10) {
+        return {
+            type: 'warning',
+            title: '📉 Recent Performance Decline',
+            message: `Your recent win rate is ${recentWinRate.toFixed(1)}%, down from your overall ${winRate.toFixed(1)}%.`,
+            action: 'Reduce position size by 50% until you identify the issue.'
+        };
+    }
+    
+    if (profitFactor >= 2.0 && winRate >= 50) {
+        return {
+            type: 'success',
+            title: '🏆 Excellent Performance',
+            message: `Your profit factor of ${profitFactor.toFixed(2)} and ${winRate.toFixed(1)}% win rate shows strong trading discipline.`,
+            action: 'Consider gradually increasing position size while maintaining risk rules.'
+        };
+    }
+    
+    if (winRate >= 60) {
+        return {
+            type: 'success',
+            title: '🎯 High Win Rate',
+            message: `Your ${winRate.toFixed(1)}% win rate is excellent. Focus on maintaining your edge.`,
+            action: 'Document what\'s working well in your current strategy.'
+        };
+    }
+    
+    // Default insight
+    return {
+        type: 'info',
+        title: '📊 Steady Progress',
+        message: `Your win rate is ${winRate.toFixed(1)}% with a profit factor of ${profitFactor.toFixed(2)}.`,
+        action: 'Focus on improving your risk-reward ratio on losing trades.'
+    };
+}
+
+function generateRiskInsight(metrics, currentAccount) {
+    const { avgRiskPercent, maxDrawdown, avgRiskReward } = metrics;
+    
+    if (avgRiskPercent > 3.0) {
+        return {
+            type: 'danger',
+            title: '🚨 High Risk Exposure',
+            message: `Your average risk of ${avgRiskPercent.toFixed(2)}% per trade is dangerously high.`,
+            action: 'Reduce risk to 1-2% maximum per trade to protect your capital.'
+        };
+    }
+    
+    if (maxDrawdown > 20) {
+        return {
+            type: 'warning',
+            title: '📉 Significant Drawdown',
+            message: `Maximum drawdown of ${maxDrawdown.toFixed(1)}% indicates high volatility.`,
+            action: 'Consider reducing position sizes until drawdown recovers to 10%.'
+        };
+    }
+    
+    if (avgRiskReward < 1.5) {
+        return {
+            type: 'warning',
+            title: '⚖️ Low Risk-Reward Ratio',
+            message: `Your average R:R of ${avgRiskReward.toFixed(2)} makes profitability difficult.`,
+            action: 'Aim for trades with at least 1:2 risk-reward ratio.'
+        };
+    }
+    
+    if (avgRiskPercent >= 1.0 && avgRiskPercent <= 2.0) {
+        return {
+            type: 'success',
+            title: '✅ Good Risk Management',
+            message: `Your average risk of ${avgRiskPercent.toFixed(2)}% per trade is within the optimal range.`,
+            action: 'Maintain this discipline and focus on trade selection.'
+        };
+    }
+    
+    return {
+        type: 'info',
+        title: '📋 Risk Profile',
+        message: `Average risk: ${avgRiskPercent.toFixed(2)}% | Max drawdown: ${maxDrawdown.toFixed(1)}%`,
+        action: 'Track your risk metrics weekly to identify trends.'
+    };
+}
+
+function generateTrendInsight(metrics, trades) {
+    const { consistency, instrumentPerformance, sessionPerformance } = metrics;
+    
+    // Check consistency
+    if (consistency >= 70) {
+        return {
+            type: 'success',
+            title: '📈 High Consistency',
+            message: `You've been profitable in ${consistency.toFixed(0)}% of trading weeks.`,
+            action: 'This consistency is key to long-term success. Keep doing what works.'
+        };
+    }
+    
+    if (consistency < 40 && metrics.totalTrades >= 20) {
+        return {
+            type: 'warning',
+            title: '🔄 Inconsistent Results',
+            message: `Only ${consistency.toFixed(0)}% of your trading weeks are profitable.`,
+            action: 'Review what differentiates your winning weeks from losing weeks.'
+        };
+    }
+    
+    // Check instrument performance
+    if (instrumentPerformance.bestSymbol && instrumentPerformance.worstSymbol) {
+        const best = instrumentPerformance.bestSymbol;
+        const worst = instrumentPerformance.worstSymbol;
+        const bestAvg = instrumentPerformance.bestAvg;
+        const worstAvg = instrumentPerformance.worstAvg;
+        
+        if (worstAvg < 0 && Math.abs(worstAvg) > Math.abs(bestAvg)) {
+            return {
+                type: 'warning',
+                title: '🔍 Instrument Selection Issue',
+                message: `${worst} is significantly underperforming (avg ${formatCurrency(worstAvg)}).`,
+                action: `Consider reducing or eliminating ${worst} from your trading.`
+            };
+        }
+        
+        if (bestAvg > 0) {
+            return {
+                type: 'success',
+                title: '💡 Strong Instrument Found',
+                message: `${best} is your best performer with avg ${formatCurrency(bestAvg)} per trade.`,
+                action: `Consider increasing focus on ${best} setups.`
+            };
+        }
+    }
+    
+    return {
+        type: 'info',
+        title: '📊 Trading Patterns',
+        message: `Weekly consistency: ${consistency.toFixed(0)}% | ${metrics.totalTrades} total trades`,
+        action: 'Continue logging trades to build more data for analysis.'
+    };
+}
+
+function generateRecommendations(metrics, trades) {
+    const recommendations = [];
+    
+    // Win rate based recommendations
+    if (metrics.winRate < 40 && metrics.totalTrades >= 10) {
+        recommendations.push({
+            priority: 'high',
+            category: 'Entry Strategy',
+            icon: '🎯',
+            text: 'Your win rate is below 40%. Focus on higher probability setups. Wait for confirmation before entering trades.'
+        });
+    }
+    
+    // Risk management recommendations
+    if (metrics.avgRiskPercent > 2.5) {
+        recommendations.push({
+            priority: 'critical',
+            category: 'Risk Management',
+            icon: '⚠️',
+            text: `Reduce position size immediately. ${metrics.avgRiskPercent.toFixed(1)}% risk per trade will lead to account blow-up.`
+        });
+    }
+    
+    // Risk-Reward recommendations
+    if (metrics.avgRiskReward < 1.0 && metrics.totalTrades >= 10) {
+        recommendations.push({
+            priority: 'high',
+            category: 'Trade Management',
+            icon: '📐',
+            text: `Your average risk-reward is ${metrics.avgRiskReward.toFixed(2)}. You need at least 1:2 R:R to be profitable long-term.`
+        });
+    }
+    
+    // Profit factor recommendations
+    if (metrics.profitFactor < 1.0 && metrics.totalTrades >= 10) {
+        recommendations.push({
+            priority: 'critical',
+            category: 'Strategy Review',
+            icon: '🔴',
+            text: `Profit factor of ${metrics.profitFactor.toFixed(2)} means you're losing money. Stop live trading and paper trade until you find an edge.`
+        });
+    }
+    
+    // Consecutive losses
+    if (metrics.consecutiveLosses >= 4) {
+        recommendations.push({
+            priority: 'high',
+            category: 'Psychology',
+            icon: '🧠',
+            text: `${metrics.consecutiveLosses} consecutive losses. Take a 24-hour break to reset your mental state.`
+        });
+    }
+    
+    // Mood correlation
+    if (metrics.moodCorrelation.bestMood && metrics.moodCorrelation.worstMood) {
+        const bestMood = getMoodEmoji(metrics.moodCorrelation.bestMood);
+        const worstMood = getMoodEmoji(metrics.moodCorrelation.worstMood);
+        
+        recommendations.push({
+            priority: 'medium',
+            category: 'Psychology',
+            icon: '😊',
+            text: `You perform best when ${bestMood} and worst when ${worstMood}. Only trade when you're in your optimal mindset.`
+        });
+    }
+    
+    // Expectancy
+    if (metrics.expectancy < 0 && metrics.totalTrades >= 20) {
+        recommendations.push({
+            priority: 'high',
+            category: 'Edge Analysis',
+            icon: '📉',
+            text: `Negative expectancy (${formatCurrency(metrics.expectancy)}). Your strategy needs fundamental changes.`
+        });
+    } else if (metrics.expectancy > 0) {
+        recommendations.push({
+            priority: 'low',
+            category: 'Scaling',
+            icon: '📈',
+            text: `Positive expectancy of ${formatCurrency(metrics.expectancy)} per trade. You have an edge - trust your system.`
+        });
+    }
+    
+    // Session analysis
+    const sessions = metrics.sessionPerformance;
+    let bestSession = null, worstSession = null;
+    let bestSessionAvg = -Infinity, worstSessionAvg = Infinity;
+    
+    Object.entries(sessions).forEach(([session, data]) => {
+        if (data.count >= 5) {
+            const avg = data.total / data.count;
+            if (avg > bestSessionAvg) {
+                bestSessionAvg = avg;
+                bestSession = session;
+            }
+            if (avg < worstSessionAvg) {
+                worstSessionAvg = avg;
+                worstSession = session;
+            }
+        }
+    });
+    
+    if (bestSession && worstSession && bestSession !== worstSession) {
+        recommendations.push({
+            priority: 'medium',
+            category: 'Timing',
+            icon: '⏰',
+            text: `You perform best during ${bestSession} session and worst during ${worstSession}. Consider focusing on ${bestSession} hours.`
+        });
+    }
+    
+    // Add default recommendations if few exist
+    if (recommendations.length < 3) {
+        recommendations.push({
+            priority: 'low',
+            category: 'Journaling',
+            icon: '📝',
+            text: 'Continue logging every trade with detailed notes. More data leads to better insights.'
+        });
+        
+        recommendations.push({
+            priority: 'low',
+            category: 'Review',
+            icon: '🔍',
+            text: 'Set aside 30 minutes weekly to review your trades and identify patterns.'
+        });
+    }
+    
+    // Sort by priority
+    const priorityOrder = { 'critical': 0, 'high': 1, 'medium': 2, 'low': 3 };
+    recommendations.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+    
+    return recommendations.slice(0, 6); // Return top 6 recommendations
+}
+
+function showEmptyAISuggestions() {
+    document.getElementById('primaryInsightText').innerHTML = `
+        <span class="text-gray-500">No trades yet. Add your first trade to get AI insights!</span>
+    `;
+    document.getElementById('riskInsightText').innerHTML = `
+        <span class="text-gray-500">Waiting for trade data...</span>
+    `;
+    document.getElementById('trendInsightText').innerHTML = `
+        <span class="text-gray-500">Waiting for trade data...</span>
+    `;
+    
+    document.getElementById('aiRecommendations').innerHTML = `
+        <div class="text-center py-4 text-gray-500">
+            <i class="fas fa-chart-bar text-3xl mb-2 opacity-50"></i>
+            <p>Add at least 5 trades to receive personalized AI recommendations.</p>
+        </div>
+    `;
+    
+    document.getElementById('aiMetricsSummary').innerHTML = '';
+}
+
+function updateAISuggestionsUI(primary, risk, trend, recommendations, metrics) {
+    // Update primary insight
+    const primaryEl = document.getElementById('primaryInsightText');
+    const primaryIcon = primary.type === 'success' ? '✅' : (primary.type === 'warning' ? '⚠️' : 'ℹ️');
+    primaryEl.innerHTML = `
+        <div class="font-semibold text-gray-800">${primaryIcon} ${primary.title}</div>
+        <p class="text-sm text-gray-600 mt-1">${primary.message}</p>
+        <p class="text-xs text-indigo-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${primary.action}</p>
+    `;
+    
+    // Update risk insight
+    const riskEl = document.getElementById('riskInsightText');
+    const riskIcon = risk.type === 'success' ? '✅' : (risk.type === 'danger' ? '🚨' : (risk.type === 'warning' ? '⚠️' : 'ℹ️'));
+    riskEl.innerHTML = `
+        <div class="font-semibold text-gray-800">${riskIcon} ${risk.title}</div>
+        <p class="text-sm text-gray-600 mt-1">${risk.message}</p>
+        <p class="text-xs text-red-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${risk.action}</p>
+    `;
+    
+    // Update trend insight
+    const trendEl = document.getElementById('trendInsightText');
+    const trendIcon = trend.type === 'success' ? '📈' : (trend.type === 'warning' ? '📉' : '📊');
+    trendEl.innerHTML = `
+        <div class="font-semibold text-gray-800">${trendIcon} ${trend.title}</div>
+        <p class="text-sm text-gray-600 mt-1">${trend.message}</p>
+        <p class="text-xs text-green-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${trend.action}</p>
+    `;
+    
+    // Update recommendations
+    const recEl = document.getElementById('aiRecommendations');
+    if (recommendations.length > 0) {
+        recEl.innerHTML = recommendations.map((rec, index) => {
+            const priorityColors = {
+                'critical': 'border-red-500 bg-red-50',
+                'high': 'border-orange-500 bg-orange-50',
+                'medium': 'border-yellow-500 bg-yellow-50',
+                'low': 'border-blue-500 bg-blue-50'
+            };
+            
+            return `
+                <div class="flex items-start gap-3 p-3 rounded-lg border-l-4 ${priorityColors[rec.priority]}">
+                    <span class="text-xl">${rec.icon}</span>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-gray-500 uppercase">${rec.category}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${rec.priority === 'critical' ? 'bg-red-200 text-red-800' : (rec.priority === 'high' ? 'bg-orange-200 text-orange-800' : 'bg-gray-200 text-gray-700')}">${rec.priority}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 mt-1">${rec.text}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Update metrics summary
+    const summaryEl = document.getElementById('aiMetricsSummary');
+    summaryEl.innerHTML = `
+        <div class="bg-gray-50 rounded-lg p-2 text-center">
+            <span class="font-semibold">${metrics.totalTrades}</span> Trades
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2 text-center">
+            <span class="font-semibold ${metrics.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}">${metrics.winRate.toFixed(1)}%</span> Win Rate
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2 text-center">
+            <span class="font-semibold ${metrics.profitFactor >= 1.5 ? 'text-green-600' : (metrics.profitFactor >= 1.0 ? 'text-yellow-600' : 'text-red-600')}">${metrics.profitFactor.toFixed(2)}</span> Profit Factor
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2 text-center">
+            <span class="font-semibold ${metrics.expectancy >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(metrics.expectancy)}</span> Expectancy
+        </div>
+    `;
+}
+
+// Refresh AI suggestions
+window.refreshAISuggestions = () => {
+    showLoading();
+    setTimeout(() => {
+        generateAISuggestions();
+        hideLoading();
+        showSuccessMessage('AI analysis refreshed! 🤖');
+    }, 500);
+};
+
+// Call this after loading trades
+function initializeAISuggestions() {
+    if (allTrades && allTrades.length > 0) {
+        generateAISuggestions();
+    } else {
+        showEmptyAISuggestions();
+    }
+}
+
 // ========== INITIALIZATION ==========
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
     hideLoading();
 });
+
