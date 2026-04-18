@@ -19,8 +19,16 @@ import {
     deleteDoc,
     updateDoc,
     getDoc,
-    setDoc
+    setDoc,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { 
+    getStorage, 
+    ref, 
+    uploadBytes, 
+    getDownloadURL,
+    deleteObject
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -44,9 +52,13 @@ console.log('✅ Firebase auth initialized');
 const db = getFirestore(app);
 console.log('✅ Firebase Firestore initialized');
 
+const storage = getStorage(app);
+console.log('✅ Firebase Storage initialized');
+
 // Export all necessary functions
 export { 
-    auth, db, 
+    auth, db, storage,
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail,
-    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc 
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc, onSnapshot,
+    ref, uploadBytes, getDownloadURL, deleteObject
 };

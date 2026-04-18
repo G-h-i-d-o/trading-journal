@@ -53,6 +53,7 @@
                             <span class="icon"><i class="fas fa-sliders-h"></i></span>
                             <span class="label">General</span>
                         </button>
+                        
                         <button class="sidebar-btn" title="Export trades" onclick="exportTrades()">
                             <span class="icon"><i class="fas fa-download"></i></span>
                             <span class="label">Export</span>
@@ -508,6 +509,42 @@
                             <div id="moodPerformance" class="mt-1">No data yet</div>
                         </div>
                     </div>
+
+                    <!-- Emotion Analytics -->
+                    <div class="card">
+                        <h3 class="section-title"><i class="fas fa-heartbeat"></i> Emotion Analytics</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <div class="emotion-card">
+                                <div class="emotion-icon">😊</div>
+                                <div class="emotion-label">Calm</div>
+                                <div class="emotion-value" id="calmTrades">0</div>
+                                <div class="emotion-percent" id="calmPercent">0%</div>
+                            </div>
+                            <div class="emotion-card">
+                                <div class="emotion-icon">😟</div>
+                                <div class="emotion-label">Anxious</div>
+                                <div class="emotion-value" id="anxiousTrades">0</div>
+                                <div class="emotion-percent" id="anxiousPercent">0%</div>
+                            </div>
+                            <div class="emotion-card">
+                                <div class="emotion-icon">😠</div>
+                                <div class="emotion-label">Frustrated</div>
+                                <div class="emotion-value" id="frustratedTrades">0</div>
+                                <div class="emotion-percent" id="frustratedPercent">0%</div>
+                            </div>
+                            <div class="emotion-card">
+                                <div class="emotion-icon">🎯</div>
+                                <div class="emotion-label">Focused</div>
+                                <div class="emotion-value" id="focusedTrades">0</div>
+                                <div class="emotion-percent" id="focusedPercent">0%</div>
+                            </div>
+                        </div>
+                        <div class="emotion-insights">
+                            <div class="insight-title">Emotional Intelligence Insights</div>
+                            <div id="emotionInsights" class="insight-text">Loading insights...</div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Bottom Row: Charts and Time Analysis -->
@@ -587,6 +624,38 @@
                             <option value="disciplined">📍 Disciplined</option>
                             <option value="impulsive">⚡ Impulsive</option>
                         </select>
+                    </div>
+
+                    <!-- Emotion Gauge -->
+                    <div class="form-group">
+                        <label>Emotional State Gauge</label>
+                        <div class="emotion-gauge-container">
+                            <div class="emotion-gauge">
+                                <div class="gauge-background">
+                                    <div class="gauge-fill" id="emotionGaugeFill"></div>
+                                    <div class="gauge-markers">
+                                        <div class="gauge-marker" data-value="0">0</div>
+                                        <div class="gauge-marker" data-value="25">25</div>
+                                        <div class="gauge-marker" data-value="50">50</div>
+                                        <div class="gauge-marker" data-value="75">75</div>
+                                        <div class="gauge-marker" data-value="100">100</div>
+                                    </div>
+                                </div>
+                                <input type="range" id="emotionLevel" min="0" max="100" value="50" class="emotion-slider">
+                            </div>
+                            <div class="emotion-labels">
+                                <span class="emotion-label-low">Calm</span>
+                                <span class="emotion-label-mid">Balanced</span>
+                                <span class="emotion-label-high">Intense</span>
+                            </div>
+                            <div class="emotion-display">
+                                <div class="emotion-value-display">
+                                    <span id="emotionValue">50</span>
+                                    <span class="emotion-unit">/100</span>
+                                </div>
+                                <div class="emotion-description" id="emotionDescription">Balanced emotional state</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- DATE FEATURE -->
@@ -784,9 +853,21 @@
                                 <div class="pip-display" id="tpPipDisplay"></div>
                             </div>
                             <div class="form-group">
+                                <label>Exit Price</label>
+                                <input type="number" id="exitPrice" step="0.00001">
+                                <div class="pip-display" id="exitPipDisplay"></div>
+                                <small class="text-gray-500 text-xs">Optional: Actual exit price if different from TP</small>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
                                 <label>Size (Lots)</label>
                                 <input type="number" id="lotSize" step="0.01" value="0.01" required>
                                 <div class="pip-display">Std Lot = 100k</div>
+                            </div>
+                            <div class="form-group">
+                                <!-- Empty for balance -->
                             </div>
                         </div>
                     </div>
@@ -826,13 +907,29 @@
                     <!-- Screenshots -->
                     <div class="form-section">
                         <div class="form-group">
-                            <label><i class="fas fa-camera"></i> Before Chart URL</label>
-                            <input type="url" id="beforeScreenshot" placeholder="https://example.com/before.png">
+                            <label><i class="fas fa-camera"></i> Before Chart</label>
+                            <div class="screenshot-input-group">
+                                <div class="input-toggle">
+                                    <button type="button" class="toggle-btn active" onclick="toggleScreenshotInput('before', 'url')">URL</button>
+                                    <button type="button" class="toggle-btn" onclick="toggleScreenshotInput('before', 'file')">Upload</button>
+                                </div>
+                                <input type="url" id="beforeScreenshotUrl" placeholder="https://example.com/before.png" style="display: block;">
+                                <input type="file" id="beforeScreenshotFile" accept="image/*" style="display: none;">
+                                <div id="beforeUploadStatus" class="upload-status"></div>
+                            </div>
                         </div>
 
                         <div class="form-group">
-                            <label><i class="fas fa-camera"></i> After Chart URL</label>
-                            <input type="url" id="afterScreenshot" placeholder="https://example.com/after.png">
+                            <label><i class="fas fa-camera"></i> After Chart</label>
+                            <div class="screenshot-input-group">
+                                <div class="input-toggle">
+                                    <button type="button" class="toggle-btn active" onclick="toggleScreenshotInput('after', 'url')">URL</button>
+                                    <button type="button" class="toggle-btn" onclick="toggleScreenshotInput('after', 'file')">Upload</button>
+                                </div>
+                                <input type="url" id="afterScreenshotUrl" placeholder="https://example.com/after.png" style="display: block;">
+                                <input type="file" id="afterScreenshotFile" accept="image/*" style="display: none;">
+                                <div id="afterUploadStatus" class="upload-status"></div>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -1211,6 +1308,114 @@
                                     <option value="dark">Dark</option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
+                    <!-- Point Value Verification Tool - Add to Settings Tab -->
+                    <div class="card mt-6">
+                        <h3 class="section-title"><i class="fas fa-calculator"></i> Contract Size Verification</h3>
+                        <p class="text-sm text-gray-600 mb-4">Verify and adjust point values for accurate PnL calculations</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Left side: Symbol selector and current values -->
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Select Instrument</label>
+                                <select id="verificationSymbolSelect" class="w-full px-3 py-2 border rounded-lg">
+                                    <option value="">Select an instrument...</option>
+                                </select>
+                                
+                                <div id="verificationDetails" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                                    <h4 class="font-semibold mb-3">Current Configuration</h4>
+                                    <table class="w-full text-sm">
+                                        <tr>
+                                            <td class="py-2 text-gray-600">Point Value:</td>
+                                            <td class="py-2">
+                                                <span id="currentPointValue">-</span>
+                                                <span class="text-xs text-gray-500 ml-2">(per point per standard lot)</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-2 text-gray-600">Minimum Lot:</td>
+                                            <td id="currentMinLot" class="py-2">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-2 text-gray-600">Standard Lot Display:</td>
+                                            <td id="currentStdLot" class="py-2">-</td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <div class="mt-4">
+                                        <label class="block text-sm font-semibold mb-2">Manual Override</label>
+                                        <div class="flex gap-2">
+                                            <input type="number" id="overridePointValue" step="0.000001" 
+                                                class="flex-1 px-3 py-2 border rounded-lg" placeholder="New point value">
+                                            <button onclick="overridePointValue()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+                                                Update
+                                            </button>
+                                        </div>
+                                        <button onclick="resetPointValue()" class="mt-2 text-sm text-red-600 hover:text-red-800">
+                                            Reset to Default
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right side: PnL Calculator -->
+                            <div>
+                                <h4 class="font-semibold mb-3">PnL Calculator</h4>
+                                <p class="text-sm text-gray-600 mb-4">Enter trade details to verify calculation</p>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold mb-1">Entry Price</label>
+                                        <input type="number" id="calcEntryPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold mb-1">Exit Price</label>
+                                        <input type="number" id="calcExitPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold mb-1">Lot Size</label>
+                                        <input type="number" id="calcLotSize" step="0.001" value="0.01" class="w-full px-3 py-2 border rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold mb-1">Direction</label>
+                                        <select id="calcDirection" class="w-full px-3 py-2 border rounded-lg">
+                                            <option value="long">Long (Buy)</option>
+                                            <option value="short">Short (Sell)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <button onclick="calculateTestPnL()" class="w-full bg-green-500 text-white py-2 rounded-lg">
+                                        Calculate
+                                    </button>
+                                    
+                                    <div id="calcResult" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Calculated PnL:</span>
+                                            <span id="calculatedPnL" class="font-bold text-lg">-</span>
+                                        </div>
+                                        <div class="flex justify-between mt-2">
+                                            <span class="text-gray-600">Points Movement:</span>
+                                            <span id="pointsMovement">-</span>
+                                        </div>
+                                        <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                                            <p class="text-yellow-800">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                Compare this with your actual MT5 PnL. If it's incorrect, adjust the point value above.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Batch Verification -->
+                        <div class="mt-6 pt-6 border-t">
+                            <h4 class="font-semibold mb-3">Batch Point Value Fetch (from Deriv API)</h4>
+                            <button onclick="fetchAllContractSpecs()" class="bg-purple-500 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-cloud-download-alt mr-2"></i>Fetch Contract Specifications
+                            </button>
+                            <div id="batchFetchResult" class="mt-3"></div>
                         </div>
                     </div>
                 </div>

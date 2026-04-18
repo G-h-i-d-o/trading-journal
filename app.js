@@ -1,7 +1,8 @@
 // app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS, MT4/5 IMPORT, AND ALL IMPROVEMENTS
 import { 
-    auth, db, onAuthStateChanged, signOut, 
-    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
+    auth, db, storage, onAuthStateChanged, signOut, 
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc, onSnapshot,
+    ref, uploadBytes, getDownloadURL, deleteObject
 } from './firebase-config.js';
 
 let currentUser = null;
@@ -23,6 +24,11 @@ let userAccounts = [];
 // Calendar state
 let currentCalendarDate = new Date();
 let calendarViewType = 'month';
+
+// Real-time listeners
+let tradesUnsubscribe = null;
+let accountsUnsubscribe = null;
+let affirmationsUnsubscribe = null;
 
 // Loading timeout safety (10 seconds)
 let loadingTimeout;
@@ -350,22 +356,6 @@ function showTemporaryWarning(message, duration = 3000) {
     setTimeout(() => {
         warningDiv.remove();
     }, duration);
-}
-
-// Enhanced point value getter for synthetic indices
-function getPointValue(symbol) {
-    // Check if it's a synthetic index with configured point value
-    if (derivLotSizeConfig[symbol]) {
-        return derivLotSizeConfig[symbol].pointValue;
-    }
-    
-    const pointValues = {
-        // Traditional indices
-        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
-        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1
-    };
-    
-    return pointValues[symbol] || 1;
 }
 
 function getDeletedConfluenceOptions() {
@@ -752,43 +742,46 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
 
 function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
     const instrumentType = getInstrumentType(symbol);
+    const pointValue = getPointValue(symbol);
+    
+    let profit;
+    let calculationMethod = '';
     
     if (instrumentType === 'forex') {
         const pipValue = 10 * lotSize;
         const pipSize = getPipSize(symbol);
         const pips = type === 'long' ? (exit - entry) / pipSize : (entry - exit) / pipSize;
-        const profit = pips * pipValue;
-        return parseFloat(profit.toFixed(2));
-    } else if (instrumentType === 'synthetic') {
-        // Use the configured point value for Deriv synthetic indices
-        const pointValue = getPointValue(symbol);
+        profit = pips * pipValue;
+        calculationMethod = `Pips: ${pips.toFixed(2)} × $${pipValue} = $${profit.toFixed(2)}`;
+    } else if (instrumentType === 'synthetic' || instrumentType === 'indices' || instrumentType === 'commodities') {
         const points = type === 'long' ? (exit - entry) : (entry - exit);
-        const profit = points * pointValue * lotSize;
-        return parseFloat(profit.toFixed(2));
-    } else if (instrumentType === 'commodities') {
-        let pointValue;
-        if (symbol === 'Gold') pointValue = 1; // $1 per point (0.01 movement)
-        else if (symbol === 'Silver') pointValue = 5; // $5 per point
-        else if (symbol === 'Oil' || symbol === 'Brent') pointValue = 10;
-        else if (symbol === 'Natural Gas') pointValue = 10;
-        else pointValue = 1;
+        profit = points * pointValue * lotSize;
+        calculationMethod = `Points: ${points.toFixed(4)} × $${pointValue} × ${lotSize} lot = $${profit.toFixed(2)}`;
         
-        const points = type === 'long' ? (exit - entry) : (entry - exit);
-        const profit = points * pointValue * lotSize;
-        return parseFloat(profit.toFixed(2));
+        // Check if this symbol has been verified
+        if (!pointValueOverrides[symbol] && instrumentType === 'synthetic') {
+            console.log(`[PnL] Using default point value $${pointValue} for ${symbol}. Verify in Settings > Contract Size Verification.`);
+        }
     } else if (instrumentType === 'smarttrader') {
         const payout = 0.80;
-        return type === 'long' ? (lotSize * payout) : -lotSize;
+        profit = type === 'long' ? (lotSize * payout) : -lotSize;
+        calculationMethod = `Binary payout: ${lotSize} × ${payout * 100}% = $${profit.toFixed(2)}`;
     } else if (instrumentType === 'accumulator') {
         const multiplier = 2;
         const points = type === 'long' ? (exit - entry) : (entry - exit);
-        return parseFloat((points * lotSize * multiplier).toFixed(2));
+        profit = points * lotSize * multiplier;
+        calculationMethod = `Accumulator: Points ${points.toFixed(4)} × ${lotSize} × ${multiplier} = $${profit.toFixed(2)}`;
     } else {
-        const pointValue = getPointValue(symbol) * lotSize;
+        const pointValueForSymbol = getPointValue(symbol);
         const points = type === 'long' ? (exit - entry) : (entry - exit);
-        const profit = points * pointValue;
-        return parseFloat(profit.toFixed(2));
+        profit = points * pointValueForSymbol * lotSize;
+        calculationMethod = `Default: Points ${points.toFixed(4)} × $${pointValueForSymbol} × ${lotSize} = $${profit.toFixed(2)}`;
     }
+    
+    // Log calculation for debugging
+    console.log(`[PnL Calc] ${symbol} (${type}): ${calculationMethod}`);
+    
+    return parseFloat(profit.toFixed(2));
 }
 
 window.updateInstrumentType = () => {
@@ -1229,50 +1222,62 @@ async function loadUserAccounts() {
     try {
         if (!currentUser) throw new Error('No authenticated user');
 
-        console.log('📁 Loading accounts from Firestore for user:', currentUser.uid);
+        console.log('📁 Setting up real-time accounts listener for user:', currentUser.uid);
+
+        // Unsubscribe from previous listener if it exists
+        if (accountsUnsubscribe) {
+            accountsUnsubscribe();
+        }
+
         const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        
-        const accounts = [];
-        querySnapshot.forEach((doc) => {
-            accounts.push({ id: doc.id, ...doc.data() });
+
+        // Set up real-time listener for accounts
+        accountsUnsubscribe = onSnapshot(q, async (querySnapshot) => {
+            const accounts = [];
+            querySnapshot.forEach((doc) => {
+                accounts.push({ id: doc.id, ...doc.data() });
+            });
+
+            console.log('[ACCOUNTS] Accounts updated in real-time:', accounts.length);
+
+            if (accounts.length === 0) {
+                console.log('🆕 Creating default account...');
+                const defaultAccount = {
+                    name: 'Main Account',
+                    balance: 10000,
+                    currency: 'USD',
+                    createdAt: new Date().toISOString(),
+                    isDefault: true,
+                    userId: currentUser.uid
+                };
+
+                const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
+                userAccounts = [{ id: docRef.id, ...defaultAccount }];
+                console.log('[SUCCESS] Default account created with ID:', docRef.id);
+            } else {
+                userAccounts = accounts;
+                console.log('[SUCCESS] Accounts loaded from Firestore:', userAccounts.length);
+            }
+
+            const savedCurrentAccount = localStorage.getItem('currentAccountId');
+            currentAccountId = savedCurrentAccount || userAccounts[0].id;
+
+            if (!userAccounts.some(acc => acc.id === currentAccountId)) {
+                console.warn('⚠️ Current account ID not found in accounts, using first account');
+                currentAccountId = userAccounts[0].id;
+                localStorage.setItem('currentAccountId', currentAccountId);
+            }
+
+            console.log('[ACCOUNT] Current account set to:', currentAccountId);
+            updateCurrentAccountDisplay();
+        }, (error) => {
+            console.error('[ERROR] Error in accounts real-time listener:', error);
+            // Fallback to localStorage if Firestore fails
+            loadAccountsFromLocalStorageFallback();
         });
 
-        console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
-
-        if (accounts.length === 0) {
-            console.log('🆕 Creating default account...');
-            const defaultAccount = {
-                name: 'Main Account',
-                balance: 10000,
-                currency: 'USD',
-                createdAt: new Date().toISOString(),
-                isDefault: true,
-                userId: currentUser.uid
-            };
-            
-            const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
-            userAccounts = [{ id: docRef.id, ...defaultAccount }];
-            console.log('[SUCCESS] Default account created with ID:', docRef.id);
-        } else {
-            userAccounts = accounts;
-            console.log('[SUCCESS] Accounts loaded from Firestore:', userAccounts.length);
-        }
-        
-        const savedCurrentAccount = localStorage.getItem('currentAccountId');
-        currentAccountId = savedCurrentAccount || userAccounts[0].id;
-        
-        if (!userAccounts.some(acc => acc.id === currentAccountId)) {
-            console.warn('⚠️ Current account ID not found in accounts, using first account');
-            currentAccountId = userAccounts[0].id;
-            localStorage.setItem('currentAccountId', currentAccountId);
-        }
-        
-        console.log('[ACCOUNT] Current account set to:', currentAccountId);
-        updateCurrentAccountDisplay();
-        
     } catch (error) {
-        console.error('[ERROR] Error loading accounts from Firestore:', error);
+        console.error('[ERROR] Error setting up accounts listener:', error);
         await loadAccountsFromLocalStorageFallback();
     }
 }
@@ -1471,6 +1476,7 @@ async function loadAccountData() {
         updateStats(allTrades);
         renderCharts(allTrades);
         calculateAdvancedMetrics(allTrades);
+        updateEmotionAnalytics(allTrades);
         // In loadAccountData function, after calculateAdvancedMetrics(allTrades);
         initializeAISuggestions();
         
@@ -1713,6 +1719,9 @@ onAuthStateChanged(auth, async (user) => {
             setupCalendar();
             setupMobileViewport();
             
+            // Initialize emotion gauge
+            initEmotionGauge();
+            
             console.log('✅ All systems initialized successfully');
             
         } catch (error) {
@@ -1725,12 +1734,41 @@ onAuthStateChanged(auth, async (user) => {
         }
     } else {
         console.log('🚪 No user, redirecting to login');
+
+        // Clean up real-time listeners when user logs out
+        if (tradesUnsubscribe) {
+            tradesUnsubscribe();
+            tradesUnsubscribe = null;
+        }
+        if (accountsUnsubscribe) {
+            accountsUnsubscribe();
+            accountsUnsubscribe = null;
+        }
+        if (affirmationsUnsubscribe) {
+            affirmationsUnsubscribe();
+            affirmationsUnsubscribe = null;
+        }
+
         window.location.href = 'index.html';
     }
 });
 
 window.logout = async () => {
     try {
+        // Clean up real-time listeners
+        if (tradesUnsubscribe) {
+            tradesUnsubscribe();
+            tradesUnsubscribe = null;
+        }
+        if (accountsUnsubscribe) {
+            accountsUnsubscribe();
+            accountsUnsubscribe = null;
+        }
+        if (affirmationsUnsubscribe) {
+            affirmationsUnsubscribe();
+            affirmationsUnsubscribe = null;
+        }
+
         await signOut(auth);
     } catch (error) {
         console.error('Logout error:', error);
@@ -1756,6 +1794,35 @@ function setupEventListeners() {
             setTimeout(() => {
                 document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
                 updateConfluenceScoreDisplay();
+                // Reset emotion gauge to default
+                const emotionSlider = document.getElementById('emotionLevel');
+                if (emotionSlider) {
+                    emotionSlider.value = 50;
+                    updateEmotionDisplay(50);
+                }
+                // Reset exit price field
+                const exitPriceField = document.getElementById('exitPrice');
+                if (exitPriceField) {
+                    exitPriceField.value = '';
+                }
+                // Reset screenshot inputs
+                const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
+                const afterUrlInput = document.getElementById('afterScreenshotUrl');
+                const beforeFileInput = document.getElementById('beforeScreenshotFile');
+                const afterFileInput = document.getElementById('afterScreenshotFile');
+
+                if (beforeUrlInput) beforeUrlInput.value = '';
+                if (afterUrlInput) afterUrlInput.value = '';
+                if (beforeFileInput) beforeFileInput.value = '';
+                if (afterFileInput) afterFileInput.value = '';
+
+                // Reset toggles to URL mode
+                toggleScreenshotInput('before', 'url');
+                toggleScreenshotInput('after', 'url');
+
+                // Clear upload statuses
+                updateUploadStatus('before', '');
+                updateUploadStatus('after', '');
             }, 0);
         });
     }
@@ -1843,8 +1910,8 @@ function setupEventListeners() {
 
 async function loadTrades() {
     try {
-        console.log('[TRADES] Loading trades for account:', currentAccountId);
-        
+        console.log('[TRADES] Setting up real-time trades listener for account:', currentAccountId);
+
         if (!currentUser) throw new Error('No authenticated user');
 
         if (!currentAccountId) {
@@ -1853,31 +1920,43 @@ async function loadTrades() {
             if (!currentAccountId) throw new Error('No accounts available');
         }
 
+        // Unsubscribe from previous listener if it exists
+        if (tradesUnsubscribe) {
+            tradesUnsubscribe();
+        }
+
         const q = query(
-            collection(db, 'trades'), 
+            collection(db, 'trades'),
             where('userId', '==', currentUser.uid),
             where('accountId', '==', currentAccountId)
         );
-        const querySnapshot = await getDocs(q);
-        
-        const trades = [];
-        querySnapshot.forEach((doc) => {
-            trades.push({ id: doc.id, ...doc.data() });
+
+        // Set up real-time listener
+        tradesUnsubscribe = onSnapshot(q, (querySnapshot) => {
+            const trades = [];
+            querySnapshot.forEach((doc) => {
+                trades.push({ id: doc.id, ...doc.data() });
+            });
+
+            trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            allTrades = trades;
+            setupPagination(trades);
+            updateStats(trades);
+            renderCharts(trades);
+            calculateAdvancedMetrics(trades);
+            updateEmotionAnalytics(trades);
+
+            console.log('🔄 Trades updated in real-time:', trades.length);
+        }, (error) => {
+            console.error('❌ Error in trades real-time listener:', error);
         });
 
-        trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        allTrades = trades;
-        setupPagination(trades);
-        updateStats(trades);
-        renderCharts(trades);
-        calculateAdvancedMetrics(trades);
-        
-        console.log('✅ Trades loaded successfully:', trades.length);
-        
+        console.log('✅ Real-time trades listener set up successfully');
+
     } catch (error) {
-        console.error('❌ Error loading trades:', error);
-        
+        console.error('❌ Error setting up trades listener:', error);
+
         const tradeHistory = document.getElementById('tradeHistory');
         if (tradeHistory) {
             tradeHistory.innerHTML = `
@@ -1903,8 +1982,9 @@ async function addTrade(e) {
     try {
         const symbol = document.getElementById('symbol')?.value;
         const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
-        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value);
+        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value) || null;
         const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+        const exitPrice = parseFloat(document.getElementById('exitPrice')?.value) || null;
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
         const mood = document.getElementById('mood')?.value || '';
@@ -1920,8 +2000,8 @@ async function addTrade(e) {
         const accountSize = currentAccount.balance;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
 
-        if (!symbol || !entryPrice || !stopLoss || !lotSize || !tradeType) {
-            alert('Please fill all required fields');
+        if (!symbol || !entryPrice || !lotSize || !tradeType) {
+            alert('Please fill all required fields (Entry Price, Size, and Direction are required)');
             return;
         }
 
@@ -1931,23 +2011,47 @@ async function addTrade(e) {
         }
 
         const instrumentType = getInstrumentType(symbol);
-        const exitPrice = takeProfit || entryPrice;
-        const profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+        // Determine exit price: exitPrice takes priority, then takeProfit, then entryPrice
+        const actualExitPrice = exitPrice || takeProfit || entryPrice;
+        const profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
 
+        // Handle screenshots (both URL and file uploads)
+        let beforeScreenshot = '';
+        let afterScreenshot = '';
+
+        // Check if URL inputs are visible (active)
+        const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
+        const afterUrlInput = document.getElementById('afterScreenshotUrl');
+        const beforeFileInput = document.getElementById('beforeScreenshotFile');
+        const afterFileInput = document.getElementById('afterScreenshotFile');
+
+        if (beforeUrlInput && beforeUrlInput.style.display !== 'none') {
+            beforeScreenshot = beforeUrlInput.value || '';
+        } else if (beforeFileInput && beforeFileInput.files[0]) {
+            beforeScreenshot = await uploadScreenshot(beforeFileInput.files[0], 'before');
+        }
+
+        if (afterUrlInput && afterUrlInput.style.display !== 'none') {
+            afterScreenshot = afterUrlInput.value || '';
+        } else if (afterFileInput && afterFileInput.files[0]) {
+            afterScreenshot = await uploadScreenshot(afterFileInput.files[0], 'after');
+        }
+
         const tradeData = {
-            symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
+            symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, exitPrice, lotSize,
             mood: mood,
-            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
-            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+            emotionLevel: getEmotionLevel(),
+            beforeScreenshot: beforeScreenshot,
+            afterScreenshot: afterScreenshot,
             notes: document.getElementById('notes')?.value || '', 
             confluenceOptions,
             confluenceScore: Number(confluenceScore.toFixed(0)),
             timestamp: tradeTimestamp,
             profit, 
             pipsPoints: pipPointInfo.risk,
-            riskAmount: Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)),
-            riskPercent: (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100,
+            riskAmount: stopLoss ? Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) : 0,
+            riskPercent: stopLoss ? (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100 : 0,
             accountSize, leverage, 
             userId: currentUser.uid,
             accountId: currentAccountId
@@ -2121,21 +2225,21 @@ function updateRiskCalculation() {
     const accountSize = currentAccount.balance;
     const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
 
-    if (entryPrice > 0 && stopLoss > 0 && symbol) {
+    if (entryPrice > 0 && symbol) {
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
         const potentialProfit = takeProfit ? calculateProfitLoss(entryPrice, takeProfit, lotSize, symbol, tradeType) : 0;
-        const potentialLoss = calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType);
+        const potentialLoss = stopLoss > 0 ? calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType) : 0;
         const riskRewardRatio = takeProfit && potentialLoss !== 0 ? Math.abs(potentialProfit / potentialLoss) : 0;
         const maxRiskAmount = accountSize * (riskPerTrade / 100);
-        const riskPerLot = Math.abs(calculateProfitLoss(entryPrice, stopLoss, 1, symbol, tradeType));
+        const riskPerLot = stopLoss > 0 ? Math.abs(calculateProfitLoss(entryPrice, stopLoss, 1, symbol, tradeType)) : 0;
         const recommendedLotSize = riskPerLot > 0 ? (maxRiskAmount / riskPerLot).toFixed(2) : 0;
         const instrumentType = getInstrumentType(symbol);
         const unitType = instrumentType === 'forex' ? 'pips' : 'points';
 
         const riskElements = {
-            'pipsRisk': pipPointInfo.risk.toFixed(1) + ' ' + unitType,
-            'totalRisk': formatCurrency(Math.abs(potentialLoss)),
-            'riskPercentage': (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%',
+            'pipsRisk': stopLoss > 0 ? pipPointInfo.risk.toFixed(1) + ' ' + unitType : 'N/A',
+            'totalRisk': stopLoss > 0 ? formatCurrency(Math.abs(potentialLoss)) : '$0.00',
+            'riskPercentage': stopLoss > 0 ? (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%' : '0.00%',
             'riskRewardRatio': riskRewardRatio.toFixed(2),
             'recommendedLotSize': recommendedLotSize
         };
@@ -2147,13 +2251,27 @@ function updateRiskCalculation() {
 
         const pipDisplays = {
             'entryPipDisplay': `Entry: ${entryPrice}`,
-            'slPipDisplay': `SL: ${stopLoss} (${pipPointInfo.risk.toFixed(1)} ${unitType})`,
-            'tpPipDisplay': takeProfit ? `TP: ${takeProfit} (${pipPointInfo.reward.toFixed(1)} ${unitType})` : ''
+            'slPipDisplay': stopLoss > 0 ? `SL: ${stopLoss} (${pipPointInfo.risk.toFixed(1)} ${unitType})` : 'SL: Not set',
+            'tpPipDisplay': takeProfit ? `TP: ${takeProfit} (${pipPointInfo.reward.toFixed(1)} ${unitType})` : '',
+            'exitPipDisplay': ''
         };
 
         Object.entries(pipDisplays).forEach(([id, value]) => {
             const element = document.getElementById(id);
             if (element) element.textContent = value;
+        });
+    } else {
+        // Reset all displays when no valid data
+        const resetElements = ['pipsRisk', 'totalRisk', 'riskPercentage', 'riskRewardRatio', 'recommendedLotSize'];
+        resetElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = id === 'recommendedLotSize' ? '0.00' : '0';
+        });
+
+        const pipDisplays = ['entryPipDisplay', 'slPipDisplay', 'tpPipDisplay', 'exitPipDisplay'];
+        pipDisplays.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = '';
         });
     }
 }
@@ -2288,6 +2406,8 @@ function displayTrades(trades) {
         const badgeText = getBadgeText(trade.instrumentType);
         const profitClass = trade.profit >= 0 ? 'profit' : 'loss';
         const moodEmoji = getMoodEmoji(trade.mood);
+        const emotionDisplay = trade.emotionLevel !== undefined ? 
+            `<span class="emotion-indicator" title="Emotional intensity: ${trade.emotionLevel}/100">💭 ${trade.emotionLevel}</span>` : '';
         const tradeDate = new Date(trade.timestamp);
         const dateString = tradeDate.toLocaleDateString();
         const timeString = tradeDate.toLocaleTimeString();
@@ -2301,6 +2421,7 @@ function displayTrades(trades) {
                             <div class="font-semibold text-base">${trade.symbol}</div>
                             <span class="market-type-badge ${badgeClass}">${badgeText}</span>
                             ${moodEmoji ? `<span class="text-lg">${moodEmoji}</span>` : ''}
+                            ${emotionDisplay}
                         </div>
                         <div class="${profitClass} font-bold text-lg">
                             ${formatCurrency(trade.profit)}
@@ -2310,9 +2431,10 @@ function displayTrades(trades) {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
                         <div><strong>Type:</strong> ${trade.type.toUpperCase()} | ${trade.lotSize} lots</div>
                         <div><strong>Entry:</strong> ${trade.entryPrice}</div>
-                        <div><strong>Stop Loss:</strong> ${trade.stopLoss}</div>
+                        <div><strong>Stop Loss:</strong> ${trade.stopLoss || 'N/A'}</div>
                         <div><strong>Take Profit:</strong> ${trade.takeProfit || 'N/A'}</div>
-                        <div><strong>Risk:</strong> ${formatCurrency(trade.riskAmount)} (${trade.riskPercent.toFixed(1)}%)</div>
+                        <div><strong>Exit Price:</strong> ${trade.exitPrice || 'N/A'}</div>
+                        <div><strong>Risk:</strong> ${trade.stopLoss ? `${formatCurrency(trade.riskAmount)} (${trade.riskPercent.toFixed(1)}%)` : 'N/A'}</div>
                         <div><strong>Date:</strong> ${dateString} ${timeString}</div>
                     </div>
                     
@@ -2702,30 +2824,41 @@ async function loadAffirmations() {
     try {
         if (!currentUser) return;
 
-        console.log('📖 Loading affirmations...');
-        const q = query(collection(db, 'affirmations'), where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        
-        const affirmations = [];
-        querySnapshot.forEach((doc) => affirmations.push({ id: doc.id, ...doc.data() }));
+        console.log('📖 Setting up real-time affirmations listener...');
 
-        if (affirmations.length === 0) {
-            console.log('[AFFIRMATIONS] No affirmations found, creating sample data...');
-            for (const sampleAffirmation of sampleAffirmations) {
-                const affirmationData = { ...sampleAffirmation, userId: currentUser.uid };
-                await addDoc(collection(db, 'affirmations'), affirmationData);
-            }
-            await loadAffirmations();
-            return;
+        // Unsubscribe from previous listener if it exists
+        if (affirmationsUnsubscribe) {
+            affirmationsUnsubscribe();
         }
 
-        allAffirmations = affirmations;
-        updateAffirmationStats();
-        renderAffirmationsGrid();
-        setupDailyAffirmation();
-        console.log('✅ Affirmations loaded:', affirmations.length);
+        const q = query(collection(db, 'affirmations'), where('userId', '==', currentUser.uid));
+
+        // Set up real-time listener for affirmations
+        affirmationsUnsubscribe = onSnapshot(q, async (querySnapshot) => {
+            const affirmations = [];
+            querySnapshot.forEach((doc) => affirmations.push({ id: doc.id, ...doc.data() }));
+
+            if (affirmations.length === 0) {
+                console.log('[AFFIRMATIONS] No affirmations found, creating sample data...');
+                for (const sampleAffirmation of sampleAffirmations) {
+                    const affirmationData = { ...sampleAffirmation, userId: currentUser.uid };
+                    await addDoc(collection(db, 'affirmations'), affirmationData);
+                }
+                // Don't recursively call loadAffirmations here as the listener will trigger
+                return;
+            }
+
+            allAffirmations = affirmations;
+            updateAffirmationStats();
+            renderAffirmationsGrid();
+            setupDailyAffirmation();
+            console.log('🔄 Affirmations updated in real-time:', affirmations.length);
+        }, (error) => {
+            console.error('❌ Error in affirmations real-time listener:', error);
+        });
+
     } catch (error) {
-        console.error('❌ Error loading affirmations:', error);
+        console.error('❌ Error setting up affirmations listener:', error);
         allAffirmations = [...sampleAffirmations];
         updateAffirmationStats();
         renderAffirmationsGrid();
@@ -3216,21 +3349,23 @@ function parseCSV(csvText) {
             const entryPrice = parseFloat(getValue(['Entry', 'entryPrice', 'Entry Price']));
             const stopLoss = parseFloat(getValue(['SL', 'stopLoss', 'Stop Loss']));
             const takeProfit = getValue(['TP', 'takeProfit', 'Take Profit']) ? parseFloat(getValue(['TP', 'takeProfit', 'Take Profit'])) : null;
+            const exitPrice = getValue(['Exit Price', 'exitPrice', 'ExitPrice']) ? parseFloat(getValue(['Exit Price', 'exitPrice', 'ExitPrice'])) : null;
             const lotSize = parseFloat(getValue(['Lots', 'lotSize', 'Lot Size']) || '0.01');
             const tradeType = getValue(['Type', 'type']) || 'long';
             const instrumentType = getValue(['InstrumentType', 'instrumentType']) || getInstrumentType(symbol);
             
             let profit = parseFloat(getValue(['Profit', 'profit']) || '0');
             
-            if (profit === 0 && symbol && entryPrice && stopLoss) {
-                const exitPrice = takeProfit || entryPrice;
-                profit = calculateProfitLoss(entryPrice, exitPrice, lotSize, symbol, tradeType);
+            if (profit === 0 && symbol && entryPrice) {
+                // Use exitPrice if provided, otherwise takeProfit, otherwise entryPrice
+                const actualExitPrice = exitPrice || takeProfit || entryPrice;
+                profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
             }
             
             const currentAccount = getCurrentAccount();
             
             const trade = {
-                symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, lotSize,
+                symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, exitPrice, lotSize,
                 mood: getValue(['Mood', 'mood']) || '',
                 beforeScreenshot: getValue(['BeforeScreenshot', 'beforeScreenshot']) || '',
                 afterScreenshot: getValue(['AfterScreenshot', 'afterScreenshot']) || '',
@@ -3252,6 +3387,11 @@ function parseCSV(csvText) {
                 
                 const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
                 trade.pipsPoints = pipPointInfo.risk;
+            } else if (!stopLoss) {
+                // If no stop loss, set risk to 0
+                trade.riskAmount = 0;
+                trade.riskPercent = 0;
+                trade.pipsPoints = 0;
             }
             
             if (trade.symbol && !isNaN(trade.entryPrice) && !isNaN(trade.stopLoss)) {
@@ -3269,22 +3409,33 @@ function parseCSVLine(line) {
     const values = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        
+
         if (char === '"') {
-            inQuotes = !inQuotes;
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
         } else if (char === ',' && !inQuotes) {
-            values.push(current.trim());
+            values.push(current);
             current = '';
         } else {
             current += char;
         }
     }
-    
-    values.push(current.trim());
-    return values;
+
+    values.push(current);
+    return values.map(value => {
+        const trimmed = value.trim();
+        if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+            return trimmed.slice(1, -1).replace(/""/g, '"');
+        }
+        return trimmed;
+    });
 }
 
 async function importTradesToFirestore(trades) {
@@ -3340,7 +3491,7 @@ function convertToCSV(trades) {
     const currencyName = currencyNames[selectedCurrency] || 'US Dollar';
     
     const headers = [
-        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
+        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 'Exit Price',
         'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
         'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
         'Notes', 'AccountSize', 'Leverage', 'Timestamp', 'AccountId', 'MTTicket'
@@ -3356,6 +3507,7 @@ function convertToCSV(trades) {
             trade.entryPrice,
             trade.stopLoss,
             trade.takeProfit || '',
+            trade.exitPrice || '',
             trade.lotSize,
             trade.profit,
             trade.riskAmount,
@@ -3421,22 +3573,33 @@ function parseCSVLineWithDelimiter(line, delimiter) {
     const values = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        
+
         if (char === '"') {
-            inQuotes = !inQuotes;
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
         } else if (char === delimiter && !inQuotes) {
-            values.push(current.trim());
+            values.push(current);
             current = '';
         } else {
             current += char;
         }
     }
-    
-    values.push(current.trim());
-    return values;
+
+    values.push(current);
+    return values.map(value => {
+        const trimmed = value.trim();
+        if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+            return trimmed.slice(1, -1).replace(/""/g, '"');
+        }
+        return trimmed;
+    });
 }
 
 function parseMetaTraderCSV(csvText) {
@@ -3936,6 +4099,68 @@ window.closeScreenshotModal = () => {
         }
     }
 };
+
+// ========== SCREENSHOT INPUT FUNCTIONS ==========
+
+window.toggleScreenshotInput = (type, inputType) => {
+    const urlInput = document.getElementById(`${type}ScreenshotUrl`);
+    const fileInput = document.getElementById(`${type}ScreenshotFile`);
+    const urlBtn = document.querySelector(`[onclick="toggleScreenshotInput('${type}', 'url')"]`);
+    const fileBtn = document.querySelector(`[onclick="toggleScreenshotInput('${type}', 'file')"]`);
+
+    if (inputType === 'url') {
+        urlInput.style.display = 'block';
+        fileInput.style.display = 'none';
+        urlBtn.classList.add('active');
+        fileBtn.classList.remove('active');
+        fileInput.value = ''; // Clear file input
+        updateUploadStatus(type, ''); // Clear status
+    } else {
+        urlInput.style.display = 'none';
+        fileInput.style.display = 'block';
+        urlBtn.classList.remove('active');
+        fileBtn.classList.add('active');
+        urlInput.value = ''; // Clear URL input
+        updateUploadStatus(type, ''); // Clear status
+    }
+};
+
+function updateUploadStatus(type, message, typeClass = '') {
+    const statusElement = document.getElementById(`${type}UploadStatus`);
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `upload-status ${typeClass}`;
+    }
+}
+
+async function uploadScreenshot(file, type) {
+    if (!file) return null;
+
+    try {
+        updateUploadStatus(type, 'Uploading image...', 'uploading');
+
+        // Create a unique filename
+        const timestamp = Date.now();
+        const fileName = `${type}_screenshot_${timestamp}_${file.name}`;
+        const storageRef = ref(storage, `screenshots/${currentUser.uid}/${fileName}`);
+
+        // Upload the file
+        const snapshot = await uploadBytes(storageRef, file);
+        console.log('Uploaded screenshot:', snapshot.ref.fullPath);
+
+        // Get the download URL
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('Download URL:', downloadURL);
+
+        updateUploadStatus(type, 'Image uploaded successfully!', 'success');
+        return downloadURL;
+
+    } catch (error) {
+        console.error('Error uploading screenshot:', error);
+        updateUploadStatus(type, 'Upload failed. Please try again.', 'error');
+        return null;
+    }
+}
 
 // ========== ANALYTICS AND STATS FUNCTIONS ==========
 
@@ -5157,10 +5382,500 @@ function initializeAISuggestions() {
     }
 }
 
+// ========== DERIV API INTEGRATION & POINT VALUE VERIFICATION ==========
+
+import { derivAPI } from './deriv-api-service.js';
+
+// Store custom point value overrides
+let pointValueOverrides = {};
+
+// Load custom point value overrides from localStorage
+function loadPointValueOverrides() {
+    try {
+        const stored = localStorage.getItem('pointValueOverrides');
+        if (stored) {
+            pointValueOverrides = JSON.parse(stored);
+        }
+    } catch (error) {
+        console.warn('Error loading point value overrides:', error);
+        pointValueOverrides = {};
+    }
+}
+
+// Save custom point value overrides to localStorage
+function savePointValueOverrides() {
+    localStorage.setItem('pointValueOverrides', JSON.stringify(pointValueOverrides));
+}
+
+// Enhanced getPointValue with override support
+function getPointValue(symbol) {
+    // Check for manual override first
+    if (pointValueOverrides[symbol] !== undefined) {
+        return pointValueOverrides[symbol];
+    }
+    
+    // Check Deriv config
+    if (derivLotSizeConfig[symbol]) {
+        return derivLotSizeConfig[symbol].pointValue;
+    }
+    
+    const pointValues = {
+        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
+        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1
+    };
+    
+    return pointValues[symbol] || 1;
+}
+
+// Populate verification symbol select
+async function populateVerificationSymbols() {
+    const select = document.getElementById('verificationSymbolSelect');
+    if (!select) return;
+    
+    // Get all unique symbols from our configuration
+    const symbols = new Set([
+        ...Object.keys(derivLotSizeConfig),
+        'EUR/USD', 'GBP/USD', 'USD/JPY', 'US30', 'SPX500', 'NAS100',
+        'Gold', 'Silver', 'Oil'
+    ]);
+    
+    // Group by type
+    const groups = {
+        'Deriv Synthetic': [],
+        'Forex': [],
+        'Indices': [],
+        'Commodities': []
+    };
+    
+    symbols.forEach(symbol => {
+        const type = getInstrumentType(symbol);
+        if (type === 'synthetic') groups['Deriv Synthetic'].push(symbol);
+        else if (type === 'forex') groups['Forex'].push(symbol);
+        else if (type === 'indices') groups['Indices'].push(symbol);
+        else if (type === 'commodities') groups['Commodities'].push(symbol);
+    });
+    
+    let html = '<option value="">Select an instrument...</option>';
+    
+    Object.entries(groups).forEach(([groupName, groupSymbols]) => {
+        if (groupSymbols.length > 0) {
+            html += `<optgroup label="${groupName}">`;
+            groupSymbols.sort().forEach(symbol => {
+                const hasOverride = pointValueOverrides[symbol] !== undefined;
+                html += `<option value="${symbol}">${symbol} ${hasOverride ? '🔧' : ''}</option>`;
+            });
+            html += '</optgroup>';
+        }
+    });
+    
+    select.innerHTML = html;
+}
+
+// Show verification details for selected symbol
+window.showVerificationDetails = () => {
+    const symbol = document.getElementById('verificationSymbolSelect')?.value;
+    if (!symbol) {
+        document.getElementById('verificationDetails').classList.add('hidden');
+        return;
+    }
+    
+    const pointValue = getPointValue(symbol);
+    const lotInfo = getLotSizeInfo(symbol);
+    const hasOverride = pointValueOverrides[symbol] !== undefined;
+    
+    document.getElementById('currentPointValue').innerHTML = 
+        `$${pointValue} ${hasOverride ? '<span class="text-xs text-orange-600 ml-2">(overridden)</span>' : ''}`;
+    document.getElementById('currentMinLot').textContent = lotInfo.minLot;
+    document.getElementById('currentStdLot').textContent = lotInfo.stdLotDisplay;
+    
+    document.getElementById('verificationDetails').classList.remove('hidden');
+};
+
+// Override point value for a symbol
+window.overridePointValue = () => {
+    const symbol = document.getElementById('verificationSymbolSelect')?.value;
+    const newValue = parseFloat(document.getElementById('overridePointValue')?.value);
+    
+    if (!symbol) {
+        alert('Please select an instrument first');
+        return;
+    }
+    
+    if (isNaN(newValue) || newValue <= 0) {
+        alert('Please enter a valid positive number');
+        return;
+    }
+    
+    pointValueOverrides[symbol] = newValue;
+    savePointValueOverrides();
+    
+    showSuccessMessage(`Point value for ${symbol} updated to $${newValue}`);
+    showVerificationDetails();
+    populateVerificationSymbols();
+};
+
+// Reset point value to default
+window.resetPointValue = () => {
+    const symbol = document.getElementById('verificationSymbolSelect')?.value;
+    
+    if (!symbol) {
+        alert('Please select an instrument first');
+        return;
+    }
+    
+    delete pointValueOverrides[symbol];
+    savePointValueOverrides();
+    
+    document.getElementById('overridePointValue').value = '';
+    showSuccessMessage(`Point value for ${symbol} reset to default`);
+    showVerificationDetails();
+    populateVerificationSymbols();
+};
+
+// Calculate test PnL
+window.calculateTestPnL = () => {
+    const symbol = document.getElementById('verificationSymbolSelect')?.value;
+    const entryPrice = parseFloat(document.getElementById('calcEntryPrice')?.value);
+    const exitPrice = parseFloat(document.getElementById('calcExitPrice')?.value);
+    const lotSize = parseFloat(document.getElementById('calcLotSize')?.value);
+    const direction = document.getElementById('calcDirection')?.value;
+    
+    if (!symbol) {
+        alert('Please select an instrument first');
+        return;
+    }
+    
+    if (isNaN(entryPrice) || isNaN(exitPrice) || isNaN(lotSize)) {
+        alert('Please fill all price and lot size fields');
+        return;
+    }
+    
+    const pointValue = getPointValue(symbol);
+    const points = direction === 'long' ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+    const pnl = points * pointValue * lotSize;
+    
+    document.getElementById('calculatedPnL').textContent = formatCurrency(pnl);
+    document.getElementById('calculatedPnL').className = `font-bold text-lg ${pnl >= 0 ? 'profit' : 'loss'}`;
+    document.getElementById('pointsMovement').textContent = points.toFixed(4);
+    document.getElementById('calcResult').classList.remove('hidden');
+};
+
+// Fetch contract specifications from Deriv API
+window.fetchAllContractSpecs = async () => {
+    const resultDiv = document.getElementById('batchFetchResult');
+    
+    try {
+        resultDiv.innerHTML = `
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <div class="loading-spinner"></div>
+                <span class="ml-2">Fetching contract specifications from Deriv API...</span>
+            </div>
+        `;
+        
+        // Connect to API
+        await derivAPI.connect();
+        
+        // Get active symbols
+        const activeSymbols = await derivAPI.getActiveSymbols();
+        
+        // Filter for synthetic indices
+        const syntheticSymbols = activeSymbols.filter(s => 
+            s.symbol.includes('Volatility') || 
+            s.symbol.includes('Boom') || 
+            s.symbol.includes('Crash') ||
+            s.symbol.includes('Jump') ||
+            s.symbol.includes('Step') ||
+            s.symbol.includes('Range Break')
+        );
+        
+        // Try to get contract details for each
+        const results = [];
+        for (const symbolInfo of syntheticSymbols.slice(0, 20)) {
+            try {
+                const contracts = await derivAPI.getContractsForSymbol(symbolInfo.symbol);
+                results.push({
+                    symbol: symbolInfo.symbol,
+                    display: symbolInfo.display_name,
+                    contracts: contracts ? 'Available' : 'N/A'
+                });
+            } catch (e) {
+                results.push({
+                    symbol: symbolInfo.symbol,
+                    display: symbolInfo.display_name,
+                    error: e.message
+                });
+            }
+        }
+        
+        // Display results
+        let html = `
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h5 class="font-semibold mb-2">Fetch Results</h5>
+                <p class="text-sm mb-2">Found ${syntheticSymbols.length} synthetic symbols</p>
+                <div class="max-h-60 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="py-1 text-left">Symbol</th>
+                                <th class="py-1 text-left">Display Name</th>
+                                <th class="py-1 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        results.forEach(r => {
+            html += `
+                <tr class="border-b">
+                    <td class="py-1">${r.symbol}</td>
+                    <td class="py-1">${r.display || '-'}</td>
+                    <td class="py-1">${r.error ? '❌ Error' : '✅ ' + r.contracts}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Note: The Deriv API provides contract availability but not the point values directly. 
+                    Point values must be manually verified or obtained from MT5 symbol specifications.
+                </p>
+            </div>
+        `;
+        
+        resultDiv.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error fetching specs:', error);
+        resultDiv.innerHTML = `
+            <div class="bg-red-50 p-4 rounded-lg text-red-800">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Error fetching specifications: ${error.message}
+            </div>
+        `;
+    }
+};
+
+// Initialize verification tool
+function initVerificationTool() {
+    loadPointValueOverrides();
+    
+    // Set up event listeners
+    const symbolSelect = document.getElementById('verificationSymbolSelect');
+    if (symbolSelect) {
+        populateVerificationSymbols();
+        symbolSelect.addEventListener('change', showVerificationDetails);
+    }
+}
+
+// ========== EMOTION GAUGE FUNCTIONS ==========
+
+// Initialize emotion gauge
+function initEmotionGauge() {
+    const emotionSlider = document.getElementById('emotionLevel');
+    const emotionValue = document.getElementById('emotionValue');
+    const emotionDescription = document.getElementById('emotionDescription');
+    const gaugeFill = document.getElementById('emotionGaugeFill');
+
+    if (!emotionSlider || !emotionValue || !emotionDescription || !gaugeFill) {
+        console.warn('Emotion gauge elements not found');
+        return;
+    }
+
+    // Set initial values
+    updateEmotionDisplay(50);
+
+    // Add event listener for slider changes
+    emotionSlider.addEventListener('input', function(e) {
+        const value = parseInt(e.target.value);
+        updateEmotionDisplay(value);
+    });
+}
+
+// Update emotion gauge display
+function updateEmotionDisplay(value) {
+    const emotionValue = document.getElementById('emotionValue');
+    const emotionDescription = document.getElementById('emotionDescription');
+    const gaugeFill = document.getElementById('emotionGaugeFill');
+
+    if (emotionValue) emotionValue.textContent = value;
+    if (gaugeFill) gaugeFill.style.width = `${value}%`;
+
+    // Update description based on value
+    let description = '';
+    if (value <= 20) {
+        description = 'Very calm and collected';
+    } else if (value <= 40) {
+        description = 'Calm and focused';
+    } else if (value <= 60) {
+        description = 'Balanced emotional state';
+    } else if (value <= 80) {
+        description = 'Elevated emotions';
+    } else {
+        description = 'Highly intense emotional state';
+    }
+
+    if (emotionDescription) emotionDescription.textContent = description;
+}
+
+// Get emotion category from gauge value
+function getEmotionCategory(value) {
+    if (value <= 25) return 'calm';
+    if (value <= 50) return 'balanced';
+    if (value <= 75) return 'anxious';
+    return 'intense';
+}
+
+// Get emotion level from gauge
+function getEmotionLevel() {
+    const emotionSlider = document.getElementById('emotionLevel');
+    return emotionSlider ? parseInt(emotionSlider.value) : 50;
+}
+
+// ========== EMOTION ANALYTICS FUNCTIONS ==========
+
+// Update emotion analytics in dashboard
+function updateEmotionAnalytics(trades) {
+    if (!trades || trades.length === 0) {
+        resetEmotionAnalytics();
+        return;
+    }
+
+    // Count trades by emotion category
+    const emotionCounts = {
+        calm: 0,
+        anxious: 0,
+        frustrated: 0,
+        focused: 0
+    };
+
+    let totalTrades = 0;
+
+    trades.forEach(trade => {
+        if (trade.emotionLevel !== undefined) {
+            const category = getEmotionCategory(trade.emotionLevel);
+            if (emotionCounts.hasOwnProperty(category)) {
+                emotionCounts[category]++;
+                totalTrades++;
+            }
+        }
+    });
+
+    // Update UI elements
+    updateEmotionCards(emotionCounts, totalTrades);
+    updateEmotionInsights(emotionCounts, totalTrades, trades);
+}
+
+// Update emotion analytics cards
+function updateEmotionCards(counts, total) {
+    const emotions = ['calm', 'anxious', 'frustrated', 'focused'];
+    
+    emotions.forEach(emotion => {
+        const countElement = document.getElementById(`${emotion}Trades`);
+        const percentElement = document.getElementById(`${emotion}Percent`);
+        
+        if (countElement) countElement.textContent = counts[emotion] || 0;
+        if (percentElement) {
+            const percent = total > 0 ? Math.round((counts[emotion] / total) * 100) : 0;
+            percentElement.textContent = `${percent}%`;
+        }
+    });
+}
+
+// Update emotion insights
+function updateEmotionInsights(counts, total, trades) {
+    const insightsElement = document.getElementById('emotionInsights');
+    if (!insightsElement) return;
+
+    if (total === 0) {
+        insightsElement.textContent = 'No emotion data available yet. Start tracking your emotional state with each trade!';
+        return;
+    }
+
+    // Calculate insights
+    const calmPercent = Math.round((counts.calm / total) * 100);
+    const anxiousPercent = Math.round((counts.anxious / total) * 100);
+    const frustratedPercent = Math.round((counts.frustrated / total) * 100);
+    const focusedPercent = Math.round((counts.focused / total) * 100);
+
+    // Generate insights based on data
+    let insights = [];
+
+    if (calmPercent >= 60) {
+        insights.push('Excellent! You maintain calm in most trades.');
+    } else if (anxiousPercent >= 40) {
+        insights.push('Consider developing techniques to reduce anxiety during trading.');
+    }
+
+    if (focusedPercent >= 50) {
+        insights.push('Good focus levels - you\'re staying disciplined.');
+    }
+
+    if (frustratedPercent >= 30) {
+        insights.push('High frustration levels detected. Review losing trades for patterns.');
+    }
+
+    // Performance correlation insights
+    const profitableTrades = trades.filter(t => t.result === 'win' && t.emotionLevel !== undefined);
+    const losingTrades = trades.filter(t => t.result === 'loss' && t.emotionLevel !== undefined);
+
+    if (profitableTrades.length > 0 && losingTrades.length > 0) {
+        const avgProfitEmotion = profitableTrades.reduce((sum, t) => sum + t.emotionLevel, 0) / profitableTrades.length;
+        const avgLossEmotion = losingTrades.reduce((sum, t) => sum + t.emotionLevel, 0) / losingTrades.length;
+
+        if (avgProfitEmotion < avgLossEmotion) {
+            insights.push('Lower emotion levels correlate with better performance.');
+        } else if (avgProfitEmotion > avgLossEmotion) {
+            insights.push('Higher emotional intensity may be affecting your results.');
+        }
+    }
+
+    if (insights.length === 0) {
+        insights.push('Keep tracking emotions to identify patterns in your trading psychology.');
+    }
+
+    insightsElement.textContent = insights.join(' ');
+}
+
+// Reset emotion analytics when no data
+function resetEmotionAnalytics() {
+    const emotions = ['calm', 'anxious', 'frustrated', 'focused'];
+    
+    emotions.forEach(emotion => {
+        const countElement = document.getElementById(`${emotion}Trades`);
+        const percentElement = document.getElementById(`${emotion}Percent`);
+        
+        if (countElement) countElement.textContent = '0';
+        if (percentElement) percentElement.textContent = '0%';
+    });
+
+    const insightsElement = document.getElementById('emotionInsights');
+    if (insightsElement) {
+        insightsElement.textContent = 'No emotion data available yet. Start tracking your emotional state with each trade!';
+    }
+}
+
 // ========== INITIALIZATION ==========
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
     hideLoading();
+    initVerificationTool();
+});
+
+// Clean up real-time listeners when page unloads
+window.addEventListener('beforeunload', () => {
+    if (tradesUnsubscribe) {
+        tradesUnsubscribe();
+    }
+    if (accountsUnsubscribe) {
+        accountsUnsubscribe();
+    }
+    if (affirmationsUnsubscribe) {
+        affirmationsUnsubscribe();
+    }
 });
 
