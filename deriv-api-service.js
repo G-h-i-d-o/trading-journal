@@ -2,8 +2,8 @@
 
 class DerivAPIService {
     constructor() {
-        this.appId = '362252140223'; // Your Firebase app ID or use a specific Deriv app ID
-        this.endpoint = 'wss://ws.binaryws.com/websockets/v3';
+        this.appId = '1089'; // Deriv's demo app ID
+        this.endpoint = 'wss://ws.derivws.com/websockets/v3';
         this.connection = null;
         this.isConnected = false;
         this.messageCallbacks = new Map();

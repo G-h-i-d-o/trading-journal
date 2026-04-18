@@ -1,7 +1,8 @@
 // app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS, MT4/5 IMPORT, AND ALL IMPROVEMENTS
 import { 
-    auth, db, onAuthStateChanged, signOut, 
-    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
+    auth, db, storage, onAuthStateChanged, signOut, 
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc,
+    ref, uploadBytes, getDownloadURL, deleteObject
 } from './firebase-config.js';
 
 let currentUser = null;
@@ -1933,41 +1934,106 @@ async function addTrade(e) {
             return;
         }
 
+        // Add stop loss validation
+        if (tradeType === 'long' && stopLoss >= entryPrice) {
+            alert('For a long position, Stop Loss must be below Entry Price');
+            return;
+        }
+        if (tradeType === 'short' && stopLoss <= entryPrice) {
+            alert('For a short position, Stop Loss must be above Entry Price');
+            return;
+        }
+
         const instrumentType = getInstrumentType(symbol);
         // Determine exit price: exitPrice takes priority, then takeProfit, then entryPrice
         const actualExitPrice = exitPrice || takeProfit || entryPrice;
         const profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
 
+        // ========== SCREENSHOT HANDLING - FIXED ==========
+        let beforeScreenshot = '';
+        let afterScreenshot = '';
+
+        // Before screenshot
+        const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
+        const beforeFileInput = document.getElementById('beforeScreenshotFile');
+        
+        if (beforeUrlInput && beforeUrlInput.style.display !== 'none' && beforeUrlInput.value) {
+            beforeScreenshot = beforeUrlInput.value.trim();
+        } else if (beforeFileInput && beforeFileInput.files && beforeFileInput.files[0]) {
+            beforeScreenshot = await uploadScreenshot(beforeFileInput.files[0], 'before');
+        }
+
+        // After screenshot
+        const afterUrlInput = document.getElementById('afterScreenshotUrl');
+        const afterFileInput = document.getElementById('afterScreenshotFile');
+        
+        if (afterUrlInput && afterUrlInput.style.display !== 'none' && afterUrlInput.value) {
+            afterScreenshot = afterUrlInput.value.trim();
+        } else if (afterFileInput && afterFileInput.files && afterFileInput.files[0]) {
+            afterScreenshot = await uploadScreenshot(afterFileInput.files[0], 'after');
+        }
+        // ========== END SCREENSHOT HANDLING ==========
+
         const tradeData = {
-            symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, exitPrice, lotSize,
+            symbol, 
+            type: tradeType, 
+            instrumentType, 
+            entryPrice, 
+            stopLoss, 
+            takeProfit, 
+            exitPrice, 
+            lotSize,
             mood: mood,
             emotionLevel: getEmotionLevel(),
-            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
-            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
+            beforeScreenshot: beforeScreenshot,
+            afterScreenshot: afterScreenshot,
             notes: document.getElementById('notes')?.value || '', 
             confluenceOptions,
             confluenceScore: Number(confluenceScore.toFixed(0)),
             timestamp: tradeTimestamp,
-            profit, 
+            profit: profit, 
             pipsPoints: pipPointInfo.risk,
             riskAmount: stopLoss ? Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) : 0,
             riskPercent: stopLoss ? (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100 : 0,
-            accountSize, leverage, 
+            accountSize: accountSize, 
+            leverage: leverage, 
             userId: currentUser.uid,
             accountId: currentAccountId
         };
 
         await addDoc(collection(db, 'trades'), tradeData);
-        e.target.reset();
         
+        // Reset form
+        e.target.reset();
         document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+        
+        // Reset screenshot inputs
+        const beforeUrl = document.getElementById('beforeScreenshotUrl');
+        const beforeFile = document.getElementById('beforeScreenshotFile');
+        const afterUrl = document.getElementById('afterScreenshotUrl');
+        const afterFile = document.getElementById('afterScreenshotFile');
+        if (beforeUrl) beforeUrl.value = '';
+        if (beforeFile) beforeFile.value = '';
+        if (afterUrl) afterUrl.value = '';
+        if (afterFile) afterFile.value = '';
+        
+        // Reset upload status displays
+        updateUploadStatus('before', '');
+        updateUploadStatus('after', '');
+        
+        // Reset emotion gauge
+        const emotionSlider = document.getElementById('emotionLevel');
+        if (emotionSlider) {
+            emotionSlider.value = 50;
+            updateEmotionDisplay(50);
+        }
         
         await loadTrades();
         alert('Trade added successfully!');
     } catch (error) {
         console.error('Error adding trade:', error);
-        alert('Error adding trade.');
+        alert('Error adding trade: ' + error.message);
     } finally {
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
@@ -3915,6 +3981,67 @@ document.addEventListener('click', (e) => {
 
 // ========== SCREENSHOT FUNCTIONS ==========
 
+async function uploadScreenshot(file, type) {
+    if (!file) return null;
+    
+    try {
+        updateUploadStatus(type, 'Uploading image...', 'uploading');
+        
+        // Create a unique filename
+        const timestamp = Date.now();
+        const fileName = `${type}_screenshot_${timestamp}_${file.name}`;
+        const storageRef = ref(storage, `screenshots/${currentUser.uid}/${fileName}`);
+        
+        // Upload the file
+        const snapshot = await uploadBytes(storageRef, file);
+        console.log('Uploaded screenshot:', snapshot.ref.fullPath);
+        
+        // Get the download URL
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('Download URL:', downloadURL);
+        
+        updateUploadStatus(type, 'Image uploaded successfully!', 'success');
+        return downloadURL;
+        
+    } catch (error) {
+        console.error('Error uploading screenshot:', error);
+        updateUploadStatus(type, 'Upload failed. Please try again.', 'error');
+        return null;
+    }
+}
+
+function updateUploadStatus(type, message, typeClass = '') {
+    const statusElement = document.getElementById(`${type}UploadStatus`);
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `upload-status ${typeClass}`;
+        if (message) statusElement.style.display = 'block';
+    }
+}
+
+window.toggleScreenshotInput = (type, inputType) => {
+    const urlInput = document.getElementById(`${type}ScreenshotUrl`);
+    const fileInput = document.getElementById(`${type}ScreenshotFile`);
+    const urlBtn = document.querySelector(`[onclick="toggleScreenshotInput('${type}', 'url')"]`);
+    const fileBtn = document.querySelector(`[onclick="toggleScreenshotInput('${type}', 'file')"]`);
+    
+    if (inputType === 'url') {
+        if (urlInput) urlInput.style.display = 'block';
+        if (fileInput) fileInput.style.display = 'none';
+        if (urlBtn) urlBtn.classList.add('active');
+        if (fileBtn) fileBtn.classList.remove('active');
+        if (fileInput) fileInput.value = '';
+        updateUploadStatus(type, '');
+    } else {
+        if (urlInput) urlInput.style.display = 'none';
+        if (fileInput) fileInput.style.display = 'block';
+        if (urlBtn) urlBtn.classList.remove('active');
+        if (fileBtn) fileBtn.classList.add('active');
+        if (urlInput) urlInput.value = '';
+        updateUploadStatus(type, '');
+    }
+};
+
 window.viewScreenshot = (url) => {
     let cleanedUrl = url.trim();
     
@@ -3928,7 +4055,7 @@ window.viewScreenshot = (url) => {
         alert('Invalid screenshot URL. Please check the URL format.');
         return;
     }
-
+    
     const modal = document.getElementById('screenshotModal');
     const image = document.getElementById('screenshotImage');
     
@@ -3938,33 +4065,14 @@ window.viewScreenshot = (url) => {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
-        let hasLoaded = false;
-        let errorShown = false;
-        
         image.onload = function() {
             console.log('Screenshot loaded successfully:', cleanedUrl);
-            hasLoaded = true;
             image.alt = 'Trade Screenshot';
         };
         
         image.onerror = function() {
             console.error('Failed to load screenshot:', cleanedUrl);
-            
-            if (!hasLoaded && !errorShown) {
-                errorShown = true;
-                image.alt = 'Failed to load screenshot. The image may be blocked by CORS policy or the URL may be incorrect.';
-                
-                const knownDomains = ['images.unsplash.com', 'imgur.com', 'i.imgur.com', 'postimg.cc', 'prnt.sc', 'gyazo.com', 'ibb.co'];
-                const isKnownDomain = knownDomains.some(domain => cleanedUrl.includes(domain));
-                
-                if (!isKnownDomain) {
-                    setTimeout(() => {
-                        if (!hasLoaded) {
-                            alert('Failed to load screenshot. This could be due to:\n\n• CORS restrictions\n• The image being deleted or moved\n• Network connectivity issues');
-                        }
-                    }, 1000);
-                }
-            }
+            image.alt = 'Failed to load screenshot. Please check the URL.';
         };
         
         image.src = cleanedUrl;
