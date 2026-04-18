@@ -5669,24 +5669,26 @@ function getEmotionLevel() {
 
 // Update emotion analytics in dashboard
 function updateEmotionAnalytics(trades) {
+    console.log('[EMOTION] Updating emotion analytics for', trades?.length, 'trades');
+    
     if (!trades || trades.length === 0) {
         resetEmotionAnalytics();
         return;
     }
 
-    // Count trades by emotion category
+    // Count trades by emotion category (matching HTML IDs)
     const emotionCounts = {
         calm: 0,
+        balanced: 0,
         anxious: 0,
-        frustrated: 0,
-        focused: 0
+        intense: 0
     };
-
     let totalTrades = 0;
 
     trades.forEach(trade => {
-        if (trade.emotionLevel !== undefined) {
+        if (trade.emotionLevel !== undefined && trade.emotionLevel !== null) {
             const category = getEmotionCategory(trade.emotionLevel);
+            console.log(`[EMOTION] Trade ${trade.id}: level=${trade.emotionLevel}, category=${category}`);
             if (emotionCounts.hasOwnProperty(category)) {
                 emotionCounts[category]++;
                 totalTrades++;
@@ -5694,8 +5696,24 @@ function updateEmotionAnalytics(trades) {
         }
     });
 
-    // Update UI elements
-    updateEmotionCards(emotionCounts, totalTrades);
+    console.log('[EMOTION] Counts:', emotionCounts, 'Total:', totalTrades);
+
+    // Update UI
+    const emotions = ['calm', 'balanced', 'anxious', 'intense'];
+    emotions.forEach(emotion => {
+        const countElement = document.getElementById(`${emotion}Trades`);
+        const percentElement = document.getElementById(`${emotion}Percent`);
+        
+        if (countElement) {
+            countElement.textContent = emotionCounts[emotion] || 0;
+            console.log(`[EMOTION] Set ${emotion}Trades to ${emotionCounts[emotion] || 0}`);
+        }
+        if (percentElement) {
+            const percent = totalTrades > 0 ? Math.round((emotionCounts[emotion] / totalTrades) * 100) : 0;
+            percentElement.textContent = `${percent}%`;
+        }
+    });
+
     updateEmotionInsights(emotionCounts, totalTrades, trades);
 }
 
@@ -5725,46 +5743,38 @@ function updateEmotionInsights(counts, total, trades) {
         return;
     }
 
-    // Calculate insights
+    let insights = [];
     const calmPercent = Math.round((counts.calm / total) * 100);
     const anxiousPercent = Math.round((counts.anxious / total) * 100);
-    const frustratedPercent = Math.round((counts.frustrated / total) * 100);
-    const focusedPercent = Math.round((counts.focused / total) * 100);
-
-    // Generate insights based on data
-    let insights = [];
+    const intensePercent = Math.round((counts.intense / total) * 100);
 
     if (calmPercent >= 60) {
-        insights.push('Excellent! You maintain calm in most trades.');
+        insights.push('✅ Excellent! You maintain calm in most trades.');
     } else if (anxiousPercent >= 40) {
-        insights.push('Consider developing techniques to reduce anxiety during trading.');
+        insights.push('⚠️ Consider developing techniques to reduce anxiety during trading.');
     }
 
-    if (focusedPercent >= 50) {
-        insights.push('Good focus levels - you\'re staying disciplined.');
+    if (intensePercent >= 30) {
+        insights.push('🔥 High emotional intensity detected. Consider taking breaks between trades.');
     }
 
-    if (frustratedPercent >= 30) {
-        insights.push('High frustration levels detected. Review losing trades for patterns.');
-    }
-
-    // Performance correlation insights
-    const profitableTrades = trades.filter(t => t.result === 'win' && t.emotionLevel !== undefined);
-    const losingTrades = trades.filter(t => t.result === 'loss' && t.emotionLevel !== undefined);
+    // Performance correlation - FIXED: use profit > 0 instead of result property
+    const profitableTrades = trades.filter(t => t.profit > 0 && t.emotionLevel !== undefined);
+    const losingTrades = trades.filter(t => t.profit < 0 && t.emotionLevel !== undefined);
 
     if (profitableTrades.length > 0 && losingTrades.length > 0) {
         const avgProfitEmotion = profitableTrades.reduce((sum, t) => sum + t.emotionLevel, 0) / profitableTrades.length;
         const avgLossEmotion = losingTrades.reduce((sum, t) => sum + t.emotionLevel, 0) / losingTrades.length;
-
+        
         if (avgProfitEmotion < avgLossEmotion) {
-            insights.push('Lower emotion levels correlate with better performance.');
+            insights.push('📉 Lower emotion levels correlate with better performance.');
         } else if (avgProfitEmotion > avgLossEmotion) {
-            insights.push('Higher emotional intensity may be affecting your results.');
+            insights.push('📈 Higher emotional intensity may be affecting your results.');
         }
     }
 
     if (insights.length === 0) {
-        insights.push('Keep tracking emotions to identify patterns in your trading psychology.');
+        insights.push('💡 Keep tracking emotions to identify patterns in your trading psychology.');
     }
 
     insightsElement.textContent = insights.join(' ');
@@ -5772,16 +5782,13 @@ function updateEmotionInsights(counts, total, trades) {
 
 // Reset emotion analytics when no data
 function resetEmotionAnalytics() {
-    const emotions = ['calm', 'anxious', 'frustrated', 'focused'];
-    
+    const emotions = ['calm', 'balanced', 'anxious', 'intense'];
     emotions.forEach(emotion => {
         const countElement = document.getElementById(`${emotion}Trades`);
         const percentElement = document.getElementById(`${emotion}Percent`);
-        
         if (countElement) countElement.textContent = '0';
         if (percentElement) percentElement.textContent = '0%';
     });
-
     const insightsElement = document.getElementById('emotionInsights');
     if (insightsElement) {
         insightsElement.textContent = 'No emotion data available yet. Start tracking your emotional state with each trade!';
