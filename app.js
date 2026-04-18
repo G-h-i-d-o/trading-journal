@@ -1,8 +1,7 @@
 // app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS, MT4/5 IMPORT, AND ALL IMPROVEMENTS
 import { 
-    auth, db, storage, onAuthStateChanged, signOut, 
-    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc, onSnapshot,
-    ref, uploadBytes, getDownloadURL, deleteObject
+    auth, db, onAuthStateChanged, signOut, 
+    collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc
 } from './firebase-config.js';
 
 let currentUser = null;
@@ -24,11 +23,6 @@ let userAccounts = [];
 // Calendar state
 let currentCalendarDate = new Date();
 let calendarViewType = 'month';
-
-// Real-time listeners
-let tradesUnsubscribe = null;
-let accountsUnsubscribe = null;
-let affirmationsUnsubscribe = null;
 
 // Loading timeout safety (10 seconds)
 let loadingTimeout;
@@ -1222,62 +1216,50 @@ async function loadUserAccounts() {
     try {
         if (!currentUser) throw new Error('No authenticated user');
 
-        console.log('📁 Setting up real-time accounts listener for user:', currentUser.uid);
-
-        // Unsubscribe from previous listener if it exists
-        if (accountsUnsubscribe) {
-            accountsUnsubscribe();
-        }
-
+        console.log('📁 Loading accounts from Firestore for user:', currentUser.uid);
         const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
-
-        // Set up real-time listener for accounts
-        accountsUnsubscribe = onSnapshot(q, async (querySnapshot) => {
-            const accounts = [];
-            querySnapshot.forEach((doc) => {
-                accounts.push({ id: doc.id, ...doc.data() });
-            });
-
-            console.log('[ACCOUNTS] Accounts updated in real-time:', accounts.length);
-
-            if (accounts.length === 0) {
-                console.log('🆕 Creating default account...');
-                const defaultAccount = {
-                    name: 'Main Account',
-                    balance: 10000,
-                    currency: 'USD',
-                    createdAt: new Date().toISOString(),
-                    isDefault: true,
-                    userId: currentUser.uid
-                };
-
-                const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
-                userAccounts = [{ id: docRef.id, ...defaultAccount }];
-                console.log('[SUCCESS] Default account created with ID:', docRef.id);
-            } else {
-                userAccounts = accounts;
-                console.log('[SUCCESS] Accounts loaded from Firestore:', userAccounts.length);
-            }
-
-            const savedCurrentAccount = localStorage.getItem('currentAccountId');
-            currentAccountId = savedCurrentAccount || userAccounts[0].id;
-
-            if (!userAccounts.some(acc => acc.id === currentAccountId)) {
-                console.warn('⚠️ Current account ID not found in accounts, using first account');
-                currentAccountId = userAccounts[0].id;
-                localStorage.setItem('currentAccountId', currentAccountId);
-            }
-
-            console.log('[ACCOUNT] Current account set to:', currentAccountId);
-            updateCurrentAccountDisplay();
-        }, (error) => {
-            console.error('[ERROR] Error in accounts real-time listener:', error);
-            // Fallback to localStorage if Firestore fails
-            loadAccountsFromLocalStorageFallback();
+        const querySnapshot = await getDocs(q);
+        
+        const accounts = [];
+        querySnapshot.forEach((doc) => {
+            accounts.push({ id: doc.id, ...doc.data() });
         });
 
+        console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
+
+        if (accounts.length === 0) {
+            console.log('🆕 Creating default account...');
+            const defaultAccount = {
+                name: 'Main Account',
+                balance: 10000,
+                currency: 'USD',
+                createdAt: new Date().toISOString(),
+                isDefault: true,
+                userId: currentUser.uid
+            };
+            
+            const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
+            userAccounts = [{ id: docRef.id, ...defaultAccount }];
+            console.log('[SUCCESS] Default account created with ID:', docRef.id);
+        } else {
+            userAccounts = accounts;
+            console.log('[SUCCESS] Accounts loaded from Firestore:', userAccounts.length);
+        }
+        
+        const savedCurrentAccount = localStorage.getItem('currentAccountId');
+        currentAccountId = savedCurrentAccount || userAccounts[0].id;
+        
+        if (!userAccounts.some(acc => acc.id === currentAccountId)) {
+            console.warn('⚠️ Current account ID not found in accounts, using first account');
+            currentAccountId = userAccounts[0].id;
+            localStorage.setItem('currentAccountId', currentAccountId);
+        }
+        
+        console.log('[ACCOUNT] Current account set to:', currentAccountId);
+        updateCurrentAccountDisplay();
+        
     } catch (error) {
-        console.error('[ERROR] Error setting up accounts listener:', error);
+        console.error('[ERROR] Error loading accounts from Firestore:', error);
         await loadAccountsFromLocalStorageFallback();
     }
 }
@@ -1734,41 +1716,12 @@ onAuthStateChanged(auth, async (user) => {
         }
     } else {
         console.log('🚪 No user, redirecting to login');
-
-        // Clean up real-time listeners when user logs out
-        if (tradesUnsubscribe) {
-            tradesUnsubscribe();
-            tradesUnsubscribe = null;
-        }
-        if (accountsUnsubscribe) {
-            accountsUnsubscribe();
-            accountsUnsubscribe = null;
-        }
-        if (affirmationsUnsubscribe) {
-            affirmationsUnsubscribe();
-            affirmationsUnsubscribe = null;
-        }
-
         window.location.href = 'index.html';
     }
 });
 
 window.logout = async () => {
     try {
-        // Clean up real-time listeners
-        if (tradesUnsubscribe) {
-            tradesUnsubscribe();
-            tradesUnsubscribe = null;
-        }
-        if (accountsUnsubscribe) {
-            accountsUnsubscribe();
-            accountsUnsubscribe = null;
-        }
-        if (affirmationsUnsubscribe) {
-            affirmationsUnsubscribe();
-            affirmationsUnsubscribe = null;
-        }
-
         await signOut(auth);
     } catch (error) {
         console.error('Logout error:', error);
@@ -1805,24 +1758,6 @@ function setupEventListeners() {
                 if (exitPriceField) {
                     exitPriceField.value = '';
                 }
-                // Reset screenshot inputs
-                const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
-                const afterUrlInput = document.getElementById('afterScreenshotUrl');
-                const beforeFileInput = document.getElementById('beforeScreenshotFile');
-                const afterFileInput = document.getElementById('afterScreenshotFile');
-
-                if (beforeUrlInput) beforeUrlInput.value = '';
-                if (afterUrlInput) afterUrlInput.value = '';
-                if (beforeFileInput) beforeFileInput.value = '';
-                if (afterFileInput) afterFileInput.value = '';
-
-                // Reset toggles to URL mode
-                toggleScreenshotInput('before', 'url');
-                toggleScreenshotInput('after', 'url');
-
-                // Clear upload statuses
-                updateUploadStatus('before', '');
-                updateUploadStatus('after', '');
             }, 0);
         });
     }
@@ -1910,8 +1845,8 @@ function setupEventListeners() {
 
 async function loadTrades() {
     try {
-        console.log('[TRADES] Setting up real-time trades listener for account:', currentAccountId);
-
+        console.log('[TRADES] Loading trades for account:', currentAccountId);
+        
         if (!currentUser) throw new Error('No authenticated user');
 
         if (!currentAccountId) {
@@ -1920,43 +1855,31 @@ async function loadTrades() {
             if (!currentAccountId) throw new Error('No accounts available');
         }
 
-        // Unsubscribe from previous listener if it exists
-        if (tradesUnsubscribe) {
-            tradesUnsubscribe();
-        }
-
         const q = query(
-            collection(db, 'trades'),
+            collection(db, 'trades'), 
             where('userId', '==', currentUser.uid),
             where('accountId', '==', currentAccountId)
         );
-
-        // Set up real-time listener
-        tradesUnsubscribe = onSnapshot(q, (querySnapshot) => {
-            const trades = [];
-            querySnapshot.forEach((doc) => {
-                trades.push({ id: doc.id, ...doc.data() });
-            });
-
-            trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-            allTrades = trades;
-            setupPagination(trades);
-            updateStats(trades);
-            renderCharts(trades);
-            calculateAdvancedMetrics(trades);
-            updateEmotionAnalytics(trades);
-
-            console.log('🔄 Trades updated in real-time:', trades.length);
-        }, (error) => {
-            console.error('❌ Error in trades real-time listener:', error);
+        const querySnapshot = await getDocs(q);
+        
+        const trades = [];
+        querySnapshot.forEach((doc) => {
+            trades.push({ id: doc.id, ...doc.data() });
         });
 
-        console.log('✅ Real-time trades listener set up successfully');
-
+        trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        allTrades = trades;
+        setupPagination(trades);
+        updateStats(trades);
+        renderCharts(trades);
+        calculateAdvancedMetrics(trades);
+        
+        console.log('✅ Trades loaded successfully:', trades.length);
+        
     } catch (error) {
-        console.error('❌ Error setting up trades listener:', error);
-
+        console.error('❌ Error loading trades:', error);
+        
         const tradeHistory = document.getElementById('tradeHistory');
         if (tradeHistory) {
             tradeHistory.innerHTML = `
@@ -2016,34 +1939,12 @@ async function addTrade(e) {
         const profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
 
-        // Handle screenshots (both URL and file uploads)
-        let beforeScreenshot = '';
-        let afterScreenshot = '';
-
-        // Check if URL inputs are visible (active)
-        const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
-        const afterUrlInput = document.getElementById('afterScreenshotUrl');
-        const beforeFileInput = document.getElementById('beforeScreenshotFile');
-        const afterFileInput = document.getElementById('afterScreenshotFile');
-
-        if (beforeUrlInput && beforeUrlInput.style.display !== 'none') {
-            beforeScreenshot = beforeUrlInput.value || '';
-        } else if (beforeFileInput && beforeFileInput.files[0]) {
-            beforeScreenshot = await uploadScreenshot(beforeFileInput.files[0], 'before');
-        }
-
-        if (afterUrlInput && afterUrlInput.style.display !== 'none') {
-            afterScreenshot = afterUrlInput.value || '';
-        } else if (afterFileInput && afterFileInput.files[0]) {
-            afterScreenshot = await uploadScreenshot(afterFileInput.files[0], 'after');
-        }
-
         const tradeData = {
             symbol, type: tradeType, instrumentType, entryPrice, stopLoss, takeProfit, exitPrice, lotSize,
             mood: mood,
             emotionLevel: getEmotionLevel(),
-            beforeScreenshot: beforeScreenshot,
-            afterScreenshot: afterScreenshot,
+            beforeScreenshot: document.getElementById('beforeScreenshot')?.value || '',
+            afterScreenshot: document.getElementById('afterScreenshot')?.value || '',
             notes: document.getElementById('notes')?.value || '', 
             confluenceOptions,
             confluenceScore: Number(confluenceScore.toFixed(0)),
@@ -2824,41 +2725,30 @@ async function loadAffirmations() {
     try {
         if (!currentUser) return;
 
-        console.log('📖 Setting up real-time affirmations listener...');
+        console.log('📖 Loading affirmations...');
+        const q = query(collection(db, 'affirmations'), where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        
+        const affirmations = [];
+        querySnapshot.forEach((doc) => affirmations.push({ id: doc.id, ...doc.data() }));
 
-        // Unsubscribe from previous listener if it exists
-        if (affirmationsUnsubscribe) {
-            affirmationsUnsubscribe();
+        if (affirmations.length === 0) {
+            console.log('[AFFIRMATIONS] No affirmations found, creating sample data...');
+            for (const sampleAffirmation of sampleAffirmations) {
+                const affirmationData = { ...sampleAffirmation, userId: currentUser.uid };
+                await addDoc(collection(db, 'affirmations'), affirmationData);
+            }
+            await loadAffirmations();
+            return;
         }
 
-        const q = query(collection(db, 'affirmations'), where('userId', '==', currentUser.uid));
-
-        // Set up real-time listener for affirmations
-        affirmationsUnsubscribe = onSnapshot(q, async (querySnapshot) => {
-            const affirmations = [];
-            querySnapshot.forEach((doc) => affirmations.push({ id: doc.id, ...doc.data() }));
-
-            if (affirmations.length === 0) {
-                console.log('[AFFIRMATIONS] No affirmations found, creating sample data...');
-                for (const sampleAffirmation of sampleAffirmations) {
-                    const affirmationData = { ...sampleAffirmation, userId: currentUser.uid };
-                    await addDoc(collection(db, 'affirmations'), affirmationData);
-                }
-                // Don't recursively call loadAffirmations here as the listener will trigger
-                return;
-            }
-
-            allAffirmations = affirmations;
-            updateAffirmationStats();
-            renderAffirmationsGrid();
-            setupDailyAffirmation();
-            console.log('🔄 Affirmations updated in real-time:', affirmations.length);
-        }, (error) => {
-            console.error('❌ Error in affirmations real-time listener:', error);
-        });
-
+        allAffirmations = affirmations;
+        updateAffirmationStats();
+        renderAffirmationsGrid();
+        setupDailyAffirmation();
+        console.log('✅ Affirmations loaded:', affirmations.length);
     } catch (error) {
-        console.error('❌ Error setting up affirmations listener:', error);
+        console.error('❌ Error loading affirmations:', error);
         allAffirmations = [...sampleAffirmations];
         updateAffirmationStats();
         renderAffirmationsGrid();
@@ -3387,11 +3277,6 @@ function parseCSV(csvText) {
                 
                 const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
                 trade.pipsPoints = pipPointInfo.risk;
-            } else if (!stopLoss) {
-                // If no stop loss, set risk to 0
-                trade.riskAmount = 0;
-                trade.riskPercent = 0;
-                trade.pipsPoints = 0;
             }
             
             if (trade.symbol && !isNaN(trade.entryPrice) && !isNaN(trade.stopLoss)) {
@@ -3491,7 +3376,7 @@ function convertToCSV(trades) {
     const currencyName = currencyNames[selectedCurrency] || 'US Dollar';
     
     const headers = [
-        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 'Exit Price',
+        'Date', 'Symbol', 'Type', 'InstrumentType', 'Entry', 'SL', 'TP', 
         'Lots', `Profit (${currencyName})`, `Risk Amount (${currencyName})`, 
         'Risk %', 'PipsPoints', 'Mood', 'BeforeScreenshot', 'AfterScreenshot', 
         'Notes', 'AccountSize', 'Leverage', 'Timestamp', 'AccountId', 'MTTicket'
@@ -3507,7 +3392,6 @@ function convertToCSV(trades) {
             trade.entryPrice,
             trade.stopLoss,
             trade.takeProfit || '',
-            trade.exitPrice || '',
             trade.lotSize,
             trade.profit,
             trade.riskAmount,
@@ -4099,68 +3983,6 @@ window.closeScreenshotModal = () => {
         }
     }
 };
-
-// ========== SCREENSHOT INPUT FUNCTIONS ==========
-
-window.toggleScreenshotInput = (type, inputType) => {
-    const urlInput = document.getElementById(`${type}ScreenshotUrl`);
-    const fileInput = document.getElementById(`${type}ScreenshotFile`);
-    const urlBtn = document.querySelector(`[onclick="toggleScreenshotInput('${type}', 'url')"]`);
-    const fileBtn = document.querySelector(`[onclick="toggleScreenshotInput('${type}', 'file')"]`);
-
-    if (inputType === 'url') {
-        urlInput.style.display = 'block';
-        fileInput.style.display = 'none';
-        urlBtn.classList.add('active');
-        fileBtn.classList.remove('active');
-        fileInput.value = ''; // Clear file input
-        updateUploadStatus(type, ''); // Clear status
-    } else {
-        urlInput.style.display = 'none';
-        fileInput.style.display = 'block';
-        urlBtn.classList.remove('active');
-        fileBtn.classList.add('active');
-        urlInput.value = ''; // Clear URL input
-        updateUploadStatus(type, ''); // Clear status
-    }
-};
-
-function updateUploadStatus(type, message, typeClass = '') {
-    const statusElement = document.getElementById(`${type}UploadStatus`);
-    if (statusElement) {
-        statusElement.textContent = message;
-        statusElement.className = `upload-status ${typeClass}`;
-    }
-}
-
-async function uploadScreenshot(file, type) {
-    if (!file) return null;
-
-    try {
-        updateUploadStatus(type, 'Uploading image...', 'uploading');
-
-        // Create a unique filename
-        const timestamp = Date.now();
-        const fileName = `${type}_screenshot_${timestamp}_${file.name}`;
-        const storageRef = ref(storage, `screenshots/${currentUser.uid}/${fileName}`);
-
-        // Upload the file
-        const snapshot = await uploadBytes(storageRef, file);
-        console.log('Uploaded screenshot:', snapshot.ref.fullPath);
-
-        // Get the download URL
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        console.log('Download URL:', downloadURL);
-
-        updateUploadStatus(type, 'Image uploaded successfully!', 'success');
-        return downloadURL;
-
-    } catch (error) {
-        console.error('Error uploading screenshot:', error);
-        updateUploadStatus(type, 'Upload failed. Please try again.', 'error');
-        return null;
-    }
-}
 
 // ========== ANALYTICS AND STATS FUNCTIONS ==========
 
@@ -5864,18 +5686,5 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
     hideLoading();
     initVerificationTool();
-});
-
-// Clean up real-time listeners when page unloads
-window.addEventListener('beforeunload', () => {
-    if (tradesUnsubscribe) {
-        tradesUnsubscribe();
-    }
-    if (accountsUnsubscribe) {
-        accountsUnsubscribe();
-    }
-    if (affirmationsUnsubscribe) {
-        affirmationsUnsubscribe();
-    }
 });
 
