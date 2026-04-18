@@ -140,6 +140,234 @@ const mtSymbolMapping = {
     'Drift Switch 30 Index': 'Drift Switch 30 Index'
 };
 
+// Deriv Synthetic Indices Lot Size Configuration
+// Data sourced from: https://synthetics.info/lot-sizes-synthetic-indices/
+const derivLotSizeConfig = {
+    // Volatility Indices
+    'Volatility 10 Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Volatility 10 (1s) Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Volatility 25 Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Volatility 25 (1s) Index': { minLot: 0.005, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.005' },
+    'Volatility 50 Index': { minLot: 4, maxLot: 100, pointValue: 0.001, stdLotDisplay: '4.0' },
+    'Volatility 50 (1s) Index': { minLot: 0.005, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.005' },
+    'Volatility 75 Index': { minLot: 0.001, maxLot: 100, pointValue: 0.00001, stdLotDisplay: '0.001' },
+    'Volatility 75 (1s) Index': { minLot: 0.05, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.05' },
+    'Volatility 100 Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Volatility 100 (1s) Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Volatility 200 Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Volatility 300 Index': { minLot: 0.5, maxLot: 100, pointValue: 0.001, stdLotDisplay: '0.5' },
+    
+    // Boom & Crash Indices
+    'Boom 50 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Boom 100 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Boom 300 Index': { minLot: 1, maxLot: 50, pointValue: 0.001, stdLotDisplay: '1.0' },
+    'Boom 500 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Boom 600 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Boom 900 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Boom 1000 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Crash 50 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Crash 100 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Crash 300 Index': { minLot: 0.5, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.5' },
+    'Crash 500 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Crash 600 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Crash 900 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    'Crash 1000 Index': { minLot: 0.2, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.2' },
+    
+    // Step Indices
+    'Step Index': { minLot: 0.1, maxLot: 50, pointValue: 0.10, stdLotDisplay: '0.1' },
+    'Step 200 Index': { minLot: 0.1, maxLot: 50, pointValue: 0.10, stdLotDisplay: '0.1' },
+    'Step 300 Index': { minLot: 0.1, maxLot: 50, pointValue: 0.10, stdLotDisplay: '0.1' },
+    'Step 400 Index': { minLot: 0.1, maxLot: 50, pointValue: 0.10, stdLotDisplay: '0.1' },
+    'Step 500 Index': { minLot: 0.1, maxLot: 50, pointValue: 0.10, stdLotDisplay: '0.1' },
+    
+    // Jump Indices
+    'Jump 10 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    'Jump 25 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    'Jump 50 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    'Jump 75 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    'Jump 100 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    'Jump 150 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    'Jump 200 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.001, stdLotDisplay: '0.01' },
+    
+    // Range Break Indices
+    'Range Break 50 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    'Range Break 100 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    'Range Break 200 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    
+    // Mixed/DEX Indices
+    'Bear Market Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    'Bull Market Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    'Drift Switch 10 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    'Drift Switch 20 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' },
+    'Drift Switch 30 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' }
+};
+
+// Traditional Instruments Standard Lot Configuration
+const standardLotConfig = {
+    forex: { stdLot: 1.0, minLot: 0.01, display: '1.0 (100,000 units)' },
+    indices: { stdLot: 1.0, minLot: 0.1, display: '1.0' },
+    commodities: { stdLot: 1.0, minLot: 0.01, display: '1.0 (100 oz for Gold)' },
+    smarttrader: { stdLot: 1.0, minLot: 1.0, display: '1.0 (stake amount)' },
+    accumulator: { stdLot: 1.0, minLot: 1.0, display: '1.0' }
+};
+
+// Function to get lot size information for any instrument
+function getLotSizeInfo(symbol, instrumentType = null) {
+    if (!instrumentType) {
+        instrumentType = getInstrumentType(symbol);
+    }
+    
+    // Check if it's a Deriv synthetic index
+    if (derivLotSizeConfig[symbol]) {
+        const config = derivLotSizeConfig[symbol];
+        return {
+            minLot: config.minLot,
+            maxLot: config.maxLot,
+            stdLotDisplay: config.stdLotDisplay,
+            pointValue: config.pointValue,
+            description: `Min: ${config.minLot} | Std: ${config.stdLotDisplay} lot(s)`,
+            warning: `Minimum lot size is ${config.minLot}. Using smaller lots will result in "Invalid volume" error.`
+        };
+    }
+    
+    // Handle traditional instruments
+    if (instrumentType === 'forex') {
+        return {
+            minLot: 0.01,
+            maxLot: 100,
+            stdLotDisplay: '1.0',
+            pointValue: symbol.includes('JPY') ? 0.01 : 0.0001,
+            description: 'Std Lot = 100,000 units | Min: 0.01',
+            warning: null
+        };
+    }
+    
+    if (instrumentType === 'indices') {
+        return {
+            minLot: 0.1,
+            maxLot: 100,
+            stdLotDisplay: '1.0',
+            pointValue: getPointValue(symbol),
+            description: 'Std Lot = 1.0 | Min: 0.1',
+            warning: null
+        };
+    }
+    
+    if (instrumentType === 'commodities') {
+        return {
+            minLot: 0.01,
+            maxLot: 100,
+            stdLotDisplay: '1.0',
+            pointValue: symbol === 'Gold' ? 0.01 : (symbol === 'Silver' ? 0.001 : 0.01),
+            description: symbol === 'Gold' ? 'Std Lot = 100 oz' : 'Std Lot = 1.0',
+            warning: null
+        };
+    }
+    
+    // Default fallback
+    return {
+        minLot: 0.01,
+        maxLot: 100,
+        stdLotDisplay: '1.0',
+        pointValue: 0.0001,
+        description: 'Std Lot = 1.0 | Min: 0.01',
+        warning: null
+    };
+}
+
+// Function to update the lot size display when instrument changes
+function updateLotSizeDisplay() {
+    const symbol = document.getElementById('symbol')?.value;
+    const lotSizeInput = document.getElementById('lotSize');
+    const lotSizeDisplay = document.querySelector('#lotSize + .pip-display');
+    
+    if (!symbol || !lotSizeInput || !lotSizeDisplay) return;
+    
+    const instrumentType = getInstrumentType(symbol);
+    const lotInfo = getLotSizeInfo(symbol, instrumentType);
+    
+    // Update the display text
+    let displayText = lotInfo.description;
+    
+    // Add instrument-specific information
+    if (instrumentType === 'synthetic') {
+        const config = derivLotSizeConfig[symbol];
+        if (config) {
+            displayText = `Min Lot: ${config.minLot} | Point Value: $${config.pointValue}/pt`;
+            if (config.minLot < 0.01) {
+                displayText += ` (micro lots allowed)`;
+            }
+        }
+    } else if (instrumentType === 'forex') {
+        displayText = 'Std Lot = 100,000 units | Min: 0.01 | Pip ≈ $10';
+    } else if (instrumentType === 'indices') {
+        const pointVal = getPointValue(symbol);
+        displayText = `Std Lot = 1.0 | Point Value: $${pointVal} | Min: 0.1`;
+    } else if (instrumentType === 'commodities') {
+        if (symbol === 'Gold') {
+            displayText = 'Std Lot = 100 oz | Point Value: $1 | Min: 0.01';
+        } else if (symbol === 'Silver') {
+            displayText = 'Std Lot = 5,000 oz | Point Value: $5 | Min: 0.01';
+        } else {
+            displayText = 'Std Lot = 1.0 | Min: 0.01';
+        }
+    }
+    
+    lotSizeDisplay.textContent = displayText;
+    
+    // Set appropriate step and min values for the input
+    if (instrumentType === 'synthetic') {
+        const config = derivLotSizeConfig[symbol];
+        if (config) {
+            lotSizeInput.min = config.minLot;
+            lotSizeInput.max = config.maxLot;
+            lotSizeInput.step = config.minLot < 0.01 ? '0.001' : '0.01';
+            
+            // Set default to minimum if current value is below minimum
+            if (parseFloat(lotSizeInput.value) < config.minLot) {
+                lotSizeInput.value = config.minLot;
+            }
+            
+            // Show warning if needed
+            if (config.minLot > 0.1) {
+                showTemporaryWarning(`⚠️ ${symbol} minimum lot size is ${config.minLot}. Using smaller lots will result in "Invalid volume" error.`, 5000);
+            }
+        }
+    } else {
+        lotSizeInput.min = instrumentType === 'indices' ? '0.1' : '0.01';
+        lotSizeInput.max = '100';
+        lotSizeInput.step = '0.01';
+    }
+}
+
+// Helper function to show temporary warning
+function showTemporaryWarning(message, duration = 3000) {
+    const warningDiv = document.createElement('div');
+    warningDiv.className = 'fixed bottom-4 right-4 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
+    warningDiv.innerHTML = message;
+    document.body.appendChild(warningDiv);
+    
+    setTimeout(() => {
+        warningDiv.remove();
+    }, duration);
+}
+
+// Enhanced point value getter for synthetic indices
+function getPointValue(symbol) {
+    // Check if it's a synthetic index with configured point value
+    if (derivLotSizeConfig[symbol]) {
+        return derivLotSizeConfig[symbol].pointValue;
+    }
+    
+    const pointValues = {
+        // Traditional indices
+        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
+        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1
+    };
+    
+    return pointValues[symbol] || 1;
+}
+
 function getDeletedConfluenceOptions() {
     try {
         const raw = localStorage.getItem('deletedConfluenceOptions');
@@ -498,28 +726,6 @@ function getPipSize(symbol) {
     return symbol.includes('JPY') ? 0.01 : 0.0001;
 }
 
-function getPointValue(symbol) {
-    const pointValues = {
-        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
-        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1,
-        'Volatility 10 Index': 1, 'Volatility 25 Index': 1, 'Volatility 50 Index': 1,
-        'Volatility 75 Index': 1, 'Volatility 100 Index': 1, 'Volatility 10 (1s) Index': 1,
-        'Volatility 25 (1s) Index': 1, 'Volatility 50 (1s) Index': 1, 'Volatility 75 (1s) Index': 1,
-        'Volatility 100 (1s) Index': 1, 'Volatility 200 Index': 1, 'Volatility 300 Index': 1,
-        'Boom 50 Index': 1, 'Boom 100 Index': 1, 'Boom 300 Index': 1, 'Boom 500 Index': 1,
-        'Boom 600 Index': 1, 'Boom 900 Index': 1, 'Boom 1000 Index': 1,
-        'Crash 50 Index': 1, 'Crash 100 Index': 1, 'Crash 300 Index': 1, 'Crash 500 Index': 1,
-        'Crash 600 Index': 1, 'Crash 900 Index': 1, 'Crash 1000 Index': 1,
-        'Jump 10 Index': 1, 'Jump 25 Index': 1, 'Jump 50 Index': 1, 'Jump 75 Index': 1,
-        'Jump 100 Index': 1, 'Jump 150 Index': 1, 'Jump 200 Index': 1,
-        'Range Break 50 Index': 1, 'Range Break 100 Index': 1, 'Range Break 200 Index': 1,
-        'Step Index': 1, 'Step 200 Index': 1, 'Step 300 Index': 1, 'Step 400 Index': 1, 'Step 500 Index': 1,
-        'Bear Market Index': 1, 'Bull Market Index': 1,
-        'Drift Switch 10 Index': 1, 'Drift Switch 20 Index': 1, 'Drift Switch 30 Index': 1
-    };
-    return pointValues[symbol] || 1;
-}
-
 function calculatePipsPoints(entry, sl, tp, symbol, type) {
     const instrumentType = getInstrumentType(symbol);
     
@@ -554,17 +760,18 @@ function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
         const profit = pips * pipValue;
         return parseFloat(profit.toFixed(2));
     } else if (instrumentType === 'synthetic') {
-        const pointValue = 1 * lotSize;
+        // Use the configured point value for Deriv synthetic indices
+        const pointValue = getPointValue(symbol);
         const points = type === 'long' ? (exit - entry) : (entry - exit);
-        const profit = points * pointValue;
+        const profit = points * pointValue * lotSize;
         return parseFloat(profit.toFixed(2));
     } else if (instrumentType === 'commodities') {
         let pointValue;
-        if (symbol === 'Gold') pointValue = 100;
-        else if (symbol === 'Silver') pointValue = 5000;
-        else if (symbol === 'Oil' || symbol === 'Brent') pointValue = 1000;
-        else if (symbol === 'Natural Gas') pointValue = 10000;
-        else pointValue = 100;
+        if (symbol === 'Gold') pointValue = 1; // $1 per point (0.01 movement)
+        else if (symbol === 'Silver') pointValue = 5; // $5 per point
+        else if (symbol === 'Oil' || symbol === 'Brent') pointValue = 10;
+        else if (symbol === 'Natural Gas') pointValue = 10;
+        else pointValue = 1;
         
         const points = type === 'long' ? (exit - entry) : (entry - exit);
         const profit = points * pointValue * lotSize;
@@ -623,8 +830,21 @@ window.updateInstrumentType = () => {
         
         const displayElement = document.getElementById('instrumentTypeDisplay');
         if (displayElement) {
-            displayElement.innerHTML = `<span class="market-type-badge ${badgeClass}">${displayText}</span>`;
+            // Add point value info for synthetic indices
+            let extraInfo = '';
+            if (instrumentType === 'synthetic') {
+                const config = derivLotSizeConfig[symbol];
+                if (config) {
+                    extraInfo = `<br><small class="text-xs">Point Value: $${config.pointValue}/pt | Min Lot: ${config.minLot}</small>`;
+                }
+            }
+            displayElement.innerHTML = `<span class="market-type-badge ${badgeClass}">${displayText}</span>${extraInfo}`;
         }
+        
+        // Update lot size display
+        updateLotSizeDisplay();
+        
+        // Update risk calculation
         updateRiskCalculation();
     }
 };
@@ -1604,7 +1824,12 @@ function setupEventListeners() {
     });
 
     const symbolSelect = document.getElementById('symbol');
-    if (symbolSelect) symbolSelect.addEventListener('change', updateInstrumentType);
+    if (symbolSelect) {
+        symbolSelect.addEventListener('change', () => {
+            updateInstrumentType();
+            updateLotSizeDisplay();
+        });
+    }
     
     updateRiskCalculation();
     setupSidebarCollapse();

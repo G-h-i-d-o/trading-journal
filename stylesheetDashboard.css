@@ -1541,3 +1541,34 @@
                 width: 100% !important;
             }
         }
+        /* Deriv Lot Size Warning Styles */
+        .lot-size-warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #92400e;
+            margin-top: 6px;
+        }
+
+        .lot-size-info {
+            background: #e0f2fe;
+            border-left: 4px solid #0284c7;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #0369a1;
+            margin-top: 4px;
+        }
+
+        .point-value-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
