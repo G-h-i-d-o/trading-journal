@@ -1832,3 +1832,578 @@
 .commodities-badge { background: #fef3c7; color: #92400e; }
 .smarttrader-badge { background: #d1fae5; color: #065f46; }
 .accumulator-badge { background: #e0e7ff; color: #3730a3; }
+
+/* Settings Navigation Styles */
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.settings-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    color: #4b5563;
+}
+
+.settings-nav-btn i {
+    width: 20px;
+    font-size: 1.1rem;
+}
+
+.settings-nav-btn:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.settings-nav-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.settings-nav-btn.active i {
+    color: white;
+}
+
+/* Settings Sections */
+.settings-section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.settings-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Transaction Styles */
+.transaction-item {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.transaction-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.transaction-deposit {
+    border-left: 4px solid #10b981;
+}
+
+.transaction-withdraw {
+    border-left: 4px solid #ef4444;
+}
+
+.transaction-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.transaction-amount.deposit {
+    color: #10b981;
+}
+
+.transaction-amount.withdraw {
+    color: #ef4444;
+}
+
+/* Toggle Switch Styles */
+.peer:checked ~ .peer-checked\:bg-blue-600 {
+    background-color: #2563eb;
+}
+
+/* Responsive Settings */
+@media (max-width: 768px) {
+    .settings-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        gap: 8px;
+    }
+    
+    .settings-nav-btn {
+        white-space: nowrap;
+        padding: 10px 16px;
+        width: auto;
+    }
+    
+    .settings-nav-btn span {
+        display: inline;
+    }
+}
+
+/* ========== DARK THEME SUPPORT ========== */
+
+/* Theme CSS Variables */
+:root {
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-color: #111827;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+}
+
+/* Dark Theme */
+body.dark-theme {
+    --bg-color: #111827;
+    --card-bg: #1f2937;
+    --text-color: #f9fafb;
+    --text-secondary: #9ca3af;
+    --border-color: #374151;
+}
+
+body.dark-theme {
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* Card styles for dark theme */
+body.dark-theme .card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .stat-card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .stat-card .text-xs {
+    color: var(--text-secondary);
+}
+
+/* Form elements in dark theme */
+body.dark-theme input,
+body.dark-theme select,
+body.dark-theme textarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: var(--text-color);
+}
+
+body.dark-theme input:focus,
+body.dark-theme select:focus,
+body.dark-theme textarea:focus {
+    border-color: #3b82f6;
+    outline: none;
+}
+
+body.dark-theme input::placeholder,
+body.dark-theme textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* Trade items in dark theme */
+body.dark-theme .trade-item {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+body.dark-theme .trade-item .text-gray-600 {
+    color: #d1d5db;
+}
+
+body.dark-theme .trade-item .bg-gray-50 {
+    background: #4b5563;
+}
+
+/* Risk calculator in dark theme */
+body.dark-theme .risk-calculator {
+    background: #1e293b;
+    border-left-color: #3b82f6;
+}
+
+/* Calendar in dark theme */
+body.dark-theme .calendar-view {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .calendar-day {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .calendar-day.other-month {
+    background: #1e293b;
+    color: #9ca3af;
+}
+
+body.dark-theme .calendar-day.today {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+}
+
+body.dark-theme .calendar-day:hover {
+    background: #374151;
+}
+
+body.dark-theme .week-time-slot {
+    background: #1e293b;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+body.dark-theme .week-day-cell {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+/* Confluence options in dark theme */
+body.dark-theme .confluence-option {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+body.dark-theme .confluence-option-text {
+    color: var(--text-color);
+}
+
+body.dark-theme .confluence-option:hover {
+    background: #4b5563;
+}
+
+/* Modal in dark theme */
+body.dark-theme .fixed.inset-0 .bg-white {
+    background: var(--card-bg);
+}
+
+body.dark-theme .fixed.inset-0 .bg-white .text-gray-800,
+body.dark-theme .fixed.inset-0 .bg-white .text-gray-700 {
+    color: var(--text-color);
+}
+
+body.dark-theme .fixed.inset-0 .bg-white .text-gray-500,
+body.dark-theme .fixed.inset-0 .bg-white .text-gray-600 {
+    color: var(--text-secondary);
+}
+
+/* Affirmation cards in dark theme */
+body.dark-theme .affirmation-card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .affirmation-card .text-gray-800 {
+    color: var(--text-color);
+}
+
+body.dark-theme .affirmation-card .bg-gray-50 {
+    background: #374151;
+}
+
+/* Metric cards in dark theme */
+body.dark-theme .metric-card {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+body.dark-theme .metric-card .metric-label {
+    color: var(--text-secondary);
+}
+
+body.dark-theme .psych-metric {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+}
+
+/* Emotion analytics in dark theme */
+body.dark-theme .emotion-insights {
+    background: #374151;
+}
+
+body.dark-theme .insight-title {
+    color: var(--text-color);
+}
+
+body.dark-theme .insight-text {
+    color: var(--text-secondary);
+}
+
+/* Pagination in dark theme */
+body.dark-theme .pagination-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: var(--text-color);
+}
+
+body.dark-theme .pagination-btn:hover:not(.pagination-disabled) {
+    background: #3b82f6;
+    color: white;
+}
+
+body.dark-theme .pagination-disabled {
+    background: #1f2937;
+    color: #6b7280;
+}
+
+/* Settings nav in dark theme */
+body.dark-theme .settings-nav-btn {
+    color: var(--text-secondary);
+}
+
+body.dark-theme .settings-nav-btn:hover {
+    background: #374151;
+    color: var(--text-color);
+}
+
+body.dark-theme .settings-nav-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    color: white;
+}
+
+/* Transaction items in dark theme */
+body.dark-theme .transaction-item {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .transaction-item .text-gray-500 {
+    color: var(--text-secondary);
+}
+
+/* Compact view styles */
+body.compact-view .trade-item {
+    padding: 8px;
+    margin: 6px 0;
+}
+
+body.compact-view .stat-card {
+    padding: 8px;
+}
+
+body.compact-view .stat-value {
+    font-size: 1rem;
+}
+
+body.compact-view .metric-card {
+    padding: 8px;
+}
+
+body.compact-view .metric-value {
+    font-size: 0.9rem;
+}
+
+/* ========== LIGHT THEME (DEFAULT) ========== */
+body.light-theme {
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-color: #111827;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* ========== DARK THEME ========== */
+body.dark-theme {
+    --bg-color: #111827;
+    --card-bg: #1f2937;
+    --text-color: #f9fafb;
+    --text-secondary: #9ca3af;
+    --border-color: #374151;
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* Apply theme variables to elements */
+body.light-theme .card,
+body.dark-theme .card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.light-theme .stat-card,
+body.dark-theme .stat-card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.light-theme .stat-card .text-xs,
+body.dark-theme .stat-card .text-xs {
+    color: var(--text-secondary);
+}
+
+body.light-theme .stat-value,
+body.dark-theme .stat-value {
+    color: var(--text-color);
+}
+
+/* Form elements */
+body.light-theme input,
+body.light-theme select,
+body.light-theme textarea,
+body.dark-theme input,
+body.dark-theme select,
+body.dark-theme textarea {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+body.light-theme input:focus,
+body.light-theme select:focus,
+body.light-theme textarea:focus,
+body.dark-theme input:focus,
+body.dark-theme select:focus,
+body.dark-theme textarea:focus {
+    border-color: #3b82f6;
+    outline: none;
+}
+
+/* Trade items */
+body.light-theme .trade-item,
+body.dark-theme .trade-item {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.light-theme .trade-item .text-gray-600,
+body.dark-theme .trade-item .text-gray-600 {
+    color: var(--text-secondary);
+}
+
+/* Risk calculator */
+body.light-theme .risk-calculator,
+body.dark-theme .risk-calculator {
+    background: var(--card-bg);
+    border-left-color: #3b82f6;
+}
+
+/* Calendar */
+body.light-theme .calendar-view,
+body.dark-theme .calendar-view {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.light-theme .calendar-day,
+body.dark-theme .calendar-day {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.light-theme .calendar-day.other-month,
+body.dark-theme .calendar-day.other-month {
+    background: #f9fafb;
+    color: #9ca3af;
+}
+
+body.dark-theme .calendar-day.other-month {
+    background: #1e293b;
+}
+
+body.light-theme .calendar-day.today,
+body.dark-theme .calendar-day.today {
+    background: #eff6ff;
+    border-color: #3b82f6;
+}
+
+body.dark-theme .calendar-day.today {
+    background: #1e3a5f;
+}
+
+/* Confluence options */
+body.light-theme .confluence-option,
+body.dark-theme .confluence-option {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .confluence-option {
+    background: #374151;
+}
+
+/* Settings navigation */
+body.light-theme .settings-nav-btn,
+body.dark-theme .settings-nav-btn {
+    color: var(--text-secondary);
+}
+
+body.light-theme .settings-nav-btn:hover,
+body.dark-theme .settings-nav-btn:hover {
+    background: var(--border-color);
+    color: var(--text-color);
+}
+
+body.light-theme .settings-nav-btn.active,
+body.dark-theme .settings-nav-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    color: white;
+}
+
+/* Transaction items */
+body.light-theme .transaction-item,
+body.dark-theme .transaction-item {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+/* Metric cards */
+body.light-theme .metric-card,
+body.dark-theme .metric-card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+/* Pagination */
+body.light-theme .pagination-btn,
+body.dark-theme .pagination-btn {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+body.light-theme .pagination-btn:hover:not(.pagination-disabled),
+body.dark-theme .pagination-btn:hover:not(.pagination-disabled) {
+    background: #3b82f6;
+    color: white;
+}
+
+/* Affirmation cards */
+body.light-theme .affirmation-card,
+body.dark-theme .affirmation-card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+/* Emotion analytics */
+body.light-theme .emotion-insights,
+body.dark-theme .emotion-insights {
+    background: var(--border-color);
+}
+
+/* Modal backgrounds */
+body.dark-theme .fixed.inset-0 .bg-white {
+    background: var(--card-bg);
+}
+
+body.dark-theme .fixed.inset-0 .bg-white .text-gray-800,
+body.dark-theme .fixed.inset-0 .bg-white .text-gray-700 {
+    color: var(--text-color);
+}

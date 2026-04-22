@@ -16,6 +16,7 @@ const tradesPerPage = 10;
 let allTrades = [];
 let allAffirmations = [];
 let editingAffirmationId = null;
+let pointValueOverrides = {};
 
 // Account Management System
 let currentAccountId = null;
@@ -490,7 +491,7 @@ function getCurrentDateTimeString() {
 // ========== ENHANCED METATRADER DATE PARSER ==========
 
 function parseMTDateTime(dateTimeStr) {
-    if (!dateTimeStr) return new Date().toISOString();
+    if (!dateTimeStr) return null;
     
     const clean = dateTimeStr.trim();
     
@@ -595,7 +596,7 @@ function parseMTDateTime(dateTimeStr) {
     }
     
     console.warn('[MT IMPORT] Could not parse date:', dateTimeStr);
-    return new Date().toISOString();
+    return null;
 }
 
 // ========== ENHANCED SYMBOL MAPPING ==========
@@ -1410,6 +1411,12 @@ window.switchAccount = async (accountId) => {
     
     console.log('🔄 Switching to account:', accountId);
     
+    // Clean up trades listener before switching
+    if (tradesUnsubscribe) {
+        tradesUnsubscribe();
+        tradesUnsubscribe = null;
+    }
+    
     await saveCurrentAccountData();
     
     currentAccountId = accountId;
@@ -1417,7 +1424,8 @@ window.switchAccount = async (accountId) => {
     
     updateCurrentAccountDisplay();
     
-    await loadAccountData();
+    // Reload trades with new account
+    await loadTrades();
     
     const accountsMenu = document.getElementById('accountsMenu');
     if (accountsMenu) accountsMenu.classList.add('hidden');
@@ -1455,6 +1463,7 @@ async function loadAccountData() {
         }
 
         await loadTrades();
+        await loadTransactions();
         
         updateStats(allTrades);
         renderCharts(allTrades);
@@ -1701,10 +1710,19 @@ onAuthStateChanged(auth, async (user) => {
             setupAccountModalListeners();
             setupCalendar();
             setupMobileViewport();
-            
+            loadPointValueOverrides();
+            loadPersonalInfo();
+            initTheme();
+            setupThemeListeners()
+            loadAllPreferences();
+            // loadPreferences();
+            setupTransactionListeners();
+            await loadTransactions();
             // Initialize emotion gauge
             initEmotionGauge();
             
+            console.log('🔄 Starting account initialization...');
+            await initializeAccounts();
             console.log('✅ All systems initialized successfully');
             
         } catch (error) {
@@ -1723,6 +1741,11 @@ onAuthStateChanged(auth, async (user) => {
 
 window.logout = async () => {
     try {
+        // Clean up real-time listeners
+        if (tradesUnsubscribe) {
+            tradesUnsubscribe();
+            tradesUnsubscribe = null;
+        }
         await signOut(auth);
     } catch (error) {
         console.error('Logout error:', error);
@@ -1842,57 +1865,94 @@ function setupEventListeners() {
     console.log('✅ Event listeners setup complete');
 }
 
-// ========== TRADING FUNCTIONS ==========
+// ========== TRADING FUNCTIONS WITH REAL-TIME LISTENERS ==========
+
+let tradesUnsubscribe = null; // Add this near top with other global variables
 
 async function loadTrades() {
     try {
-        console.log('[TRADES] Loading trades for account:', currentAccountId);
+        console.log('[TRADES] Setting up real-time listener for account:', currentAccountId);
         
         if (!currentUser) throw new Error('No authenticated user');
-
         if (!currentAccountId) {
             console.warn('⚠️ No currentAccountId, using first account');
             currentAccountId = userAccounts[0]?.id;
             if (!currentAccountId) throw new Error('No accounts available');
         }
 
+        // Unsubscribe from previous listener if it exists
+        if (tradesUnsubscribe) {
+            tradesUnsubscribe();
+            tradesUnsubscribe = null;
+        }
+
         const q = query(
-            collection(db, 'trades'), 
+            collection(db, 'trades'),
             where('userId', '==', currentUser.uid),
             where('accountId', '==', currentAccountId)
         );
-        const querySnapshot = await getDocs(q);
-        
-        const trades = [];
-        querySnapshot.forEach((doc) => {
-            trades.push({ id: doc.id, ...doc.data() });
+
+        // Set up real-time listener
+        tradesUnsubscribe = onSnapshot(q, (querySnapshot) => {
+            const trades = [];
+            querySnapshot.forEach((doc) => {
+                trades.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Sort by most recent first
+            trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            allTrades = trades;
+            
+            // Update all UI components
+            setupPagination(trades);
+            updateStats(trades);
+            renderCharts(trades);
+            calculateAdvancedMetrics(trades);
+            updateEmotionAnalytics(trades);
+            generateAISuggestions();
+            
+            // Update calendar if visible
+            if (calendarViewType) {
+                renderCalendar();
+            }
+            
+            console.log('🔄 Trades updated in real-time:', trades.length);
+            
+        }, (error) => {
+            console.error('❌ Error in trades real-time listener:', error);
+            // Show error in UI
+            const tradeHistory = document.getElementById('tradeHistory');
+            if (tradeHistory && allTrades.length === 0) {
+                tradeHistory.innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
+                        <p>Error loading trades: ${error.message}</p>
+                        <button onclick="location.reload()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                            Refresh Page
+                        </button>
+                    </div>
+                `;
+            }
         });
 
-        trades.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        allTrades = trades;
-        setupPagination(trades);
-        updateStats(trades);
-        renderCharts(trades);
-        calculateAdvancedMetrics(trades);
-        
-        console.log('✅ Trades loaded successfully:', trades.length);
-        
+        console.log('✅ Real-time trades listener set up successfully');
+
     } catch (error) {
-        console.error('❌ Error loading trades:', error);
+        console.error('❌ Error setting up trades listener:', error);
         
         const tradeHistory = document.getElementById('tradeHistory');
         if (tradeHistory) {
             tradeHistory.innerHTML = `
-                <div class="text-center text-red-500 py-4">
+                <div class="text-center text-red-500 py-8">
                     <p>Error loading trades: ${error.message}</p>
-                    <p class="text-sm text-gray-500 mt-2">This might be due to network issues or missing account data.</p>
-                    <button onclick="location.reload()" class="btn bg-blue-500 text-white mt-2 px-4 py-2 rounded">🔄 Refresh Page</button>
+                    <p class="text-sm text-gray-500 mt-2">Please refresh the page and try again.</p>
+                    <button onclick="location.reload()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                        🔄 Refresh Page
+                    </button>
                 </div>
             `;
         }
-        
-        throw error;
     }
 }
 
@@ -1921,7 +1981,7 @@ async function addTrade(e) {
         const tradeTimestamp = selectedDateTime ? new Date(selectedDateTime).toISOString() : new Date().toISOString();
         
         const currentAccount = getCurrentAccount();
-        const accountSize = currentAccount.balance;
+        const accountSize = getCurrentBalance();
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
 
         if (!symbol || !entryPrice || !lotSize || !tradeType) {
@@ -1949,6 +2009,12 @@ async function addTrade(e) {
         const actualExitPrice = exitPrice || takeProfit || entryPrice;
         const profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
+        // After a winning trade is added, show confetti
+        if (profit > 0) {
+            showConfetti();
+        }
+
 
         // ========== SCREENSHOT HANDLING - FIXED ==========
         let beforeScreenshot = '';
@@ -3597,12 +3663,15 @@ function parseMetaTraderCSV(csvText) {
             const profit = getValue(['Profit', 'profit', 'P/L']);
             const comment = getValue(['Comment', 'comment', 'Note']);
             
-            if (!closeTime || closeTime === '') {
-                console.log('[MT IMPORT] Skipping open trade:', ticket);
+            if (!ticket) continue;
+            
+            const openTimeParsed = parseMTDateTime(openTime);
+            const closeTimeParsed = parseMTDateTime(closeTime);
+            
+            if (!openTimeParsed || !closeTimeParsed) {
+                console.warn('[MT IMPORT] Skipping trade due to invalid date:', ticket);
                 continue;
             }
-            
-            if (!ticket) continue;
             
             const mappedSymbol = mapMTSymbol(item);
             const tradeType = type.includes('buy') ? 'long' : 'short';
@@ -3634,8 +3703,8 @@ function parseMetaTraderCSV(csvText) {
                 profit: finalProfit,
                 commission: parseFloat(commission) || 0,
                 swap: parseFloat(swap) || 0,
-                openTime: parseMTDateTime(openTime),
-                closeTime: parseMTDateTime(closeTime),
+                openTime: openTimeParsed,
+                closeTime: closeTimeParsed,
                 comment: comment || '',
                 mood: mtImportSettings.defaultMood,
                 beforeScreenshot: '',
@@ -3721,6 +3790,30 @@ window.importMetaTraderTrades = () => {
     
     fileInput.click();
 };
+// ========== COMPLETE MT4/5 IMPORT FUNCTIONS ==========
+
+// Optional: Add preview refresh when settings change
+function refreshMTImportPreview() {
+    if (pendingMTTrades.length > 0) {
+        // Recalculate profits based on current settings
+        pendingMTTrades.forEach(trade => {
+            if (!mtImportSettings.useMTProfit && trade.entryPrice && trade.closePrice) {
+                trade.profit = calculateProfitLoss(
+                    trade.entryPrice, 
+                    trade.closePrice, 
+                    trade.lotSize, 
+                    trade.symbol, 
+                    trade.type
+                );
+            }
+        });
+        // Refresh the preview modal if open
+        const modal = document.getElementById('mtImportModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            showMTImportPreview(pendingMTTrades, [], pendingMTTrades.length);
+        }
+    }
+}
 
 function showMTImportPreview(newTrades, duplicates, totalTrades) {
     const modal = document.getElementById('mtImportModal');
@@ -3780,31 +3873,44 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
         </div>
     `;
     
-    document.getElementById('mtUseMTProfit').addEventListener('change', (e) => {
-        mtImportSettings.useMTProfit = e.target.checked;
-        recalculateMTPendingTrades();
-        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
-    });
-    
-    document.getElementById('mtIncludeCommission').addEventListener('change', (e) => {
-        mtImportSettings.includeCommission = e.target.checked;
-        recalculateMTPendingTrades();
-        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
-    });
-    
-    document.getElementById('mtIncludeSwap').addEventListener('change', (e) => {
-        mtImportSettings.includeSwap = e.target.checked;
-        recalculateMTPendingTrades();
-        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
-    });
-    
-    document.getElementById('mtAutoAddNotes').addEventListener('change', (e) => {
-        mtImportSettings.autoAddNotes = e.target.checked;
-        pendingMTTrades.forEach(trade => {
-            trade.notes = mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${trade.comment || ''}` : (trade.comment || '');
-        });
-        showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
-    });
+    const mtUseMTProfitEl = document.getElementById('mtUseMTProfit');
+    const mtIncludeCommissionEl = document.getElementById('mtIncludeCommission');
+    const mtIncludeSwapEl = document.getElementById('mtIncludeSwap');
+    const mtAutoAddNotesEl = document.getElementById('mtAutoAddNotes');
+
+    if (mtUseMTProfitEl) {
+        mtUseMTProfitEl.onchange = (e) => {
+            mtImportSettings.useMTProfit = e.target.checked;
+            recalculateMTPendingTrades();
+            showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+        };
+    }
+
+    if (mtIncludeCommissionEl) {
+        mtIncludeCommissionEl.onchange = (e) => {
+            mtImportSettings.includeCommission = e.target.checked;
+            recalculateMTPendingTrades();
+            showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+        };
+    }
+
+    if (mtIncludeSwapEl) {
+        mtIncludeSwapEl.onchange = (e) => {
+            mtImportSettings.includeSwap = e.target.checked;
+            recalculateMTPendingTrades();
+            showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+        };
+    }
+
+    if (mtAutoAddNotesEl) {
+        mtAutoAddNotesEl.onchange = (e) => {
+            mtImportSettings.autoAddNotes = e.target.checked;
+            pendingMTTrades.forEach(trade => {
+                trade.notes = mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${trade.comment || ''}` : (trade.comment || '');
+            });
+            showMTImportPreview(pendingMTTrades, duplicates, totalTrades);
+        };
+    }
     
     if (duplicates.length > 0) {
         duplicatesWarning.classList.remove('hidden');
@@ -4109,7 +4215,7 @@ function updateStats(trades) {
         const winningTrades = trades.filter(t => t.profit > 0).length;
         const winRate = ((winningTrades / totalTrades) * 100).toFixed(1);
         const totalPL = trades.reduce((sum, trade) => sum + trade.profit, 0);
-        const currentBalance = accountSize + totalPL;
+        const currentBalance = getCurrentBalance();
 
         stats.totalTrades = totalTrades;
         stats.winRate = `${winRate}%`;
@@ -4160,17 +4266,14 @@ function calculateAdvancedMetrics(trades) {
     const expectancy = (winningTrades.length / trades.length) * avgWin + 
                       (losingTrades.length / trades.length) * avgLoss;
 
-    const avgRiskReward = trades.length > 0 ? 
-        trades.reduce((sum, trade) => {
-            if (trade.takeProfit && trade.riskAmount > 0) {
-                const potentialProfit = Math.abs(calculateProfitLoss(
-                    trade.entryPrice, trade.takeProfit, trade.lotSize, trade.symbol, trade.type
-                ));
-                const riskReward = potentialProfit / trade.riskAmount;
-                return sum + riskReward;
-            }
-            return sum;
-        }, 0) / trades.filter(t => t.takeProfit && t.riskAmount > 0).length : 0;
+    const riskRewardTrades = trades.filter(t => t.takeProfit && t.riskAmount > 0);
+    const avgRiskReward = riskRewardTrades.length > 0 ? 
+        riskRewardTrades.reduce((sum, trade) => {
+            const potentialProfit = Math.abs(calculateProfitLoss(
+                trade.entryPrice, trade.takeProfit, trade.lotSize, trade.symbol, trade.type
+            ));
+            return sum + (potentialProfit / trade.riskAmount);
+        }, 0) / riskRewardTrades.length : 0;
 
     const weeklyPerformance = calculateWeeklyPerformance(trades);
     const consistency = weeklyPerformance.length > 0 ? 
@@ -4725,15 +4828,14 @@ function calculateAllMetrics(trades) {
     
     const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : (totalProfit > 0 ? 999 : 0);
     
-    const avgRiskReward = trades.reduce((sum, t) => {
-        if (t.takeProfit && t.riskAmount > 0) {
+    const riskRewardTrades = trades.filter(t => t.takeProfit && t.riskAmount > 0);
+    const avgRiskReward = riskRewardTrades.length > 0 ? 
+        riskRewardTrades.reduce((sum, t) => {
             const potentialProfit = Math.abs(calculateProfitLoss(
                 t.entryPrice, t.takeProfit, t.lotSize, t.symbol, t.type
             ));
             return sum + (potentialProfit / t.riskAmount);
-        }
-        return sum;
-    }, 0) / trades.filter(t => t.takeProfit && t.riskAmount > 0).length || 0;
+        }, 0) / riskRewardTrades.length : 0;
     
     const avgRiskPercent = trades.length > 0 ? 
         trades.reduce((sum, t) => sum + (t.riskPercent || 0), 0) / trades.length : 0;
@@ -4781,7 +4883,8 @@ function calculateMaxDrawdown(trades) {
     if (trades.length === 0) return 0;
     
     const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    let peak = getCurrentAccount().balance;
+    const currentAccount = getCurrentAccount();
+    let peak = currentAccount.balance;
     let maxDrawdown = 0;
     let currentBalance = peak;
     
@@ -5316,31 +5419,32 @@ function initializeAISuggestions() {
 
 import { derivAPI } from './deriv-api-service.js';
 
-// Store custom point value overrides
-let pointValueOverrides = {};
+// ========== POINT VALUE OVERRIDES ==========
+// Store custom point value overrides for accurate PnL calculations
 
-// Load custom point value overrides from localStorage
+// Load saved overrides from localStorage
 function loadPointValueOverrides() {
     try {
         const stored = localStorage.getItem('pointValueOverrides');
         if (stored) {
             pointValueOverrides = JSON.parse(stored);
+            console.log('[POINT VALUE] Loaded overrides:', Object.keys(pointValueOverrides).length);
         }
     } catch (error) {
-        console.warn('Error loading point value overrides:', error);
+        console.warn('[POINT VALUE] Error loading overrides:', error);
         pointValueOverrides = {};
     }
 }
 
-// Save custom point value overrides to localStorage
+// Save overrides to localStorage
 function savePointValueOverrides() {
     localStorage.setItem('pointValueOverrides', JSON.stringify(pointValueOverrides));
 }
 
-// Enhanced getPointValue with override support
+// Get point value with override support
 function getPointValue(symbol) {
     // Check for manual override first
-    if (pointValueOverrides[symbol] !== undefined) {
+    if (pointValueOverrides && pointValueOverrides[symbol] !== undefined) {
         return pointValueOverrides[symbol];
     }
     
@@ -5349,12 +5453,14 @@ function getPointValue(symbol) {
         return derivLotSizeConfig[symbol].pointValue;
     }
     
+    // Default point values for common instruments
     const pointValues = {
-        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
-        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1
+        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1,
+        'NIKKEI225': 1, 'AUS200': 1, 'ESTX50': 1, 'FRA40': 1,
+        'Gold': 0.01, 'Silver': 0.001, 'Oil': 0.01, 'Brent': 0.01
     };
     
-    return pointValues[symbol] || 1;
+    return pointValues[symbol] || 0.0001;
 }
 
 // Populate verification symbol select
@@ -5792,6 +5898,799 @@ function resetEmotionAnalytics() {
     const insightsElement = document.getElementById('emotionInsights');
     if (insightsElement) {
         insightsElement.textContent = 'No emotion data available yet. Start tracking your emotional state with each trade!';
+    }
+}
+
+// ========== WITHDRAWAL & DEPOSIT SYSTEM ==========
+
+// Transaction storage
+let transactions = [];
+let editingTransactionId = null;
+
+// Load transactions from Firestore
+async function loadTransactions() {
+    try {
+        if (!currentUser || !currentAccountId) return;
+        
+        console.log('[TRANSACTIONS] Loading transactions for account:', currentAccountId);
+        
+        const q = query(
+            collection(db, 'transactions'),
+            where('userId', '==', currentUser.uid),
+            where('accountId', '==', currentAccountId)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        transactions = [];
+        querySnapshot.forEach((doc) => {
+            transactions.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Sort by date (newest first)
+        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        console.log('[TRANSACTIONS] Loaded', transactions.length, 'transactions');
+        renderTransactionHistory();
+        updateCurrentBalanceDisplay();
+        
+    } catch (error) {
+        console.error('[TRANSACTIONS] Error loading transactions:', error);
+    }
+}
+
+// Save transaction to Firestore
+async function saveTransaction(transaction) {
+    try {
+        if (!currentUser || !currentAccountId) {
+            throw new Error('User or account not authenticated');
+        }
+        
+        const transactionData = {
+            ...transaction,
+            userId: currentUser.uid,
+            accountId: currentAccountId,
+            createdAt: new Date().toISOString()
+        };
+        
+        let docRef;
+        if (transaction.id) {
+            docRef = doc(db, 'transactions', transaction.id);
+            await updateDoc(docRef, transactionData);
+        } else {
+            docRef = await addDoc(collection(db, 'transactions'), transactionData);
+            transactionData.id = docRef.id;
+        }
+        
+        console.log('[TRANSACTIONS] Saved transaction:', transactionData);
+        return transactionData;
+        
+    } catch (error) {
+        console.error('[TRANSACTIONS] Error saving transaction:', error);
+        throw error;
+    }
+}
+
+// Delete transaction
+async function deleteTransaction(transactionId) {
+    if (!confirm('Are you sure you want to delete this transaction?')) return;
+    
+    try {
+        await deleteDoc(doc(db, 'transactions', transactionId));
+        transactions = transactions.filter(t => t.id !== transactionId);
+        renderTransactionHistory();
+        updateCurrentBalanceDisplay();
+        showSuccessMessage('Transaction deleted successfully');
+    } catch (error) {
+        console.error('[TRANSACTIONS] Error deleting transaction:', error);
+        alert('Error deleting transaction');
+    }
+}
+
+// Calculate net balance from transactions
+function calculateNetBalanceFromTransactions() {
+    let totalDeposits = 0;
+    let totalWithdrawals = 0;
+    
+    transactions.forEach(transaction => {
+        if (transaction.type === 'deposit') {
+            totalDeposits += transaction.amount;
+        } else if (transaction.type === 'withdraw') {
+            totalWithdrawals += transaction.amount;
+        }
+    });
+    
+    return {
+        totalDeposits,
+        totalWithdrawals,
+        netBalance: totalDeposits - totalWithdrawals
+    };
+}
+
+// Get current balance including initial, trading P/L, and transactions
+function getCurrentBalance() {
+    const currentAccount = getCurrentAccount();
+    const totalPL = allTrades.reduce((sum, trade) => sum + trade.profit, 0);
+    const { netBalance } = calculateNetBalanceFromTransactions();
+    return currentAccount.balance + totalPL + netBalance;
+}
+
+// Update current account balance based on transactions
+async function updateCurrentBalanceFromTransactions() {
+    const { netBalance } = calculateNetBalanceFromTransactions();
+    const currentAccount = getCurrentAccount();
+    
+    if (currentAccount) {
+        currentAccount.balance = netBalance;
+        await saveUserAccounts();
+        
+        // Update UI
+        const accountSizeInput = document.getElementById('accountSize');
+        if (accountSizeInput && !accountSizeInput.readOnly) {
+            accountSizeInput.value = netBalance.toFixed(2);
+        }
+        
+        updateStats(allTrades);
+        renderCharts(allTrades);
+    }
+    
+    return netBalance;
+}
+
+// Update balance display in funds section
+function updateCurrentBalanceDisplay() {
+    const balance = getCurrentBalance();
+    const currentAccount = getCurrentAccount();
+    const currencySymbol = getCurrencySymbol(currentAccount?.currency);
+    
+    const balanceElement = document.getElementById('fundsCurrentBalance');
+    if (balanceElement) {
+        balanceElement.textContent = `${currencySymbol}${balance.toFixed(2)}`;
+    }
+    
+    const availableBalanceElement = document.getElementById('availableBalance');
+    if (availableBalanceElement) {
+        availableBalanceElement.textContent = `${currencySymbol}${balance.toFixed(2)}`;
+    }
+}
+
+// Render transaction history
+function renderTransactionHistory() {
+    const container = document.getElementById('transactionHistory');
+    if (!container) return;
+    
+    if (transactions.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-receipt text-4xl mb-2 opacity-50"></i>
+                <p>No transactions yet</p>
+                <p class="text-sm">Add your first deposit or withdrawal</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const currentAccount = getCurrentAccount();
+    const currencySymbol = getCurrencySymbol(currentAccount?.currency);
+    
+    container.innerHTML = transactions.map(transaction => `
+        <div class="transaction-item transaction-${transaction.type} p-4 bg-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-lg ${transaction.type === 'deposit' ? 'text-green-500' : 'text-red-500'}">
+                            ${transaction.type === 'deposit' ? '💰' : '🏦'}
+                        </span>
+                        <span class="font-semibold capitalize">${transaction.type}</span>
+                        ${transaction.description ? `<span class="text-sm text-gray-500">- ${transaction.description}</span>` : ''}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <i class="far fa-calendar-alt mr-1"></i> ${new Date(transaction.date).toLocaleString()}
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="transaction-amount ${transaction.type} font-bold text-lg">
+                        ${transaction.type === 'deposit' ? '+' : '-'} ${currencySymbol}${transaction.amount.toFixed(2)}
+                    </div>
+                    <button onclick="deleteTransaction('${transaction.id}')" class="text-xs text-red-500 hover:text-red-700 mt-1">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Open deposit modal
+window.openDepositModal = () => {
+    const modal = document.getElementById('depositModal');
+    const depositDate = document.getElementById('depositDate');
+    if (depositDate) {
+        depositDate.value = getCurrentDateTimeString();
+    }
+    
+    const currentAccount = getCurrentAccount();
+    const currencySymbol = getCurrencySymbol(currentAccount?.currency);
+    const depositSymbol = document.getElementById('depositCurrencySymbol');
+    if (depositSymbol) depositSymbol.textContent = currencySymbol;
+    
+    if (modal) modal.classList.remove('hidden');
+};
+
+// Close deposit modal
+window.closeDepositModal = () => {
+    const modal = document.getElementById('depositModal');
+    if (modal) modal.classList.add('hidden');
+    document.getElementById('depositForm')?.reset();
+};
+
+// Open withdraw modal
+window.openWithdrawModal = () => {
+    const currentAccount = getCurrentAccount();
+    const currencySymbol = getCurrencySymbol(currentAccount?.currency);
+    const withdrawSymbol = document.getElementById('withdrawCurrencySymbol');
+    if (withdrawSymbol) withdrawSymbol.textContent = currencySymbol;
+    
+    updateCurrentBalanceDisplay();
+    
+    const modal = document.getElementById('withdrawModal');
+    const withdrawDate = document.getElementById('withdrawDate');
+    if (withdrawDate) {
+        withdrawDate.value = getCurrentDateTimeString();
+    }
+    
+    if (modal) modal.classList.remove('hidden');
+};
+
+// Close withdraw modal
+window.closeWithdrawModal = () => {
+    const modal = document.getElementById('withdrawModal');
+    if (modal) modal.classList.add('hidden');
+    document.getElementById('withdrawForm')?.reset();
+};
+
+// Handle deposit form submission
+document.addEventListener('DOMContentLoaded', () => {
+    const depositForm = document.getElementById('depositForm');
+    if (depositForm) {
+        depositForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('depositAmount')?.value);
+            const description = document.getElementById('depositDescription')?.value || '';
+            const date = document.getElementById('depositDate')?.value || new Date().toISOString();
+            
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid deposit amount');
+                return;
+            }
+            
+            const submitBtn = depositForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+            submitBtn.disabled = true;
+            
+            try {
+                const transaction = {
+                    type: 'deposit',
+                    amount: amount,
+                    description: description,
+                    date: new Date(date).toISOString()
+                };
+                
+                await saveTransaction(transaction);
+                await loadTransactions();
+                updateStats(allTrades);
+                updateCurrentBalanceDisplay();
+                
+                closeDepositModal();
+                showSuccessMessage(`Successfully deposited ${getCurrencySymbol()}${amount.toFixed(2)}!`);
+                
+                // Refresh trades to update stats
+                await loadTrades();
+                
+            } catch (error) {
+                console.error('Error processing deposit:', error);
+                alert('Error processing deposit: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+    
+    const withdrawForm = document.getElementById('withdrawForm');
+    if (withdrawForm) {
+        withdrawForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('withdrawAmount')?.value);
+            const description = document.getElementById('withdrawDescription')?.value || '';
+            const date = document.getElementById('withdrawDate')?.value || new Date().toISOString();
+            const currentAccount = getCurrentAccount();
+            
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid withdrawal amount');
+                return;
+            }
+            
+            if (amount > getCurrentBalance()) {
+                alert(`Insufficient funds. Available balance: ${getCurrencySymbol()}${getCurrentBalance().toFixed(2)}`);
+                return;
+            }
+            
+            const submitBtn = withdrawForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+            submitBtn.disabled = true;
+            
+            try {
+                const transaction = {
+                    type: 'withdraw',
+                    amount: amount,
+                    description: description,
+                    date: new Date(date).toISOString()
+                };
+                
+                await saveTransaction(transaction);
+                await loadTransactions();
+                updateStats(allTrades);
+                updateCurrentBalanceDisplay();
+                
+                closeWithdrawModal();
+                showSuccessMessage(`Successfully withdrew ${getCurrencySymbol()}${amount.toFixed(2)}!`);
+                
+                // Refresh trades to update stats
+                await loadTrades();
+                
+            } catch (error) {
+                console.error('Error processing withdrawal:', error);
+                alert('Error processing withdrawal: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+});
+
+// Export transactions to CSV
+window.exportTransactions = () => {
+    if (transactions.length === 0) {
+        alert('No transactions to export');
+        return;
+    }
+    
+    const currentAccount = getCurrentAccount();
+    const currencySymbol = getCurrencySymbol(currentAccount?.currency);
+    
+    const headers = ['Date', 'Type', 'Amount', 'Description'];
+    const csvRows = [headers.join(',')];
+    
+    transactions.forEach(transaction => {
+        const row = [
+            new Date(transaction.date).toLocaleString(),
+            transaction.type,
+            `${transaction.type === 'deposit' ? '+' : '-'}${currencySymbol}${transaction.amount.toFixed(2)}`,
+            `"${(transaction.description || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showSuccessMessage('Transactions exported successfully!');
+};
+
+// Settings section navigation
+window.showSettingsSection = (section) => {
+    // Hide all sections
+    document.querySelectorAll('.settings-section').forEach(sec => {
+        sec.classList.remove('active');
+    });
+    
+    // Remove active class from all nav buttons
+    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected section
+    const selectedSection = document.getElementById(`${section}SettingsSection`);
+    if (selectedSection) {
+        selectedSection.classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    const clickedBtn = document.querySelector(`.settings-nav-btn[data-section="${section}"]`);
+    if (clickedBtn) {
+        clickedBtn.classList.add('active');
+    }
+    
+    // Load specific section data
+    if (section === 'funds') {
+        updateCurrentBalanceDisplay();
+        renderTransactionHistory();
+    } else if (section === 'verification') {
+        if (typeof populateVerificationSymbols === 'function') {
+            populateVerificationSymbols();
+        }
+    }
+};
+
+// Update the initializeAccounts function to include transaction loading
+// Find the initializeAccounts function and add this line after loading accounts:
+// await loadTransactions();
+
+// Also update loadAccountData to include transactions
+// In loadAccountData function, add: await loadTransactions();
+
+// Update savePersonalInfo function
+window.savePersonalInfo = () => {
+    const fullName = document.getElementById('fullName')?.value || '';
+    const displayName = document.getElementById('displayName')?.value || '';
+    const experienceLevel = document.getElementById('experienceLevel')?.value || '';
+    
+    localStorage.setItem('userFullName', fullName);
+    localStorage.setItem('userDisplayName', displayName);
+    localStorage.setItem('userExperienceLevel', experienceLevel);
+    
+    showSuccessMessage('Personal information saved!');
+    
+    const btn = document.querySelector('#personalSettingsSection .bg-blue-500');
+    if (btn) {
+        const originalText = btn.textContent;
+        btn.textContent = 'Saved!';
+        setTimeout(() => btn.textContent = originalText, 1500);
+    }
+};
+
+// Load saved personal info
+function loadPersonalInfo() {
+    const fullName = localStorage.getItem('userFullName') || '';
+    const displayName = localStorage.getItem('userDisplayName') || '';
+    const experienceLevel = localStorage.getItem('userExperienceLevel') || 'intermediate';
+    
+    const fullNameInput = document.getElementById('fullName');
+    const displayNameInput = document.getElementById('displayName');
+    const experienceSelect = document.getElementById('experienceLevel');
+    
+    if (fullNameInput) fullNameInput.value = fullName;
+    if (displayNameInput) displayNameInput.value = displayName;
+    if (experienceSelect) experienceSelect.value = experienceLevel;
+}
+
+// Load preferences
+function loadPreferences() {
+    const compactView = localStorage.getItem('compactView') === 'true';
+    const confettiEnabled = localStorage.getItem('confettiEnabled') !== 'false';
+    const autoSave = localStorage.getItem('autoSave') !== 'false';
+    const defaultView = localStorage.getItem('defaultTradeView') || 'list';
+    
+    const compactToggle = document.getElementById('compactViewToggle');
+    const confettiToggle = document.getElementById('confettiToggle');
+    const autoSaveToggle = document.getElementById('autoSaveToggle');
+    const defaultViewSelect = document.getElementById('defaultTradeView');
+    
+    if (compactToggle) compactToggle.checked = compactView;
+    if (confettiToggle) confettiToggle.checked = confettiEnabled;
+    if (autoSaveToggle) autoSaveToggle.checked = autoSave;
+    if (defaultViewSelect) defaultViewSelect.value = defaultView;
+    
+    // Add event listeners for preferences
+    if (compactToggle) {
+        compactToggle.addEventListener('change', (e) => {
+            localStorage.setItem('compactView', e.target.checked);
+            location.reload();
+        });
+    }
+    
+    if (confettiToggle) {
+        confettiToggle.addEventListener('change', (e) => {
+            localStorage.setItem('confettiEnabled', e.target.checked);
+        });
+    }
+    
+    if (autoSaveToggle) {
+        autoSaveToggle.addEventListener('change', (e) => {
+            localStorage.setItem('autoSave', e.target.checked);
+        });
+    }
+    
+    if (defaultViewSelect) {
+        defaultViewSelect.addEventListener('change', (e) => {
+            localStorage.setItem('defaultTradeView', e.target.value);
+        });
+    }
+}
+
+// ========== THEME MANAGEMENT SYSTEM ==========
+
+// ========== WORKING THEME MANAGEMENT SYSTEM ==========
+
+// Initialize theme on page load
+function initTheme() {
+    console.log('[THEME] Initializing theme system...');
+    
+    // Get saved theme preference
+    let savedTheme = localStorage.getItem('themePreference');
+    
+    // Validate saved theme
+    if (!savedTheme || !['light', 'dark', 'system'].includes(savedTheme)) {
+        savedTheme = 'light';
+        localStorage.setItem('themePreference', savedTheme);
+    }
+    
+    // Apply theme
+    applyTheme(savedTheme);
+    
+    // Update theme selector in settings
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) {
+        themeSelect.value = savedTheme;
+    }
+    
+    console.log('[THEME] Theme initialized to:', savedTheme);
+}
+
+// Apply theme to document
+function applyTheme(themeName) {
+    console.log('[THEME] Applying theme:', themeName);
+    
+    // Remove existing theme classes
+    document.body.classList.remove('light-theme', 'dark-theme');
+    
+    if (themeName === 'system') {
+        // Check system preference
+        const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (isDarkMode) {
+            document.body.classList.add('dark-theme');
+            document.body.classList.remove('light-theme');
+        } else {
+            document.body.classList.add('light-theme');
+            document.body.classList.remove('dark-theme');
+        }
+        
+        // Listen for system preference changes
+        if (window.themeMediaListener) {
+            window.themeMediaListener.removeEventListener('change', handleSystemThemeChange);
+        }
+        window.themeMediaListener = window.matchMedia('(prefers-color-scheme: dark)');
+        window.themeMediaListener.addEventListener('change', handleSystemThemeChange);
+        
+    } else if (themeName === 'dark') {
+        document.body.classList.add('dark-theme');
+        document.body.classList.remove('light-theme');
+    } else {
+        document.body.classList.add('light-theme');
+        document.body.classList.remove('dark-theme');
+    }
+    
+    // Update any theme-dependent UI elements
+    updateThemeIcon(themeName);
+}
+
+// Handle system theme changes
+function handleSystemThemeChange(e) {
+    const currentTheme = localStorage.getItem('themePreference');
+    if (currentTheme === 'system') {
+        if (e.matches) {
+            document.body.classList.add('dark-theme');
+            document.body.classList.remove('light-theme');
+        } else {
+            document.body.classList.add('light-theme');
+            document.body.classList.remove('dark-theme');
+        }
+        console.log('[THEME] System theme changed to:', e.matches ? 'dark' : 'light');
+    }
+}
+
+// Handle theme change from select dropdown
+function handleThemeChangeFromSelect(event) {
+    const newTheme = event.target.value;
+    console.log('[THEME] Theme changed to:', newTheme);
+    
+    applyTheme(newTheme);
+    localStorage.setItem('themePreference', newTheme);
+    
+    // Show success message
+    showSuccessMessage(`Theme changed to ${getThemeDisplayName(newTheme)}`);
+}
+
+// Get display name for theme
+function getThemeDisplayName(themeName) {
+    const names = {
+        'light': 'Light',
+        'dark': 'Dark',
+        'system': 'System Default'
+    };
+    return names[themeName] || 'Light';
+}
+
+// Update theme icon in sidebar (if exists)
+function updateThemeIcon(themeName) {
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        const iconSpan = themeToggle.querySelector('.icon i');
+        if (iconSpan) {
+            if (themeName === 'dark') {
+                iconSpan.className = 'fas fa-moon';
+            } else if (themeName === 'light') {
+                iconSpan.className = 'fas fa-sun';
+            } else {
+                // System - check current effective theme
+                const isDark = document.body.classList.contains('dark-theme');
+                iconSpan.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+            }
+        }
+    }
+}
+
+// Toggle between light and dark (for sidebar button)
+function toggleTheme() {
+    const currentTheme = localStorage.getItem('themePreference') || 'light';
+    let newTheme;
+    
+    if (currentTheme === 'light') {
+        newTheme = 'dark';
+    } else if (currentTheme === 'dark') {
+        newTheme = 'light';
+    } else {
+        // If system, check current effective theme
+        const isDark = document.body.classList.contains('dark-theme');
+        newTheme = isDark ? 'light' : 'dark';
+    }
+    
+    applyTheme(newTheme);
+    localStorage.setItem('themePreference', newTheme);
+    
+    // Update select dropdown if it exists
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) {
+        themeSelect.value = newTheme;
+    }
+    
+    showSuccessMessage(`Theme changed to ${getThemeDisplayName(newTheme)}`);
+}
+
+// Setup theme event listeners
+function setupThemeListeners() {
+    console.log('[THEME] Setting up theme listeners...');
+    
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) {
+        // Remove existing listener to avoid duplicates
+        const newSelect = themeSelect.cloneNode(true);
+        themeSelect.parentNode.replaceChild(newSelect, themeSelect);
+        
+        // Add new listener
+        newSelect.addEventListener('change', handleThemeChangeFromSelect);
+        console.log('[THEME] Theme select listener attached');
+    } else {
+        console.warn('[THEME] Theme select element not found');
+    }
+    
+    // Also look for theme toggle button in sidebar
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        const newToggle = themeToggle.cloneNode(true);
+        themeToggle.parentNode.replaceChild(newToggle, themeToggle);
+        newToggle.addEventListener('click', toggleTheme);
+        console.log('[THEME] Theme toggle button listener attached');
+    }
+}
+
+// Load all preferences including theme
+function loadAllPreferences() {
+    console.log('[PREFERENCES] Loading all preferences...');
+    
+    // Theme is handled by initTheme, but ensure select is synced
+    const savedTheme = localStorage.getItem('themePreference') || 'light';
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect && themeSelect.value !== savedTheme) {
+        themeSelect.value = savedTheme;
+    }
+    
+    // Load other preferences
+    const compactView = localStorage.getItem('compactView') === 'true';
+    const confettiEnabled = localStorage.getItem('confettiEnabled') !== 'false';
+    const autoSave = localStorage.getItem('autoSave') !== 'false';
+    const defaultView = localStorage.getItem('defaultTradeView') || 'list';
+    
+    const compactToggle = document.getElementById('compactViewToggle');
+    const confettiToggle = document.getElementById('confettiToggle');
+    const autoSaveToggle = document.getElementById('autoSaveToggle');
+    const defaultViewSelect = document.getElementById('defaultTradeView');
+    
+    if (compactToggle) compactToggle.checked = compactView;
+    if (confettiToggle) confettiToggle.checked = confettiEnabled;
+    if (autoSaveToggle) autoSaveToggle.checked = autoSave;
+    if (defaultViewSelect) defaultViewSelect.value = defaultView;
+    
+    // Apply compact view if enabled
+    if (compactView) {
+        document.body.classList.add('compact-view');
+    } else {
+        document.body.classList.remove('compact-view');
+    }
+    
+    // Setup preference listeners
+    setupPreferenceListeners();
+    
+    console.log('[PREFERENCES] Preferences loaded:', { compactView, confettiEnabled, autoSave, defaultView });
+}
+
+// Setup preference event listeners
+function setupPreferenceListeners() {
+    const compactToggle = document.getElementById('compactViewToggle');
+    const confettiToggle = document.getElementById('confettiToggle');
+    const autoSaveToggle = document.getElementById('autoSaveToggle');
+    const defaultViewSelect = document.getElementById('defaultTradeView');
+    
+    if (compactToggle) {
+        const newToggle = compactToggle.cloneNode(true);
+        compactToggle.parentNode.replaceChild(newToggle, compactToggle);
+        newToggle.addEventListener('change', (e) => {
+            localStorage.setItem('compactView', e.target.checked);
+            if (e.target.checked) {
+                document.body.classList.add('compact-view');
+            } else {
+                document.body.classList.remove('compact-view');
+            }
+            showSuccessMessage(e.target.checked ? 'Compact view enabled' : 'Compact view disabled');
+        });
+    }
+    
+    if (confettiToggle) {
+        const newToggle = confettiToggle.cloneNode(true);
+        confettiToggle.parentNode.replaceChild(newToggle, confettiToggle);
+        newToggle.addEventListener('change', (e) => {
+            localStorage.setItem('confettiEnabled', e.target.checked);
+            showSuccessMessage(e.target.checked ? 'Confetti enabled' : 'Confetti disabled');
+        });
+    }
+    
+    if (autoSaveToggle) {
+        const newToggle = autoSaveToggle.cloneNode(true);
+        autoSaveToggle.parentNode.replaceChild(newToggle, autoSaveToggle);
+        newToggle.addEventListener('change', (e) => {
+            localStorage.setItem('autoSave', e.target.checked);
+            showSuccessMessage(e.target.checked ? 'Auto-save enabled' : 'Auto-save disabled');
+        });
+    }
+    
+    if (defaultViewSelect) {
+        const newSelect = defaultViewSelect.cloneNode(true);
+        defaultViewSelect.parentNode.replaceChild(newSelect, defaultViewSelect);
+        newSelect.addEventListener('change', (e) => {
+            localStorage.setItem('defaultTradeView', e.target.value);
+            showSuccessMessage(`Default view set to ${e.target.value}`);
+        });
+    }
+}
+
+// Show confetti for winning trades
+function showConfetti() {
+    const confettiEnabled = localStorage.getItem('confettiEnabled') !== 'false';
+    if (!confettiEnabled) return;
+    
+    // Check if canvas-confetti is available
+    if (typeof confetti === 'function') {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+        });
+    } else {
+        // Simple fallback
+        console.log('[CONFETTI] Winning trade! 🎉');
     }
 }
 
