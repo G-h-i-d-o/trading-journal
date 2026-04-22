@@ -90,15 +90,6 @@
                     </div>
                 </div>
             </div>
-            <!-- In the General Settings section, ensure this select exists -->
-<div class="form-group">
-    <label>Theme</label>
-    <select id="themeSelect">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="system">System Default</option>
-    </select>
-</div>
 
             <div class="sidebar-section">
                 <button onclick="logout()" title="Logout" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
@@ -187,12 +178,12 @@
                             id="affirmationCategorySelect" 
                             class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
                         >
-                            <option value="confidence"><i class="fas fa-fist-raised"></i> Confidence</option>
-                            <option value="discipline"><i class="fas fa-bullseye"></i> Discipline</option>
-                            <option value="patience"><i class="fas fa-hourglass-end"></i> Patience</option>
-                            <option value="risk-management"><i class="fas fa-shield-alt"></i> Risk Management</option>
-                            <option value="mindset"><i class="fas fa-brain"></i> Mindset</option>
-                            <option value="general"><i class="fas fa-rainbow"></i> General</option>
+                            <option value="confidence">Confidence</option>
+                            <option value="discipline">Discipline</option>
+                            <option value="patience">Patience</option>
+                            <option value="risk-management">Risk Management</option>
+                            <option value="mindset">Mindset</option>
+                            <option value="general">General</option>
                         </select>
                     </div>
                     
@@ -1655,7 +1646,7 @@
                             placeholder="e.g., 10000"
                             value="10000"
                             required
-                            min="1"
+                            min="0"
                             step="0.01"
                         >
                     </div>
@@ -1815,6 +1806,15 @@
                 mobilePersonalToggle.addEventListener('click', ()=>{
                     const open = mobilePersonalContent.classList.toggle('open');
                     mobilePersonalToggle.setAttribute('aria-expanded', open);
+                });
+            }
+
+            // Character counter for affirmation text
+            const affirmationText = document.getElementById('affirmationText');
+            const charCount = document.getElementById('charCount');
+            if(affirmationText && charCount){
+                affirmationText.addEventListener('input', function() {
+                    charCount.textContent = this.value.length;
                 });
             }
         })();

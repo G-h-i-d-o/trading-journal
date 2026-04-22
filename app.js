@@ -6476,6 +6476,60 @@ function applyTheme(themeName) {
     updateThemeIcon(themeName);
 }
 
+// ========== SETUP TRANSACTION LISTENERS ==========
+
+function setupTransactionListeners() {
+    console.log('[TRANSACTIONS] Setting up transaction listeners...');
+    
+    // Deposit form listener
+    const depositForm = document.getElementById('depositForm');
+    if (depositForm && !depositForm.hasAttribute('data-listener')) {
+        depositForm.setAttribute('data-listener', 'true');
+        depositForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('depositAmount')?.value);
+            const description = document.getElementById('depositDescription')?.value || '';
+            const date = document.getElementById('depositDate')?.value || new Date().toISOString();
+            
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid deposit amount');
+                return;
+            }
+            
+            const submitBtn = depositForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+            submitBtn.disabled = true;
+            
+            try {
+                const transaction = {
+                    type: 'deposit',
+                    amount: amount,
+                    description: description,
+                    date: new Date(date).toISOString()
+                };
+                
+                await saveTransaction(transaction);
+                await loadTransactions();
+                await updateCurrentBalanceFromTransactions();
+                
+                closeDepositModal();
+                showSuccessMessage(`Successfully deposited ${getCurrencySymbol()}${amount.toFixed(2)}!`);
+                await loadTrades();
+                
+            } catch (error) {
+                console.error('Error processing deposit:', error);
+                alert('Error processing deposit: ' + (error.message || 'Please try again'));
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        console.log('[TRANSACTIONS] Deposit form listener attached');
+    }
+}
+
 // Handle system theme changes
 function handleSystemThemeChange(e) {
     const currentTheme = localStorage.getItem('themePreference');
@@ -6674,6 +6728,8 @@ function setupPreferenceListeners() {
         });
     }
 }
+
+
 
 // Show confetti for winning trades
 function showConfetti() {
