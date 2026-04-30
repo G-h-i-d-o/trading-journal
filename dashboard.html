@@ -1621,7 +1621,7 @@
                     </button>
                 </div>
                 
-                <form id="addAccountForm" class="space-y-4">
+                <form id="addAccountForm" class="space-y-4" onsubmit="event.preventDefault(); window.handleAddAccountSubmit(event);">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Account Name</label>
                         <input 
