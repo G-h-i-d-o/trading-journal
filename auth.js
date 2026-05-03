@@ -141,8 +141,6 @@ function getAuthErrorMessage(error) {
             return 'Password should be at least 6 characters.';
         case 'auth/wrong-password':
             return 'Incorrect password.';
-        case 'auth/invalid-credential':
-            return 'Invalid email or password. Please check your credentials and try again.';
         default:
             return 'An error occurred. Please try again.';
     }
