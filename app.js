@@ -1223,7 +1223,11 @@ async function loadUserAccounts() {
         
         const accounts = [];
         querySnapshot.forEach((doc) => {
-            accounts.push({ id: doc.id, ...doc.data() });
+            const accountData = doc.data();
+            // Ensure all required fields exist
+            if (!accountData.transactions) accountData.transactions = [];
+            if (!accountData.initialBalance) accountData.initialBalance = accountData.balance || 10000;
+            accounts.push({ id: doc.id, ...accountData });
         });
 
         console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
@@ -1233,10 +1237,12 @@ async function loadUserAccounts() {
             const defaultAccount = {
                 name: 'Main Account',
                 balance: 10000,
+                initialBalance: 10000,
                 currency: 'USD',
                 createdAt: new Date().toISOString(),
                 isDefault: true,
-                userId: currentUser.uid
+                userId: currentUser.uid,
+                transactions: []
             };
             
             const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
@@ -1269,16 +1275,24 @@ async function loadAccountsFromLocalStorageFallback() {
     console.log('🔄 Falling back to localStorage for accounts...');
     const savedAccounts = localStorage.getItem('userAccounts');
     if (savedAccounts) {
-        userAccounts = JSON.parse(savedAccounts);
+        const parsedAccounts = JSON.parse(savedAccounts);
+        // Ensure all required fields exist
+        userAccounts = parsedAccounts.map(account => ({
+            ...account,
+            transactions: account.transactions || [],
+            initialBalance: account.initialBalance || account.balance || 10000
+        }));
         console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
     } else {
         userAccounts = [{
             id: 'main_' + Date.now(),
             name: 'Main Account',
             balance: 10000,
+            initialBalance: 10000,
             currency: 'USD',
             createdAt: new Date().toISOString(),
-            isDefault: true
+            isDefault: true,
+            transactions: []
         }];
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         console.log('🆕 Created default account in localStorage');
@@ -1534,10 +1548,12 @@ function setupAccountModalListeners() {
                 const newAccount = {
                     name: accountName,
                     balance: accountBalance,
+                    initialBalance: accountBalance,
                     currency: accountCurrency,
                     createdAt: new Date().toISOString(),
                     isDefault: false,
-                    userId: currentUser.uid
+                    userId: currentUser.uid,
+                    transactions: []
                 };
                 
                 console.log('🆕 Creating new account:', newAccount);
@@ -1699,6 +1715,7 @@ onAuthStateChanged(auth, async (user) => {
             setupMobileMenu();
             setupSidebarCollapse();
             setupAccountModalListeners();
+            setupSettingsTab();
             setupCalendar();
             setupMobileViewport();
             
@@ -2555,6 +2572,511 @@ function updateCurrencyDisplay() {
     
     const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
     if (balanceStat) balanceStat.textContent = `Balance (${currencySymbol})`;
+}
+
+// ========== SETTINGS TAB MANAGEMENT ==========
+
+function switchSettingsTab(tabName) {
+    const sectionName = tabName === 'deposits' ? 'funds' : tabName;
+
+    const allTabs = document.querySelectorAll('.settings-section');
+    allTabs.forEach(tab => {
+        tab.classList.remove('active');
+        tab.classList.add('hidden');
+    });
+
+    const allBtns = document.querySelectorAll('.settings-nav-item');
+    allBtns.forEach(btn => btn.classList.remove('active'));
+
+    const tabElement = document.getElementById(`${sectionName}SettingsSection`);
+    if (tabElement) {
+        tabElement.classList.add('active');
+        tabElement.classList.remove('hidden');
+    }
+
+    allBtns.forEach(btn => {
+        if (btn.dataset.section === sectionName) {
+            btn.classList.add('active');
+        }
+    });
+
+    if (sectionName === 'funds') {
+        loadTransactions();
+    }
+}
+
+function showSettingsSection(sectionName) {
+    switchSettingsTab(sectionName);
+}
+
+function setupSettingsTab() {
+    const nowLocal = new Date().toISOString().slice(0, 16);
+    const depositDateInput = document.getElementById('depositDate');
+    const withdrawDateInput = document.getElementById('withdrawDate');
+    const depositForm = document.getElementById('depositForm');
+    const withdrawForm = document.getElementById('withdrawForm');
+
+    if (depositDateInput) depositDateInput.value = nowLocal;
+    if (withdrawDateInput) withdrawDateInput.value = nowLocal;
+
+    if (depositForm) {
+        depositForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handleDepositSubmit();
+        });
+    }
+
+    if (withdrawForm) {
+        withdrawForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handleWithdrawSubmit();
+        });
+    }
+
+    const currentAccount = getCurrentAccount();
+    if (currentAccount) {
+        updateTransactionSummary(currentAccount);
+        updateAccountSettingsForm(currentAccount);
+        updateDepositWithdrawalDisplay(currentAccount);
+    }
+
+    console.log('✅ Settings tab setup complete');
+}
+
+function openSettingsTab(tabName) {
+    const settingsTab = document.getElementById('settingsTab');
+    const sectionName = tabName === 'deposits' ? 'funds' : tabName;
+
+    if (settingsTab) {
+        settingsTab.click();
+    }
+
+    setTimeout(() => {
+        showSettingsSection(sectionName);
+    }, 100);
+}
+
+function getSettingsTabIndex(tabName) {
+    const tabs = ['general', 'personalInfo', 'preferences', 'deposits', 'verification'];
+    return tabs.indexOf(tabName);
+}
+
+function updateDepositWithdrawalDisplay(account) {
+    const currencySymbol = getCurrencySymbol(account.currency);
+    const depositSymbol = document.getElementById('depositCurrencySymbol');
+    const withdrawSymbol = document.getElementById('withdrawCurrencySymbol');
+    const availableBalanceEl = document.getElementById('availableBalance');
+
+    if (depositSymbol) depositSymbol.textContent = currencySymbol;
+    if (withdrawSymbol) withdrawSymbol.textContent = currencySymbol;
+    if (availableBalanceEl) {
+        availableBalanceEl.textContent = `${currencySymbol}${(account.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+}
+
+function openDepositModal() {
+    const modal = document.getElementById('depositModal');
+    const currentAccount = getCurrentAccount();
+    if (currentAccount) updateDepositWithdrawalDisplay(currentAccount);
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeDepositModal() {
+    const modal = document.getElementById('depositModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function openWithdrawModal() {
+    const modal = document.getElementById('withdrawModal');
+    const currentAccount = getCurrentAccount();
+    if (currentAccount) updateDepositWithdrawalDisplay(currentAccount);
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeWithdrawModal() {
+    const modal = document.getElementById('withdrawModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function handleDepositSubmit() {
+    const amount = parseFloat(document.getElementById('depositAmount').value);
+    const date = document.getElementById('depositDate').value;
+    const notes = document.getElementById('depositDescription').value || '';
+
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid deposit amount.');
+        return;
+    }
+
+    if (!date) {
+        alert('Please select a date for the deposit.');
+        return;
+    }
+
+    await createTransaction('deposit', amount, date, notes);
+    closeDepositModal();
+    document.getElementById('depositForm').reset();
+    document.getElementById('depositDate').value = new Date().toISOString().slice(0, 16);
+}
+
+async function handleWithdrawSubmit() {
+    const amount = parseFloat(document.getElementById('withdrawAmount').value);
+    const date = document.getElementById('withdrawDate').value;
+    const notes = document.getElementById('withdrawDescription').value || '';
+    const currentAccount = getCurrentAccount();
+
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid withdrawal amount.');
+        return;
+    }
+
+    if (!date) {
+        alert('Please select a date for the withdrawal.');
+        return;
+    }
+
+    if (currentAccount && amount > currentAccount.balance) {
+        alert('Withdrawal amount cannot exceed available balance.');
+        return;
+    }
+
+    await createTransaction('withdrawal', amount, date, notes);
+    closeWithdrawModal();
+    document.getElementById('withdrawForm').reset();
+    document.getElementById('withdrawDate').value = new Date().toISOString().slice(0, 16);
+}
+
+async function createTransaction(type, amount, date, notes) {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) {
+        alert('No account selected.');
+        return;
+    }
+
+    if (!currentAccount.transactions) {
+        currentAccount.transactions = [];
+    }
+
+    const transaction = {
+        id: Date.now().toString(),
+        type,
+        amount,
+        date: new Date(date).toISOString(),
+        notes,
+        createdAt: new Date().toISOString(),
+    };
+
+    currentAccount.transactions.push(transaction);
+    currentAccount.balance += type === 'deposit' ? amount : -amount;
+
+    if (currentAccount.initialBalance === undefined) {
+        currentAccount.initialBalance = currentAccount.balance - currentAccount.transactions.reduce((sum, tx) => {
+            return tx.type === 'deposit' ? sum + tx.amount : sum - tx.amount;
+        }, 0);
+    }
+
+    await saveUserAccounts();
+    loadTransactions();
+    updateAccountSettingsForm(currentAccount);
+    updateDepositWithdrawalDisplay(currentAccount);
+    updateStatsAndUI();
+
+    showSuccessMessage(`${type === 'deposit' ? 'Deposit' : 'Withdrawal'} recorded successfully! New balance: ${getCurrencySymbol(currentAccount.currency)}${currentAccount.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+}
+
+function exportTransactions() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount || !currentAccount.transactions || currentAccount.transactions.length === 0) {
+        alert('No transactions available to export.');
+        return;
+    }
+
+    const csvRows = [
+        ['Date', 'Type', 'Amount', 'Notes', 'Recorded At'],
+        ...currentAccount.transactions.map(tx => [
+            new Date(tx.date).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            tx.type,
+            tx.amount.toFixed(2),
+            String(tx.notes || '').replace(/\r?\n/g, ' '),
+            new Date(tx.createdAt).toLocaleString('en-US')
+        ])
+    ];
+
+    const csvContent = csvRows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transactions_${currentAccount.id || 'account'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+window.showSettingsSection = showSettingsSection;
+window.openSettingsTab = openSettingsTab;
+window.switchSettingsTab = switchSettingsTab;
+window.openDepositModal = openDepositModal;
+window.closeDepositModal = closeDepositModal;
+window.openWithdrawModal = openWithdrawModal;
+window.closeWithdrawModal = closeWithdrawModal;
+window.exportTransactions = exportTransactions;
+window.deleteTransaction = deleteTransaction;
+
+// ========== DEPOSIT & WITHDRAWAL MANAGEMENT ==========
+
+async function addTransaction() {
+    const transactionType = document.getElementById('transactionType').value;
+    const amount = parseFloat(document.getElementById('transactionAmount').value);
+    const date = document.getElementById('transactionDate').value;
+    const notes = document.getElementById('transactionNotes').value;
+
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+    }
+
+    if (!date) {
+        alert('Please select a date');
+        return;
+    }
+
+    try {
+        const currentAccount = getCurrentAccount();
+        if (!currentAccount) {
+            alert('No account selected');
+            return;
+        }
+
+        // Initialize transactions array if it doesn't exist
+        if (!currentAccount.transactions) {
+            currentAccount.transactions = [];
+        }
+
+        // Create transaction object
+        const transaction = {
+            id: Date.now().toString(),
+            type: transactionType,
+            amount: amount,
+            date: date,
+            notes: notes || '',
+            createdAt: new Date().toISOString()
+        };
+
+        // Add transaction to account
+        currentAccount.transactions.push(transaction);
+
+        // Update account balance
+        if (transactionType === 'deposit') {
+            currentAccount.balance += amount;
+        } else if (transactionType === 'withdrawal') {
+            currentAccount.balance -= amount;
+        }
+
+        // Save to Firestore
+        await saveUserAccounts();
+
+        // Refresh displays
+        loadTransactions();
+        updateAccountSettingsForm(currentAccount);
+        updateStatsAndUI();
+
+        // Clear form
+        document.getElementById('addTransactionForm').reset();
+        document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
+
+        alert(`Transaction added successfully! New balance: ${getCurrencySymbol()}${currentAccount.balance.toLocaleString()}`);
+        console.log('✅ Transaction added:', transaction);
+    } catch (error) {
+        console.error('❌ Error adding transaction:', error);
+        alert('Error adding transaction. Please try again.');
+    }
+}
+
+async function deleteTransaction(transactionId) {
+    if (!confirm('Are you sure you want to delete this transaction? This will recalculate your account balance.')) {
+        return;
+    }
+
+    try {
+        const currentAccount = getCurrentAccount();
+        if (!currentAccount) return;
+
+        // Find and remove transaction
+        const transactionIndex = currentAccount.transactions.findIndex(t => t.id === transactionId);
+        if (transactionIndex === -1) {
+            alert('Transaction not found');
+            return;
+        }
+
+        const transaction = currentAccount.transactions[transactionIndex];
+        currentAccount.transactions.splice(transactionIndex, 1);
+
+        // Recalculate balance from original and all remaining transactions
+        await recalculateAccountBalance();
+
+        // Save to Firestore
+        await saveUserAccounts();
+
+        // Refresh displays
+        loadTransactions();
+        updateAccountSettingsForm(currentAccount);
+        updateStatsAndUI();
+
+        alert('Transaction deleted and balance recalculated.');
+        console.log('✅ Transaction deleted:', transaction);
+    } catch (error) {
+        console.error('❌ Error deleting transaction:', error);
+        alert('Error deleting transaction. Please try again.');
+    }
+}
+
+async function recalculateAccountBalance() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+
+    // Note: In a real scenario, you'd store the initial balance when account was created
+    // For now, we'll recalculate based on initial value and transactions
+    // This assumes you want to preserve the balance from before any transactions
+    
+    const initialBalance = currentAccount.initialBalance || 10000; // Fallback to default
+    let calculatedBalance = initialBalance;
+
+    if (currentAccount.transactions && Array.isArray(currentAccount.transactions)) {
+        // Sort transactions by date
+        const sortedTransactions = [...currentAccount.transactions].sort((a, b) => 
+            new Date(a.date) - new Date(b.date)
+        );
+
+        // Apply all transactions
+        sortedTransactions.forEach(trans => {
+            if (trans.type === 'deposit') {
+                calculatedBalance += trans.amount;
+            } else if (trans.type === 'withdrawal') {
+                calculatedBalance -= trans.amount;
+            }
+        });
+    }
+
+    currentAccount.balance = Math.max(0, calculatedBalance); // Prevent negative balance
+    console.log('✅ Balance recalculated:', currentAccount.balance);
+}
+
+function loadTransactions() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+
+    const historyContainer = document.getElementById('transactionHistory');
+    if (!historyContainer) return;
+
+    const currencySymbol = getCurrencySymbol(currentAccount.currency);
+
+    updateTransactionSummary(currentAccount);
+
+    const transactions = currentAccount.transactions || [];
+    if (transactions.length === 0) {
+        historyContainer.innerHTML = `
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
+                <p>No transactions yet. Add your first deposit or withdrawal above.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const ascendingTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    let runningBalance = currentAccount.initialBalance;
+    if (runningBalance === undefined) {
+        const netTransactions = ascendingTransactions.reduce((sum, trans) => {
+            return sum + (trans.type === 'deposit' ? trans.amount : -trans.amount);
+        }, 0);
+        runningBalance = currentAccount.balance - netTransactions;
+    }
+    const balanceMap = {};
+    ascendingTransactions.forEach(trans => {
+        if (trans.type === 'deposit') {
+            runningBalance += trans.amount;
+        } else if (trans.type === 'withdrawal') {
+            runningBalance -= trans.amount;
+        }
+        balanceMap[trans.id] = runningBalance;
+    });
+
+    historyContainer.innerHTML = sortedTransactions.map(trans => {
+        const transDate = new Date(trans.date).toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const isDeposit = trans.type === 'deposit';
+        const balanceAfter = balanceMap[trans.id] || currentAccount.balance;
+
+        return `
+            <div class="px-6 py-5 bg-white hover:bg-gray-50 transition-colors">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <div class="text-sm text-gray-500">${transDate}</div>
+                        <div class="mt-2 font-semibold text-gray-800">${isDeposit ? 'Deposit' : 'Withdrawal'}</div>
+                        <div class="text-sm text-gray-600 mt-1">${trans.notes || 'No description provided.'}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}">
+                            ${isDeposit ? '+' : '-'}${currencySymbol}${trans.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Balance: ${currencySymbol}${balanceAfter.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${isDeposit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        <i class="fas fa-${isDeposit ? 'arrow-down' : 'arrow-up'}"></i>
+                        ${isDeposit ? 'Deposit' : 'Withdrawal'}
+                    </span>
+                    <button onclick="deleteTransaction('${trans.id}')" class="text-red-500 hover:text-red-700 transition-colors" title="Delete transaction">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    console.log('✅ Transactions loaded:', transactions.length);
+}
+
+function updateTransactionSummary(account) {
+    if (!account) return;
+
+    const transactions = account.transactions || [];
+    const currencySymbol = getCurrencySymbol(account.currency);
+
+    let totalDeposits = 0;
+    let totalWithdrawals = 0;
+
+    transactions.forEach(trans => {
+        if (trans.type === 'deposit') {
+            totalDeposits += trans.amount;
+        } else if (trans.type === 'withdrawal') {
+            totalWithdrawals += trans.amount;
+        }
+    });
+
+    const currentBalanceEl = document.getElementById('fundsCurrentBalance');
+    const totalDepositsEl = document.getElementById('totalDepositsAmount');
+    const totalWithdrawalsEl = document.getElementById('totalWithdrawalsAmount');
+
+    if (currentBalanceEl) {
+        currentBalanceEl.textContent = `${currencySymbol}${account.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+    if (totalDepositsEl) {
+        totalDepositsEl.textContent = `${currencySymbol}${totalDeposits.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+    if (totalWithdrawalsEl) {
+        totalWithdrawalsEl.textContent = `${currencySymbol}${totalWithdrawals.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
 }
 
 // ========== TAB MANAGEMENT ==========
