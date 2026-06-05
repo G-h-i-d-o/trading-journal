@@ -15,7 +15,7 @@
         <!-- Desktop Sidebar -->
         <aside id="sidebar" class="hidden sm:flex flex-col">
             <div class="sidebar-header">
-                <div class="brand"><img src="logo_1.png" alt="Trading Journal Logo" style="width:100px;height:100px;vertical-align:middle;margin-right:8px;border-radius:6px;"></div>
+                <div class="brand"><img src="logo_1.png" alt="Trading Journal Logo" style="width:100px;height:100px;vertical-align:middle;margin-right:8px;border-radius:50%;"></div>
                 <button id="sidebarToggle" class="sidebar-collapse-btn" aria-label="Collapse sidebar">
                     <i class="fas fa-angle-double-left"></i>
                 </button>
@@ -42,6 +42,10 @@
                 <button class="sidebar-btn" title="Calendar" onclick="document.getElementById('calendarTab').click();">
                     <span class="icon"><i class="fas fa-calendar"></i></span>
                     <span class="label">Calendar</span>
+                </button>
+                <button class="sidebar-btn" title="Tools" onclick="document.getElementById('toolsTab').click();">
+                    <span class="icon"><i class="fas fa-tools"></i></span>
+                    <span class="label">Tools</span>
                 </button>
                 <div class="sidebar-settings" id="desktopSettings">
                     <button class="sidebar-section-title" id="desktopSettingsToggle" aria-expanded="false" style="font-weight:700; padding:8px 0; color:var(--sidebar-text);">
@@ -309,6 +313,9 @@
             </button>
             <button id="calendarTab" class="tab-button" data-icon="calendar">
                 <i class="fas fa-calendar"></i> Calendar View
+            </button>
+            <button id="toolsTab" class="tab-button" data-icon="tools">
+                <i class="fas fa-tools"></i> Tools
             </button>
             <button id="settingsTab" class="tab-button" data-icon="cog">
                 <i class="fas fa-cog"></i> Settings
@@ -1276,6 +1283,57 @@
                         <h4 class="font-semibold text-lg mb-3" id="selectedDayTitle">Trades for Selected Day</h4>
                         <div id="selectedDayTrades" class="space-y-3">
                             <!-- Trades for selected day will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tools Tab Content -->
+        <div id="toolsContent" class="tab-content">
+            <div class="card p-0 overflow-hidden">
+                <div class="flex flex-col lg:flex-row">
+                    <aside class="tools-vertical-nav w-full lg:w-72 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 p-4">
+                        <div class="mb-5">
+                            <h3 class="font-bold text-gray-800 mb-1"><i class="fas fa-tools mr-2"></i> Tools</h3>
+                            <p class="text-sm text-gray-500">Forex and market utilities</p>
+                        </div>
+                        <button id="toolsEconomicCalendarBtn" onclick="switchToolsPanel('economicCalendar')" class="tools-nav-item active w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                            <i class="fas fa-calendar-day w-5 text-gray-500"></i>
+                            <span>Forex Economic Calendar</span>
+                        </button>
+                        <button id="toolsPositionSizeCalculatorBtn" onclick="switchToolsPanel('positionSizeCalculator')" class="tools-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                            <i class="fas fa-calculator w-5 text-gray-500"></i>
+                            <span>Position Size Calculator</span>
+                        </button>
+                    </aside>
+                    <div class="flex-1 p-6 bg-white">
+                        <div id="economicCalendarPanel" class="tools-panel active">
+                            <div class="mb-4">
+                                <h3 class="section-title"><i class="fas fa-calendar-week"></i> Forex Economic Calendar</h3>
+                                <p class="text-sm text-gray-500">Stay updated with key global economic events impacting currencies.</p>
+                            </div>
+                            <div class="economic-calendar-wrapper border border-gray-200 rounded-2xl overflow-hidden relative">
+                                <!-- myfxbook.com Economic Calendar Widget - Start -->
+                                <iframe class="economic-calendar-iframe" src="https://widget.myfxbook.com/widget/calendar.html?lang=en&impacts=0,1,2,3&symbols=AED,AFN,ALL,AMD,ANG,AOA,ARS,AUD,AWG,AZN,BAM,BBD,BDT,BGN,BHD,BIF,BMD,BND,BOB,BRL,BSD,BTN,BWP,BYN,BZD,CAD,CDF,CHF,CLP,CNY,COP,CRC,CUC,CVE,CZK,DJF,DKK,DOP,DZD,EGP,ERN,ETB,EUR,FJD,FKP,GBP,GEL,GHS,GIP,GMD,GNF,GTQ,GYD,HKD,HNL,HRK,HTG,HUF,IDR,ILS,INR,IQD,IRR,ISK,JMD,JOD,JPY,KES,KGS,KHR,KMF,KPW,KRW,KWD,KYD,KZT,LAK,LBP,LKR,LRD,LSL,LYD,MAD,MDL,MGA,MKD,MMK,MNT,MOP,MRO,MUR,MVR,MWK,MXN,MYR,MZN,NAD,NGN,NIO,NOK,NPR,NZD,OMR,PAB,PEN,PGK,PHP,PKR,PLN,PYG,QAR,RON,RSD,RUB,RWF,SAR,SBD,SCR,SDG,SEK,SGD,SHP,SLL,SOS,SRD,SSP,STD,SYP,SZL,THB,TJS,TMT,TND,TOP,TRY,TTD,TWD,TZS,UAH,UGX,USD,UYU,UZS,VEF,VND,VUV,WST,XAF,XCD,XOF,XPF,YER,ZAR,ZMW" style="border: 0; width:100%; height:100%;"></iframe>
+                                <div class="economic-calendar-overlay"></div>
+                                <!-- myfxbook.com Economic Calendar Widget - End -->
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <div style="width: fit-content; margin: auto;font-family: roboto,sans-serif!important; font-size: 13px; color: #666666;">
+                                    <a href="https://www.myfxbook.com/forex-economic-calendar?utm_source=widget13&utm_medium=link&utm_campaign=copyright" title="Economic Calendar" class="myfxbookLink" target="_blank" rel="noopener"><b style="color:#666666">Economic Calendar</b></a>
+                                    by Myfxbook.com
+                                </div>
+                            </div>
+                        </div>
+                        <div id="positionSizeCalculatorPanel" class="tools-panel">
+                            <div class="mb-4">
+                                <h3 class="section-title"><i class="fas fa-calculator"></i> Position Size Calculator</h3>
+                                <p class="text-sm text-gray-500">Calculate optimal position size based on your risk management parameters.</p>
+                            </div>
+                            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                                <div id="position-size-calculator-895896"><script type="text/javascript" src="https://www.cashbackforex.com/Content/remote/remote-widgets.js"></script><script type="text/javascript"> RemoteCalc({"Url":"https://www.cashbackforex.com", "TopPaneStyle":"YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCMzNDM1NDAgMCUsICMyNDI4MzEgMTAwJSk7IGNvbG9yOiB3aGl0ZTsgYm9yZGVyLWJvdHRvbTogbm9uZTs=","BottomPaneStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgYm9yZGVyOiBzb2xpZCAwcHggIzJhMmUzOTsgY29sb3I6ICM5MTk0YTE7","ButtonStyle":"YmFja2dyb3VuZDogIzM0MzU0MDsgY29sb3I6IHdoaXRlOyBib3JkZXItcmFkaXVzOiAyMHB4Ow==","TitleStyle":"dGV4dC1hbGlnbjogbGVmdDsgZm9udC1zaXplOiA0MHB4OyBmb250LXdlaWdodDogNTAwOw==","TextboxStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgY29sb3I6ICM5MTk0YTE7IGJvcmRlcjogc29saWQgMHB4ICM5MTk0YTE7" ,"ContainerWidth":"665","HighlightColor":"rgba(0,0,0,1.0)","IsDisplayTitle":true,"IsShowChartLinks":false,"IsShowEmbedButton":false,"CompactType":"large","Calculator":"position-size-calculator","ContainerId":"position-size-calculator-895896"});</script></div>
+                            </div>
                         </div>
                     </div>
                 </div>

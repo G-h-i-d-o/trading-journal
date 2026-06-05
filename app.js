@@ -3087,15 +3087,17 @@ function setupTabs() {
     const tradesTab = document.getElementById('tradesTab');
     const affirmationsTab = document.getElementById('affirmationsTab');
     const calendarTab = document.getElementById('calendarTab');
+    const toolsTab = document.getElementById('toolsTab');
     const settingsTab = document.getElementById('settingsTab');
     const dashboardContent = document.getElementById('dashboardContent');
     const addTradeContent = document.getElementById('addTradeContent');
     const tradesContent = document.getElementById('tradesContent');
     const affirmationsContent = document.getElementById('affirmationsContent');
     const calendarContent = document.getElementById('calendarContent');
+    const toolsContent = document.getElementById('toolsContent');
     const settingsContent = document.getElementById('settingsContent');
 
-    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
+    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, settingsContent].forEach(content => {
         if (content) {
             content.classList.remove('active');
             content.style.display = 'none';
@@ -3103,14 +3105,14 @@ function setupTabs() {
     });
 
     function switchToTab(tabName) {
-        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, settingsContent].forEach(content => {
+        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, settingsContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
                 content.style.display = 'none';
             }
         });
 
-        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, settingsTab].forEach(tab => {
+        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, toolsTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
@@ -3152,6 +3154,13 @@ function setupTabs() {
                 }
                 if (calendarTab) calendarTab.classList.add('active');
                 break;
+            case 'tools':
+                if (toolsContent) {
+                    toolsContent.classList.add('active');
+                    toolsContent.style.display = 'block';
+                }
+                if (toolsTab) toolsTab.classList.add('active');
+                break;
             case 'settings':
                 if (settingsContent) {
                     settingsContent.classList.add('active');
@@ -3167,12 +3176,29 @@ function setupTabs() {
     if (tradesTab) tradesTab.addEventListener('click', () => switchToTab('trades'));
     if (affirmationsTab) affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
     if (calendarTab) calendarTab.addEventListener('click', () => switchToTab('calendar'));
+    if (toolsTab) toolsTab.addEventListener('click', () => switchToTab('tools'));
     if (settingsTab) settingsTab.addEventListener('click', () => switchToTab('settings'));
     
     switchToTab('dashboard');
     
     console.log('✅ Tabs setup complete');
 }
+
+function switchToolsPanel(panelName) {
+    const panels = document.querySelectorAll('.tools-panel');
+    const navButtons = document.querySelectorAll('.tools-nav-item');
+
+    panels.forEach(panel => panel.classList.remove('active'));
+    navButtons.forEach(btn => btn.classList.remove('active'));
+
+    const activePanel = document.getElementById(`${panelName}Panel`);
+    const activeButton = document.getElementById(`tools${panelName.charAt(0).toUpperCase() + panelName.slice(1)}Btn`);
+
+    if (activePanel) activePanel.classList.add('active');
+    if (activeButton) activeButton.classList.add('active');
+}
+
+window.switchToolsPanel = switchToolsPanel;
 
 // ========== MOBILE MENU ==========
 
