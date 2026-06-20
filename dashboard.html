@@ -47,6 +47,11 @@
                     <span class="icon"><i class="fas fa-tools"></i></span>
                     <span class="label">Tools</span>
                 </button>
+                
+                <button class="sidebar-btn" title="Account" onclick="document.getElementById('accountTab').click();">
+                    <span class="icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="label">Account</span>
+                </button>
                 <div class="sidebar-settings" id="desktopSettings">
                     <button class="sidebar-section-title" id="desktopSettingsToggle" aria-expanded="false" style="font-weight:700; padding:8px 0; color:var(--sidebar-text);">
                         <span>Settings</span>
@@ -141,6 +146,13 @@
                     </button>
                 </div>
                 
+                <!-- ===== NEW: Account tab in mobile menu ===== -->
+                <button onclick="document.getElementById('accountTab').click();" 
+                        class="block w-full text-left bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm mb-1">
+                    <i class="fas fa-credit-card mr-2"></i> Account
+                </button>
+                <!-- ===== END NEW ===== -->
+
                 <div class="px-3 py-2 mobile-settings" id="mobileSettings">
                     <button id="mobileSettingsToggle" class="font-semibold mb-2 w-full text-left bg-transparent border-0 px-0" aria-expanded="false">Settings <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></button>
                     <div class="mobile-submenu" id="mobileSettingsSubmenu">
@@ -317,6 +329,9 @@
             <button id="toolsTab" class="tab-button" data-icon="tools">
                 <i class="fas fa-tools"></i> Tools
             </button>
+            <button id="accountTab" class="tab-button" data-icon="credit-card">
+                <i class="fas fa-credit-card"></i> Account
+            </button>
             <button id="settingsTab" class="tab-button" data-icon="cog">
                 <i class="fas fa-cog"></i> Settings
             </button>
@@ -386,8 +401,6 @@
                     <div class="stat-value" id="currentBalance">$0</div>
                 </div>
             </div>
-
-            <!-- Add this to dashboard.html - Place it after the Stats Grid section in Dashboard tab -->
 
             <!-- AI Trading Assistant Section -->
             <div class="card bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-indigo-200 mt-6">
@@ -536,7 +549,7 @@
                         </div>
                     </div>
 
-                <!-- Emotion Analytics - FIXED VERSION -->
+                <!-- Emotion Analytics -->
                 <div class="card">
                     <h3 class="section-title"><i class="fas fa-heartbeat"></i> Emotion Analytics</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -1332,538 +1345,563 @@
                                 <p class="text-sm text-gray-500">Calculate optimal position size based on your risk management parameters.</p>
                             </div>
                             <div class="border border-gray-200 rounded-2xl overflow-hidden">
-                                <div id="position-size-calculator-895896"><script type="text/javascript" src="https://www.cashbackforex.com/Content/remote/remote-widgets.js"></script><script type="text/javascript"> RemoteCalc({"Url":"https://www.cashbackforex.com", "TopPaneStyle":"YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCMzNDM1NDAgMCUsICMyNDI4MzEgMTAwJSk7IGNvbG9yOiB3aGl0ZTsgYm9yZGVyLWJvdHRvbTogbm9uZTs=","BottomPaneStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgYm9yZGVyOiBzb2xpZCAwcHggIzJhMmUzOTsgY29sb3I6ICM5MTk0YTE7","ButtonStyle":"YmFja2dyb3VuZDogIzM0MzU0MDsgY29sb3I6IHdoaXRlOyBib3JkZXItcmFkaXVzOiAyMHB4Ow==","TitleStyle":"dGV4dC1hbGlnbjogbGVmdDsgZm9udC1zaXplOiA0MHB4OyBmb250LXdlaWdodDogNTAwOw==","TextboxStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgY29sb3I6ICM5MTk0YTE7IGJvcmRlcjogc29saWQgMHB4ICM5MTk0YTE7" ,"ContainerWidth":"665","HighlightColor":"rgba(0,0,0,1.0)","IsDisplayTitle":true,"IsShowChartLinks":false,"IsShowEmbedButton":false,"CompactType":"large","Calculator":"position-size-calculator","ContainerId":"position-size-calculator-895896"});</script></div>
+                                <div id="position-size-calculator-895896"><script type="text/javascript" src="https://www.cashbackforex.com/Content/remote/remote-widgets.js"></script><script type="text/javascript"> RemoteCalc({"Url":"https://www.cashbackforex.com", "TopPaneStyle":"YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCMzNDM1NDAgMCUsICMyNDI4MzEgMTAwJSk7IGNvbG9yOiB3aGl0ZTsgYm9yZGVyLWJvdHRvbTogbm9uZTs=","BottomPaneStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgYm9yZGVyOiBzb2xpZCAwcHggIzJhMmUzOTsgY29sb3I6ICM5MTk0YTE=","ButtonStyle":"YmFja2dyb3VuZDogIzM0MzU0MDsgY29sb3I6IHdoaXRlOyBib3JkZXItcmFkaXVzOiAyMHB4Ow==","TitleStyle":"dGV4dC1hbGlnbjogbGVmdDsgZm9udC1zaXplOiA0MHB4OyBmb250LXdlaWdodDogNTAwOw==","TextboxStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgY29sb3I6ICM5MTk0YTE7IGJvcmRlcjogc29saWQgMHB4ICM5MTk0YTE=" ,"ContainerWidth":"665","HighlightColor":"rgba(0,0,0,1.0)","IsDisplayTitle":true,"IsShowChartLinks":false,"IsShowEmbedButton":false,"CompactType":"large","Calculator":"position-size-calculator","ContainerId":"position-size-calculator-895896"});</script></div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Tab Content -->
+        <div id="accountContent" class="tab-content">
+            <div class="card">
+                <h3 class="section-title"><i class="fas fa-credit-card mr-2"></i>Trading Accounts</h3>
+                <p class="text-gray-600 mb-6">Select an account to view or manage your trading activity</p>
+                
+                <div id="accountsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Accounts will be loaded here -->
+                </div>
+
+                <div class="border-t pt-6">
+                    <button onclick="showAddAccountModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200">
+                        <i class="fas fa-plus-circle"></i> Add New Account
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Settings Tab Content -->
-<div id="settingsContent" class="tab-content">
-    <div class="card p-0 overflow-hidden">
-        <div class="flex flex-col md:flex-row">
-            <!-- Vertical Settings Navigation -->
-            <div class="settings-vertical-nav w-full md:w-64 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200">
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="font-bold text-gray-800"><i class="fas fa-cog mr-2"></i>Settings</h3>
-                    <p class="text-xs text-gray-500 mt-1">Customize your trading journal</p>
-                </div>
-                <nav class="p-2">
-                    <button onclick="showSettingsSection('general')" data-section="general" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                        <i class="fas fa-sliders-h w-5 text-gray-500"></i>
-                        <span>General</span>
-                    </button>
-                    <button onclick="showSettingsSection('personalInfo')" data-section="personalInfo" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                        <i class="fas fa-user-circle w-5 text-gray-500"></i>
-                        <span>Personal Info</span>
-                    </button>
-                    <button onclick="showSettingsSection('preferences')" data-section="preferences" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                        <i class="fas fa-cog w-5 text-gray-500"></i>
-                        <span>Preferences</span>
-                    </button>
-                    <button onclick="showSettingsSection('funds')" data-section="funds" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                        <i class="fas fa-money-bill-wave w-5 text-gray-500"></i>
-                        <span>Deposits & Withdrawals</span>
-                    </button>
-                    <button onclick="showSettingsSection('verification')" data-section="verification" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                        <i class="fas fa-calculator w-5 text-gray-500"></i>
-                        <span>Contract Verification</span>
-                    </button>
-                </nav>
-            </div>
+        <div id="settingsContent" class="tab-content">
+            <div class="card p-0 overflow-hidden">
+                <div class="flex flex-col md:flex-row">
+                    <!-- Vertical Settings Navigation -->
+                    <div class="settings-vertical-nav w-full md:w-64 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200">
+                        <div class="p-4 border-b border-gray-200">
+                            <h3 class="font-bold text-gray-800"><i class="fas fa-cog mr-2"></i>Settings</h3>
+                            <p class="text-xs text-gray-500 mt-1">Customize your trading journal</p>
+                        </div>
+                        <nav class="p-2">
+                            <button onclick="showSettingsSection('general')" data-section="general" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                                <i class="fas fa-sliders-h w-5 text-gray-500"></i>
+                                <span>General</span>
+                            </button>
+                            <button onclick="showSettingsSection('personalInfo')" data-section="personalInfo" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                                <i class="fas fa-user-circle w-5 text-gray-500"></i>
+                                <span>Personal Info</span>
+                            </button>
+                            <button onclick="showSettingsSection('preferences')" data-section="preferences" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                                <i class="fas fa-cog w-5 text-gray-500"></i>
+                                <span>Preferences</span>
+                            </button>
+                            <button onclick="showSettingsSection('funds')" data-section="funds" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                                <i class="fas fa-money-bill-wave w-5 text-gray-500"></i>
+                                <span>Deposits & Withdrawals</span>
+                            </button>
+                            <button onclick="showSettingsSection('verification')" data-section="verification" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                                <i class="fas fa-calculator w-5 text-gray-500"></i>
+                                <span>Contract Verification</span>
+                            </button>
+                            <!-- ===== NEW: Account button in Settings side nav ===== -->
+                            <button onclick="document.getElementById('accountTab').click();" 
+                                    class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                                <i class="fas fa-credit-card w-5 text-gray-500"></i>
+                                <span>Account</span>
+                            </button>
+                            <!-- ===== END NEW ===== -->
+                        </nav>
+                    </div>
 
-            <!-- Settings Content Area -->
-            <div class="flex-1 p-6">
-                <!-- General Settings Section -->
-                <div id="generalSettingsSection" class="settings-section active">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-sliders-h mr-2"></i>General Settings</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
-                        <div class="form-group">
-                            <label>App Theme</label>
-                            <select id="themeSelect" class="w-full px-4 py-2 border rounded-lg">
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
-                                <option value="system">System Default</option>
-                            </select>
+                    <!-- Settings Content Area -->
+                    <div class="flex-1 p-6">
+                        <!-- General Settings Section -->
+                        <div id="generalSettingsSection" class="settings-section active">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-sliders-h mr-2"></i>General Settings</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+                                <div class="form-group">
+                                    <label>App Theme</label>
+                                    <select id="themeSelect" class="w-full px-4 py-2 border rounded-lg">
+                                        <option value="light">Light</option>
+                                        <option value="dark">Dark</option>
+                                        <option value="system">System Default</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Default Account</label>
+                                    <select id="defaultAccountSelect" class="w-full px-4 py-2 border rounded-lg"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Risk Per Trade (%)</label>
+                                    <input type="number" id="riskPerTradeSetting" step="0.1" min="0.1" max="5" class="w-full px-4 py-2 border rounded-lg">
+                                </div>
+                                <div class="form-group">
+                                    <label>Leverage</label>
+                                    <select id="leverageSetting" class="w-full px-4 py-2 border rounded-lg">
+                                        <option value="10">1:10</option>
+                                        <option value="20">1:20</option>
+                                        <option value="50">1:50</option>
+                                        <option value="100">1:100</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Default Account</label>
-                            <select id="defaultAccountSelect" class="w-full px-4 py-2 border rounded-lg"></select>
+
+                        <!-- Personal Info Section -->
+                        <div id="personalInfoSettingsSection" class="settings-section hidden">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-user-circle mr-2"></i>Personal Information</h3>
+                            <div class="max-w-2xl space-y-4">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="fullName" class="w-full px-4 py-2 border rounded-lg" placeholder="Your full name">
+                                </div>
+                                <div class="form-group">
+                                    <label>Display Name</label>
+                                    <input type="text" id="displayName" class="w-full px-4 py-2 border rounded-lg" placeholder="How you want to be seen">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email Address</label>
+                                    <input type="email" id="settingsEmail" class="w-full px-4 py-2 border rounded-lg bg-gray-100" readonly disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label>Trading Experience</label>
+                                    <select id="experienceLevel" class="w-full px-4 py-2 border rounded-lg">
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
+                                        <option value="professional">Professional</option>
+                                    </select>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button onclick="savePersonalInfo()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Risk Per Trade (%)</label>
-                            <input type="number" id="riskPerTradeSetting" step="0.1" min="0.1" max="5" class="w-full px-4 py-2 border rounded-lg">
+
+                        <!-- Preferences Section -->
+                        <div id="preferencesSettingsSection" class="settings-section hidden">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>Preferences</h3>
+                            <div class="max-w-2xl space-y-4">
+                                <div class="flex items-center justify-between py-3 border-b">
+                                    <div>
+                                        <div class="font-semibold">Compact View</div>
+                                        <div class="text-sm text-gray-500">Show more trades per page with condensed layout</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="compactViewToggle" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between py-3 border-b">
+                                    <div>
+                                        <div class="font-semibold">Confetti Animation</div>
+                                        <div class="text-sm text-gray-500">Show celebration effects on winning trades</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="confettiToggle" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between py-3 border-b">
+                                    <div>
+                                        <div class="font-semibold">Auto-save Trades</div>
+                                        <div class="text-sm text-gray-500">Automatically save trade drafts as you type</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="autoSaveToggle" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>Default Trade View</label>
+                                    <select id="defaultTradeView" class="w-full px-4 py-2 border rounded-lg">
+                                        <option value="list">List View</option>
+                                        <option value="grid">Grid View</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Leverage</label>
-                            <select id="leverageSetting" class="w-full px-4 py-2 border rounded-lg">
-                                <option value="10">1:10</option>
-                                <option value="20">1:20</option>
-                                <option value="50">1:50</option>
-                                <option value="100">1:100</option>
-                            </select>
+
+                        <!-- Deposits & Withdrawals Section -->
+                        <div id="fundsSettingsSection" class="settings-section hidden">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-money-bill-wave mr-2"></i>Deposits & Withdrawals</h3>
+                            
+                            <!-- Balance Summary Cards -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200">
+                                    <div class="text-sm text-gray-600 mb-1">Current Balance</div>
+                                    <div class="text-2xl font-bold text-blue-600" id="fundsCurrentBalance">$0.00</div>
+                                    <div class="text-xs text-gray-500 mt-2">Includes all trades & transactions</div>
+                                </div>
+                                <div class="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl border border-green-200">
+                                    <div class="text-sm text-gray-600 mb-1">Total Deposits</div>
+                                    <div class="text-2xl font-bold text-green-600" id="totalDepositsAmount">$0.00</div>
+                                </div>
+                                <div class="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl border border-red-200">
+                                    <div class="text-sm text-gray-600 mb-1">Total Withdrawals</div>
+                                    <div class="text-2xl font-bold text-red-600" id="totalWithdrawalsAmount">$0.00</div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex gap-3 mb-6">
+                                <button onclick="openDepositModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                    <i class="fas fa-plus-circle"></i> Add Deposit
+                                </button>
+                                <button onclick="openWithdrawModal()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                    <i class="fas fa-minus-circle"></i> Withdraw
+                                </button>
+                                <button onclick="exportTransactions()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                    <i class="fas fa-download"></i> Export CSV
+                                </button>
+                            </div>
+
+                            <!-- Transaction History -->
+                            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                                    <h4 class="font-semibold text-gray-800"><i class="fas fa-history mr-2"></i>Transaction History</h4>
+                                </div>
+                                <div id="transactionHistory" class="divide-y divide-gray-100">
+                                    <!-- Transactions loaded here -->
+                                    <div class="text-center text-gray-500 py-8">
+                                        <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
+                                        <p>No transactions yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contract Verification Section -->
+                        <div id="verificationSettingsSection" class="settings-section hidden">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-calculator mr-2"></i>Contract Size Verification</h3>
+                            <p class="text-sm text-gray-600 mb-6">Verify and adjust point values for accurate PnL calculations with Deriv synthetic indices</p>
+                            
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Left: Symbol Selector -->
+                                <div class="bg-gray-50 p-5 rounded-xl">
+                                    <label class="block text-sm font-semibold mb-3">Select Instrument</label>
+                                    <select id="verificationSymbolSelect" class="w-full px-4 py-2 border rounded-lg mb-4">
+                                        <option value="">Choose an instrument...</option>
+                                    </select>
+                                    
+                                    <div id="verificationDetails" class="hidden">
+                                        <div class="border-t pt-4 mt-2">
+                                            <h4 class="font-semibold mb-3">Current Configuration</h4>
+                                            <div class="space-y-2 text-sm">
+                                                <div class="flex justify-between"><span class="text-gray-600">Point Value:</span><span id="currentPointValue" class="font-mono">-</span></div>
+                                                <div class="flex justify-between"><span class="text-gray-600">Minimum Lot:</span><span id="currentMinLot">-</span></div>
+                                                <div class="flex justify-between"><span class="text-gray-600">Standard Lot:</span><span id="currentStdLot">-</span></div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <label class="block text-sm font-semibold mb-2">Override Point Value</label>
+                                                <div class="flex gap-2">
+                                                    <input type="number" id="overridePointValue" step="0.000001" class="flex-1 px-3 py-2 border rounded-lg" placeholder="New point value">
+                                                    <button onclick="overridePointValue()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Update</button>
+                                                </div>
+                                                <button onclick="resetPointValue()" class="mt-2 text-sm text-red-600 hover:text-red-800">Reset to Default</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right: PnL Calculator -->
+                                <div class="bg-gray-50 p-5 rounded-xl">
+                                    <h4 class="font-semibold mb-3">PnL Test Calculator</h4>
+                                    <div class="space-y-3">
+                                        <div><label class="text-xs font-semibold">Entry Price</label><input type="number" id="calcEntryPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg"></div>
+                                        <div><label class="text-xs font-semibold">Exit Price</label><input type="number" id="calcExitPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg"></div>
+                                        <div><label class="text-xs font-semibold">Lot Size</label><input type="number" id="calcLotSize" step="0.001" value="0.01" class="w-full px-3 py-2 border rounded-lg"></div>
+                                        <div><label class="text-xs font-semibold">Direction</label><select id="calcDirection" class="w-full px-3 py-2 border rounded-lg"><option value="long">Long (Buy)</option><option value="short">Short (Sell)</option></select></div>
+                                        <button onclick="calculateTestPnL()" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">Calculate</button>
+                                        <div id="calcResult" class="hidden mt-4 p-4 bg-white rounded-lg border">
+                                            <div class="flex justify-between"><span>Calculated PnL:</span><span id="calculatedPnL" class="font-bold">-</span></div>
+                                            <div class="flex justify-between mt-2"><span>Points Movement:</span><span id="pointsMovement">-</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-6 border-t">
+                                <button onclick="fetchAllContractSpecs()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
+                                    <i class="fas fa-cloud-download-alt mr-2"></i>Fetch Deriv Contract Specifications
+                                </button>
+                                <div id="batchFetchResult" class="mt-3"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Personal Info Section -->
-                <div id="personalInfoSettingsSection" class="settings-section hidden">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-user-circle mr-2"></i>Personal Information</h3>
-                    <div class="max-w-2xl space-y-4">
-                        <div class="form-group">
-                            <label>Full Name</label>
-                            <input type="text" id="fullName" class="w-full px-4 py-2 border rounded-lg" placeholder="Your full name">
+        <!-- Add Account Modal -->
+        <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Add Trading Account</h3>
+                        <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <form id="addAccountForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Account Name</label>
+                            <input 
+                                type="text" 
+                                id="accountName" 
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                                placeholder="e.g., Prop Firm Challenge, Main Account, Demo"
+                                required
+                                maxlength="50"
+                            >
+                            <div class="text-right text-sm text-gray-500 mt-1">
+                                <span id="accountNameCharCount">0</span>/50 characters
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Display Name</label>
-                            <input type="text" id="displayName" class="w-full px-4 py-2 border rounded-lg" placeholder="How you want to be seen">
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Account Balance</label>
+                            <input 
+                                type="number" 
+                                id="accountBalance" 
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                                placeholder="e.g., 10000"
+                                value="10000"
+                                required
+                                min="1"
+                                step="0.01"
+                            >
                         </div>
-                        <div class="form-group">
-                            <label>Email Address</label>
-                            <input type="email" id="settingsEmail" class="w-full px-4 py-2 border rounded-lg bg-gray-100" readonly disabled>
-                        </div>
-                        <div class="form-group">
-                            <label>Trading Experience</label>
-                            <select id="experienceLevel" class="w-full px-4 py-2 border rounded-lg">
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                                <option value="professional">Professional</option>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Account Currency</label>
+                            <select 
+                                id="accountCurrencySelect" 
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
+                            >
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="GBP">GBP (£)</option>
+                                <option value="JPY">JPY (¥)</option>
+                                <option value="ZAR">ZAR (R)</option>
+                                <option value="CAD">CAD (C$)</option>
+                                <option value="AUD">AUD (A$)</option>
+                                <option value="CHF">CHF (Fr)</option>
                             </select>
                         </div>
-                        <div class="flex justify-end">
-                            <button onclick="savePersonalInfo()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
-                                Save Changes
+                        
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button 
+                                type="button" 
+                                onclick="closeAddAccountModal()" 
+                                class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                            >
+                                Create Account
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Preferences Section -->
-                <div id="preferencesSettingsSection" class="settings-section hidden">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>Preferences</h3>
-                    <div class="max-w-2xl space-y-4">
-                        <div class="flex items-center justify-between py-3 border-b">
-                            <div>
-                                <div class="font-semibold">Compact View</div>
-                                <div class="text-sm text-gray-500">Show more trades per page with condensed layout</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="compactViewToggle" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-b">
-                            <div>
-                                <div class="font-semibold">Confetti Animation</div>
-                                <div class="text-sm text-gray-500">Show celebration effects on winning trades</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="confettiToggle" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-b">
-                            <div>
-                                <div class="font-semibold">Auto-save Trades</div>
-                                <div class="text-sm text-gray-500">Automatically save trade drafts as you type</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="autoSaveToggle" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label>Default Trade View</label>
-                            <select id="defaultTradeView" class="w-full px-4 py-2 border rounded-lg">
-                                <option value="list">List View</option>
-                                <option value="grid">Grid View</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Deposits & Withdrawals Section -->
-                <div id="fundsSettingsSection" class="settings-section hidden">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-money-bill-wave mr-2"></i>Deposits & Withdrawals</h3>
-                    
-                    <!-- Balance Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200">
-                            <div class="text-sm text-gray-600 mb-1">Current Balance</div>
-                            <div class="text-2xl font-bold text-blue-600" id="fundsCurrentBalance">$0.00</div>
-                            <div class="text-xs text-gray-500 mt-2">Includes all trades & transactions</div>
-                        </div>
-                        <div class="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl border border-green-200">
-                            <div class="text-sm text-gray-600 mb-1">Total Deposits</div>
-                            <div class="text-2xl font-bold text-green-600" id="totalDepositsAmount">$0.00</div>
-                        </div>
-                        <div class="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl border border-red-200">
-                            <div class="text-sm text-gray-600 mb-1">Total Withdrawals</div>
-                            <div class="text-2xl font-bold text-red-600" id="totalWithdrawalsAmount">$0.00</div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="flex gap-3 mb-6">
-                        <button onclick="openDepositModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
-                            <i class="fas fa-plus-circle"></i> Add Deposit
-                        </button>
-                        <button onclick="openWithdrawModal()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
-                            <i class="fas fa-minus-circle"></i> Withdraw
-                        </button>
-                        <button onclick="exportTransactions()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
-                            <i class="fas fa-download"></i> Export CSV
-                        </button>
-                    </div>
-
-                    <!-- Transaction History -->
-                    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                            <h4 class="font-semibold text-gray-800"><i class="fas fa-history mr-2"></i>Transaction History</h4>
-                        </div>
-                        <div id="transactionHistory" class="divide-y divide-gray-100">
-                            <!-- Transactions loaded here -->
-                            <div class="text-center text-gray-500 py-8">
-                                <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
-                                <p>No transactions yet</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contract Verification Section -->
-                <div id="verificationSettingsSection" class="settings-section hidden">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-calculator mr-2"></i>Contract Size Verification</h3>
-                    <p class="text-sm text-gray-600 mb-6">Verify and adjust point values for accurate PnL calculations with Deriv synthetic indices</p>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <!-- Left: Symbol Selector -->
-                        <div class="bg-gray-50 p-5 rounded-xl">
-                            <label class="block text-sm font-semibold mb-3">Select Instrument</label>
-                            <select id="verificationSymbolSelect" class="w-full px-4 py-2 border rounded-lg mb-4">
-                                <option value="">Choose an instrument...</option>
-                            </select>
-                            
-                            <div id="verificationDetails" class="hidden">
-                                <div class="border-t pt-4 mt-2">
-                                    <h4 class="font-semibold mb-3">Current Configuration</h4>
-                                    <div class="space-y-2 text-sm">
-                                        <div class="flex justify-between"><span class="text-gray-600">Point Value:</span><span id="currentPointValue" class="font-mono">-</span></div>
-                                        <div class="flex justify-between"><span class="text-gray-600">Minimum Lot:</span><span id="currentMinLot">-</span></div>
-                                        <div class="flex justify-between"><span class="text-gray-600">Standard Lot:</span><span id="currentStdLot">-</span></div>
-                                    </div>
-                                    <div class="mt-4">
-                                        <label class="block text-sm font-semibold mb-2">Override Point Value</label>
-                                        <div class="flex gap-2">
-                                            <input type="number" id="overridePointValue" step="0.000001" class="flex-1 px-3 py-2 border rounded-lg" placeholder="New point value">
-                                            <button onclick="overridePointValue()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Update</button>
-                                        </div>
-                                        <button onclick="resetPointValue()" class="mt-2 text-sm text-red-600 hover:text-red-800">Reset to Default</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Right: PnL Calculator -->
-                        <div class="bg-gray-50 p-5 rounded-xl">
-                            <h4 class="font-semibold mb-3">PnL Test Calculator</h4>
-                            <div class="space-y-3">
-                                <div><label class="text-xs font-semibold">Entry Price</label><input type="number" id="calcEntryPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg"></div>
-                                <div><label class="text-xs font-semibold">Exit Price</label><input type="number" id="calcExitPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg"></div>
-                                <div><label class="text-xs font-semibold">Lot Size</label><input type="number" id="calcLotSize" step="0.001" value="0.01" class="w-full px-3 py-2 border rounded-lg"></div>
-                                <div><label class="text-xs font-semibold">Direction</label><select id="calcDirection" class="w-full px-3 py-2 border rounded-lg"><option value="long">Long (Buy)</option><option value="short">Short (Sell)</option></select></div>
-                                <button onclick="calculateTestPnL()" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">Calculate</button>
-                                <div id="calcResult" class="hidden mt-4 p-4 bg-white rounded-lg border">
-                                    <div class="flex justify-between"><span>Calculated PnL:</span><span id="calculatedPnL" class="font-bold">-</span></div>
-                                    <div class="flex justify-between mt-2"><span>Points Movement:</span><span id="pointsMovement">-</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 pt-6 border-t">
-                        <button onclick="fetchAllContractSpecs()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
-                            <i class="fas fa-cloud-download-alt mr-2"></i>Fetch Deriv Contract Specifications
-                        </button>
-                        <div id="batchFetchResult" class="mt-3"></div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-    <!-- Add Account Modal -->
-    <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">Add Trading Account</h3>
-                    <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
-                        ×
-                    </button>
+        <!-- MetaTrader Import Preview Modal -->
+        <div id="mtImportModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-file-import text-purple-600 mr-2"></i>
+                            Import MetaTrader Trades
+                        </h3>
+                        <button onclick="closeMTImportModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                            ×
+                        </button>
+                    </div>
                 </div>
                 
-                <form id="addAccountForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Name</label>
-                        <input 
-                            type="text" 
-                            id="accountName" 
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
-                            placeholder="e.g., Prop Firm Challenge, Main Account, Demo"
-                            required
-                            maxlength="50"
-                        >
-                        <div class="text-right text-sm text-gray-500 mt-1">
-                            <span id="accountNameCharCount">0</span>/50 characters
+                <div class="p-6 overflow-y-auto max-h-[60vh]">
+                    <!-- Import Summary -->
+                    <div id="mtImportSummary" class="mb-4 p-4 bg-gray-50 rounded-lg">
+                        <!-- Summary will be populated here -->
+                    </div>
+                    
+                    <!-- Trades Preview Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mtImportPreviewBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Preview rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Duplicates Warning -->
+                    <div id="mtDuplicatesWarning" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg hidden">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-yellow-600 mr-3 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold text-yellow-800">Duplicate Trades Detected</h4>
+                                <p class="text-sm text-yellow-700" id="mtDuplicatesMessage"></p>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Balance</label>
-                        <input 
-                            type="number" 
-                            id="accountBalance" 
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
-                            placeholder="e.g., 10000"
-                            value="10000"
-                            required
-                            min="1"
-                            step="0.01"
-                        >
+                </div>
+                
+                <div class="p-6 border-t border-gray-200 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        <span id="mtImportStats">0 trades ready to import</span>
                     </div>
-                    
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Currency</label>
-                        <select 
-                            id="accountCurrencySelect" 
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
-                        >
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="JPY">JPY (¥)</option>
-                            <option value="ZAR">ZAR (R)</option>
-                            <option value="CAD">CAD (C$)</option>
-                            <option value="AUD">AUD (A$)</option>
-                            <option value="CHF">CHF (Fr)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="flex justify-end space-x-3 pt-4">
-                        <button 
-                            type="button" 
-                            onclick="closeAddAccountModal()" 
-                            class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
-                        >
+                    <div class="flex space-x-3">
+                        <button onclick="closeMTImportModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200">
                             Cancel
                         </button>
-                        <button 
-                            type="submit" 
-                            class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
-                        >
-                            Create Account
+                        <button onclick="confirmMTImport()" id="mtImportConfirmBtn" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Import Trades
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- MetaTrader Import Preview Modal -->
-    <div id="mtImportModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-gray-800">
-                        <i class="fas fa-file-import text-purple-600 mr-2"></i>
-                        Import MetaTrader Trades
-                    </h3>
-                    <button onclick="closeMTImportModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
-                        ×
-                    </button>
-                </div>
-            </div>
-            
-            <div class="p-6 overflow-y-auto max-h-[60vh]">
-                <!-- Import Summary -->
-                <div id="mtImportSummary" class="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <!-- Summary will be populated here -->
-                </div>
-                
-                <!-- Trades Preview Table -->
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="mtImportPreviewBody" class="bg-white divide-y divide-gray-200">
-                            <!-- Preview rows will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- Duplicates Warning -->
-                <div id="mtDuplicatesWarning" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg hidden">
-                    <div class="flex items-start">
-                        <i class="fas fa-exclamation-triangle text-yellow-600 mr-3 mt-1"></i>
-                        <div>
-                            <h4 class="font-semibold text-yellow-800">Duplicate Trades Detected</h4>
-                            <p class="text-sm text-yellow-700" id="mtDuplicatesMessage"></p>
+        <!-- Deposit Modal -->
+        <div id="depositModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-plus-circle text-green-500 mr-2"></i>Add Deposit</h3>
+                        <button onclick="closeDepositModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                    </div>
+                    <form id="depositForm">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Amount (<span id="depositCurrencySymbol">$</span>)</label>
+                                <input type="number" id="depositAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Date & Time</label>
+                                <input type="datetime-local" id="depositDate" required class="w-full px-4 py-3 border rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Description (Optional)</label>
+                                <input type="text" id="depositDescription" placeholder="e.g., Initial deposit, Monthly funding" class="w-full px-4 py-3 border rounded-xl">
+                            </div>
+                            <div class="flex justify-end gap-3 pt-4">
+                                <button type="button" onclick="closeDepositModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl font-semibold">Add Deposit</button>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="p-6 border-t border-gray-200 flex justify-between items-center">
-                <div class="text-sm text-gray-500">
-                    <span id="mtImportStats">0 trades ready to import</span>
-                </div>
-                <div class="flex space-x-3">
-                    <button onclick="closeMTImportModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200">
-                        Cancel
-                    </button>
-                    <button onclick="confirmMTImport()" id="mtImportConfirmBtn" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        Import Trades
-                    </button>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Deposit Modal -->
-<div id="depositModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-plus-circle text-green-500 mr-2"></i>Add Deposit</h3>
-                <button onclick="closeDepositModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-            </div>
-            <form id="depositForm">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Amount (<span id="depositCurrencySymbol">$</span>)</label>
-                        <input type="number" id="depositAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border rounded-xl">
+        <!-- Withdrawal Modal -->
+        <div id="withdrawModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-minus-circle text-red-500 mr-2"></i>Withdraw Funds</h3>
+                        <button onclick="closeWithdrawModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Date & Time</label>
-                        <input type="datetime-local" id="depositDate" required class="w-full px-4 py-3 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Description (Optional)</label>
-                        <input type="text" id="depositDescription" placeholder="e.g., Initial deposit, Monthly funding" class="w-full px-4 py-3 border rounded-xl">
-                    </div>
-                    <div class="flex justify-end gap-3 pt-4">
-                        <button type="button" onclick="closeDepositModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl font-semibold">Add Deposit</button>
-                    </div>
+                    <form id="withdrawForm">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Available Balance</label>
+                                <div class="text-2xl font-bold" id="availableBalance">$0.00</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Amount (<span id="withdrawCurrencySymbol">$</span>)</label>
+                                <input type="number" id="withdrawAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Date & Time</label>
+                                <input type="datetime-local" id="withdrawDate" required class="w-full px-4 py-3 border rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Description (Optional)</label>
+                                <input type="text" id="withdrawDescription" placeholder="e.g., Profit withdrawal" class="w-full px-4 py-3 border rounded-xl">
+                            </div>
+                            <div class="flex justify-end gap-3 pt-4">
+                                <button type="button" onclick="closeWithdrawModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl font-semibold">Withdraw</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Withdrawal Modal -->
-<div id="withdrawModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-minus-circle text-red-500 mr-2"></i>Withdraw Funds</h3>
-                <button onclick="closeWithdrawModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
-            <form id="withdrawForm">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Available Balance</label>
-                        <div class="text-2xl font-bold" id="availableBalance">$0.00</div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Amount (<span id="withdrawCurrencySymbol">$</span>)</label>
-                        <input type="number" id="withdrawAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Date & Time</label>
-                        <input type="datetime-local" id="withdrawDate" required class="w-full px-4 py-3 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Description (Optional)</label>
-                        <input type="text" id="withdrawDescription" placeholder="e.g., Profit withdrawal" class="w-full px-4 py-3 border rounded-xl">
-                    </div>
-                    <div class="flex justify-end gap-3 pt-4">
-                        <button type="button" onclick="closeWithdrawModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl font-semibold">Withdraw</button>
-                    </div>
-                </div>
-            </form>
         </div>
-    </div>
-</div>
 
-    <script>
-        function savePersonalInfo(){
-            const name = document.getElementById('fullName')?.value || '';
-            const email = document.getElementById('settingsEmail')?.value || '';
-            console.log('Saved personal info', { name, email });
-            const btn = document.querySelector('#personalInfoForm button');
-            if(btn){
-                const old = btn.innerText;
-                btn.innerText = 'Saved';
-                setTimeout(()=> btn.innerText = old, 1200);
-            }
-        }
-
-        (function(){
-            const desktopToggle = document.getElementById('desktopSettingsToggle');
-            const desktopSettings = document.getElementById('desktopSettings');
-            if(desktopToggle && desktopSettings){
-                desktopToggle.addEventListener('click', ()=>{
-                    const open = desktopSettings.classList.toggle('open');
-                    desktopToggle.setAttribute('aria-expanded', open);
-                });
+        <script>
+            function savePersonalInfo(){
+                const name = document.getElementById('fullName')?.value || '';
+                const email = document.getElementById('settingsEmail')?.value || '';
+                console.log('Saved personal info', { name, email });
+                const btn = document.querySelector('#personalInfoForm button');
+                if(btn){
+                    const old = btn.innerText;
+                    btn.innerText = 'Saved';
+                    setTimeout(()=> btn.innerText = old, 1200);
+                }
             }
 
-            const desktopPersonalToggle = document.getElementById('desktopPersonalToggle');
-            const desktopPersonalContent = document.getElementById('desktopPersonalContent');
-            if(desktopPersonalToggle && desktopPersonalContent){
-                desktopPersonalToggle.addEventListener('click', ()=>{
-                    const open = desktopPersonalContent.classList.toggle('open');
-                    desktopPersonalToggle.setAttribute('aria-expanded', open);
-                });
-            }
+            (function(){
+                const desktopToggle = document.getElementById('desktopSettingsToggle');
+                const desktopSettings = document.getElementById('desktopSettings');
+                if(desktopToggle && desktopSettings){
+                    desktopToggle.addEventListener('click', ()=>{
+                        const open = desktopSettings.classList.toggle('open');
+                        desktopToggle.setAttribute('aria-expanded', open);
+                    });
+                }
 
-            const mobileToggle = document.getElementById('mobileSettingsToggle');
-            const mobileSettings = document.getElementById('mobileSettings');
-            if(mobileToggle && mobileSettings){
-                mobileToggle.addEventListener('click', ()=>{
-                    const open = mobileSettings.classList.toggle('open');
-                    mobileToggle.setAttribute('aria-expanded', open);
-                });
-            }
+                const desktopPersonalToggle = document.getElementById('desktopPersonalToggle');
+                const desktopPersonalContent = document.getElementById('desktopPersonalContent');
+                if(desktopPersonalToggle && desktopPersonalContent){
+                    desktopPersonalToggle.addEventListener('click', ()=>{
+                        const open = desktopPersonalContent.classList.toggle('open');
+                        desktopPersonalToggle.setAttribute('aria-expanded', open);
+                    });
+                }
 
-            const mobilePersonalToggle = document.getElementById('mobilePersonalToggle');
-            const mobilePersonalContent = document.getElementById('mobilePersonalContent');
-            if(mobilePersonalToggle && mobilePersonalContent){
-                mobilePersonalToggle.addEventListener('click', ()=>{
-                    const open = mobilePersonalContent.classList.toggle('open');
-                    mobilePersonalToggle.setAttribute('aria-expanded', open);
-                });
-            }
-        })();
-    </script>
-    <script type="module" src="./app.js"></script>
-</body>
-</html>
+                const mobileToggle = document.getElementById('mobileSettingsToggle');
+                const mobileSettings = document.getElementById('mobileSettings');
+                if(mobileToggle && mobileSettings){
+                    mobileToggle.addEventListener('click', ()=>{
+                        const open = mobileSettings.classList.toggle('open');
+                        mobileToggle.setAttribute('aria-expanded', open);
+                    });
+                }
+
+                const mobilePersonalToggle = document.getElementById('mobilePersonalToggle');
+                const mobilePersonalContent = document.getElementById('mobilePersonalContent');
+                if(mobilePersonalToggle && mobilePersonalContent){
+                    mobilePersonalToggle.addEventListener('click', ()=>{
+                        const open = mobilePersonalContent.classList.toggle('open');
+                        mobilePersonalToggle.setAttribute('aria-expanded', open);
+                    });
+                }
+            })();
+        </script>
+        <script type="module" src="./app.js"></script>
+    </body>
+    </html>

@@ -1399,6 +1399,59 @@ function renderAccountsList() {
     if (mobileAccountsList) mobileAccountsList.innerHTML = accountsHTML;
 }
 
+function renderAccountsGrid() {
+    const grid = document.getElementById('accountsGrid');
+    if (!grid) return;
+
+    if (!userAccounts || userAccounts.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full account-empty">
+                <i class="fas fa-inbox"></i>
+                <p class="text-lg font-semibold">No accounts yet</p>
+                <p>Create your first trading account to get started</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = userAccounts.map(account => {
+        const isActive = account.id === currentAccountId;
+        const tradeCount = (allTrades || []).filter(t => t.accountId === account.id).length;
+        const accountTrades = (allTrades || []).filter(t => t.accountId === account.id);
+        const winningTrades = accountTrades.filter(t => t.profit > 0).length;
+        const balance = account.balance || 0;
+        const currency = account.currency || 'USD';
+        
+        return `
+            <div class="account-card ${isActive ? 'active' : ''}" onclick="switchAccount('${account.id}')">
+                <div class="account-badge">${isActive ? '🟢 Active' : 'Inactive'}</div>
+                <div class="account-info">
+                    <div class="account-name">${account.name || 'Account'}</div>
+                    <div class="account-details">
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Balance:</span>
+                            <span class="account-detail-value">
+                                <span class="account-currency">${currency}</span>
+                                ${formatCurrency(balance, currency)}
+                            </span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Trades:</span>
+                            <span class="account-detail-value">${tradeCount}</span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Win Rate:</span>
+                            <span class="account-detail-value">${tradeCount > 0 ? Math.round((winningTrades / tradeCount) * 100) : 0}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.renderAccountsGrid = renderAccountsGrid;
+
 function updateCurrentAccountDisplay() {
     const currentAccount = getCurrentAccount();
     if (!currentAccount) return;
@@ -3088,6 +3141,7 @@ function setupTabs() {
     const affirmationsTab = document.getElementById('affirmationsTab');
     const calendarTab = document.getElementById('calendarTab');
     const toolsTab = document.getElementById('toolsTab');
+    const accountTab = document.getElementById('accountTab');
     const settingsTab = document.getElementById('settingsTab');
     const dashboardContent = document.getElementById('dashboardContent');
     const addTradeContent = document.getElementById('addTradeContent');
@@ -3095,9 +3149,10 @@ function setupTabs() {
     const affirmationsContent = document.getElementById('affirmationsContent');
     const calendarContent = document.getElementById('calendarContent');
     const toolsContent = document.getElementById('toolsContent');
+    const accountContent = document.getElementById('accountContent');
     const settingsContent = document.getElementById('settingsContent');
 
-    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, settingsContent].forEach(content => {
+    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, accountContent, settingsContent].forEach(content => {
         if (content) {
             content.classList.remove('active');
             content.style.display = 'none';
@@ -3105,14 +3160,14 @@ function setupTabs() {
     });
 
     function switchToTab(tabName) {
-        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, settingsContent].forEach(content => {
+        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, accountContent, settingsContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
                 content.style.display = 'none';
             }
         });
 
-        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, toolsTab, settingsTab].forEach(tab => {
+        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, toolsTab, accountTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
 
@@ -3161,6 +3216,14 @@ function setupTabs() {
                 }
                 if (toolsTab) toolsTab.classList.add('active');
                 break;
+            case 'account':
+                if (accountContent) {
+                    accountContent.classList.add('active');
+                    accountContent.style.display = 'block';
+                    renderAccountsGrid();
+                }
+                if (accountTab) accountTab.classList.add('active');
+                break;
             case 'settings':
                 if (settingsContent) {
                     settingsContent.classList.add('active');
@@ -3177,6 +3240,7 @@ function setupTabs() {
     if (affirmationsTab) affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
     if (calendarTab) calendarTab.addEventListener('click', () => switchToTab('calendar'));
     if (toolsTab) toolsTab.addEventListener('click', () => switchToTab('tools'));
+    if (accountTab) accountTab.addEventListener('click', () => switchToTab('account'));
     if (settingsTab) settingsTab.addEventListener('click', () => switchToTab('settings'));
     
     switchToTab('dashboard');
@@ -6350,4 +6414,3 @@ document.addEventListener('DOMContentLoaded', function() {
     hideLoading();
     initVerificationTool();
 });
-

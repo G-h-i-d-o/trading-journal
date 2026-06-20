@@ -1,5 +1,4 @@
-
-        :root {
+:root {
             --profit: #10b981;
             --loss: #ef4444;
             --primary: #2563eb; /* updated accent to match simpler layout */
@@ -1296,6 +1295,162 @@
 
         input[type="datetime-local"]::-webkit-datetime-edit {
             padding: 0;
+        }
+
+        /* Account Tab Styles */
+        @keyframes flash {
+            0%, 100% {
+                background-color: transparent;
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+            }
+            50% {
+                background-color: rgba(59, 130, 246, 0.1);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            }
+        }
+
+        .account-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .account-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .account-card.active {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
+            animation: flash 1.5s ease-in-out infinite;
+        }
+
+        .account-card.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+
+        .account-card.active .account-badge {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .account-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #e5e7eb;
+            color: #374151;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .account-info {
+            margin-top: 0;
+        }
+
+        .account-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+            margin-right: 60px;
+        }
+
+        .account-details {
+            display: grid;
+            gap: 12px;
+        }
+
+        .account-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .account-detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .account-detail-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .account-detail-value {
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .account-currency {
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .account-action-btn {
+            flex: 1;
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            color: #374151;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .account-action-btn:hover {
+            background: #f3f4f6;
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .account-card.active .account-action-btn {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .account-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .account-empty i {
+            font-size: 3rem;
+            color: #d1d5db;
+            margin-bottom: 16px;
         }
 
         /* Calendar Styles */
