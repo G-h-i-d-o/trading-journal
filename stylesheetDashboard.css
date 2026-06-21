@@ -126,6 +126,33 @@ input[readonly] {
     cursor: not-allowed;
 }
 
+/* ----- DROPDOWN OPTIONS DARK THEME (FIX) ----- */
+select {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: #fafafa;
+}
+select option {
+    background: #1a1a1a;
+    color: #fafafa;
+    padding: 6px 12px;
+}
+select option:hover {
+    background: #2a2a2a;
+}
+select option:checked {
+    background: #C9A84C;
+    color: #0a0a0a;
+}
+/* For Firefox and other browsers that use a different rendering */
+select:-moz-focusring {
+    color: transparent;
+    text-shadow: 0 0 0 #fafafa;
+}
+select option:focus {
+    background: #C9A84C;
+    color: #0a0a0a;
+}
+
 /* ----- Buttons ----- */
 .btn {
     background: #C9A84C;
