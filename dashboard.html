@@ -4,14 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TradeWizer Journal - Dashboard</title>
+    <meta name="theme-color" content="#0a0a0a">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="stylesheetDashboard.css">
 </head>
-<body class="bg-gray-900 min-h-screen">
+<body class="bg-[#121212] text-gray-100 min-h-screen">
     <!-- Navigation / Sidebar -->
-    <nav class="bg-gray-800 border-b border-gray-700">
+    <nav class="bg-[#0a0a0a] border-b border-[rgba(255,255,255,0.04)]">
         <!-- Desktop Sidebar -->
         <aside id="sidebar" class="hidden sm:flex flex-col">
             <div class="sidebar-header">
@@ -89,26 +90,26 @@
                         </button>
 
                         <div id="desktopPersonalContent" class="personal-submenu" style="padding-left:14px; padding-top:6px;">
-                            <div id="user-email" class="text-gray-300 text-sm">Loading...</div>
+                            <div id="user-email" class="text-gray-400 text-sm">Loading...</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="sidebar-section" id="accountsDropdown">
-                <button id="accountsToggle" class="sidebar-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center">
+                <button id="accountsToggle" class="sidebar-btn bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm flex items-center">
                     <span class="icon"><i class="fas fa-user"></i></span>
                     <span id="currentAccountName" class="label">Main Account</span>
                 </button>
-                <div id="accountsMenu" class="hidden mt-2 w-64 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
-                    <div class="p-3 border-b border-gray-200">
-                        <h3 class="font-semibold text-gray-800">Trading Accounts</h3>
+                <div id="accountsMenu" class="hidden mt-2 w-64 bg-[#0a0a0a] rounded-lg shadow-xl z-50 border border-[rgba(255,255,255,0.06)]">
+                    <div class="p-3 border-b border-[rgba(255,255,255,0.06)]">
+                        <h3 class="font-semibold text-gray-100">Trading Accounts</h3>
                     </div>
                     <div id="accountsList" class="max-h-60 overflow-y-auto">
                         <!-- Accounts will be loaded here -->
                     </div>
-                    <div class="p-3 border-t border-gray-200">
-                        <button onclick="showAddAccountModal()" class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm flex items-center justify-center">
+                    <div class="p-3 border-t border-[rgba(255,255,255,0.06)]">
+                        <button onclick="showAddAccountModal()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm flex items-center justify-center font-semibold">
                             <span class="mr-2">+</span> Add New Account
                         </button>
                     </div>
@@ -133,7 +134,7 @@
         </div>
 
         <!-- Mobile Dropdown Menu -->
-        <div id="mobileMenu" class="sm:hidden hidden border-t">
+        <div id="mobileMenu" class="sm:hidden hidden border-t border-[rgba(255,255,255,0.04)]">
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <!-- Mobile Accounts Section -->
                 <div class="px-3 py-2">
@@ -141,29 +142,28 @@
                     <div id="mobileAccountsList" class="space-y-1">
                         <!-- Mobile accounts will be loaded here -->
                     </div>
-                    <button onclick="showAddAccountModal()" class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mt-2 flex items-center justify-center">
+                    <button onclick="showAddAccountModal()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mt-2 flex items-center justify-center font-semibold">
                         <span class="mr-2">+</span> Add New Account
                     </button>
                 </div>
                 
-                <!-- ===== NEW: Account tab in mobile menu ===== -->
+                <!-- Account tab in mobile menu -->
                 <button onclick="document.getElementById('accountTab').click();" 
-                        class="block w-full text-left bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm mb-1">
+                        class="block w-full text-left bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mb-1 font-semibold">
                     <i class="fas fa-credit-card mr-2"></i> Account
                 </button>
-                <!-- ===== END NEW ===== -->
 
                 <div class="px-3 py-2 mobile-settings" id="mobileSettings">
-                    <button id="mobileSettingsToggle" class="font-semibold mb-2 w-full text-left bg-transparent border-0 px-0" aria-expanded="false">Settings <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></button>
+                    <button id="mobileSettingsToggle" class="font-semibold mb-2 w-full text-left bg-transparent border-0 px-0 text-gray-300" aria-expanded="false">Settings <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></button>
                     <div class="mobile-submenu" id="mobileSettingsSubmenu">
-                        <button onclick="openSettingsTab('general')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1">General</button>
-                        <button onclick="openSettingsTab('personalInfo')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1">Personal Info</button>
-                        <button onclick="openSettingsTab('preferences')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1">Preferences</button>
-                        <button onclick="openSettingsTab('deposits')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1">Deposits/Withdrawals</button>
-                        <button onclick="openSettingsTab('verification')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1">Contract Verification</button>
-                        <button onclick="exportTrades()" class="block w-full text-left bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mb-1">Export Trades</button>
+                        <button onclick="openSettingsTab('general')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1 text-gray-300 hover:text-white">General</button>
+                        <button onclick="openSettingsTab('personalInfo')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1 text-gray-300 hover:text-white">Personal Info</button>
+                        <button onclick="openSettingsTab('preferences')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1 text-gray-300 hover:text-white">Preferences</button>
+                        <button onclick="openSettingsTab('deposits')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1 text-gray-300 hover:text-white">Deposits/Withdrawals</button>
+                        <button onclick="openSettingsTab('verification')" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1 text-gray-300 hover:text-white">Contract Verification</button>
+                        <button onclick="exportTrades()" class="block w-full text-left bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mb-1 font-semibold">Export Trades</button>
                         <div id="mobilePersonalContent" class="mobile-personal personal-submenu" style="padding-left:8px;">
-                            <div id="mobile-user-email" class="text-sm py-1">Loading...</div>
+                            <div id="mobile-user-email" class="text-sm py-1 text-gray-400">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -181,23 +181,23 @@
     </div>
 
     <!-- Affirmation Modals -->
-    <div id="affirmationModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+    <div id="affirmationModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+        <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95 border border-[rgba(255,255,255,0.06)]">
             <div class="p-8">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold text-gray-800" id="modalTitle">Create New Affirmation</h3>
-                    <button onclick="closeAffirmationModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                    <h3 class="text-2xl font-bold text-gray-100" id="modalTitle">Create New Affirmation</h3>
+                    <button onclick="closeAffirmationModal()" class="text-gray-400 hover:text-gray-200 text-2xl transition-colors duration-200">
                         ×
                     </button>
                 </div>
                 
                 <form id="affirmationForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-star"></i> Affirmation Text</label>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3"><i class="fas fa-star"></i> Affirmation Text</label>
                         <textarea 
                             id="affirmationText" 
                             rows="4" 
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                            class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 text-gray-100"
                             placeholder="Write your powerful trading affirmation..."
                             required
                         ></textarea>
@@ -207,17 +207,17 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-folder"></i> Category</label>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3"><i class="fas fa-folder"></i> Category</label>
                         <select 
                             id="affirmationCategorySelect" 
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
+                            class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 appearance-none text-gray-100"
                         >
-                            <option value="confidence"><i class="fas fa-fist-raised"></i> Confidence</option>
-                            <option value="discipline"><i class="fas fa-bullseye"></i> Discipline</option>
-                            <option value="patience"><i class="fas fa-hourglass-end"></i> Patience</option>
-                            <option value="risk-management"><i class="fas fa-shield-alt"></i> Risk Management</option>
-                            <option value="mindset"><i class="fas fa-brain"></i> Mindset</option>
-                            <option value="general"><i class="fas fa-rainbow"></i> General</option>
+                            <option value="confidence">Confidence</option>
+                            <option value="discipline">Discipline</option>
+                            <option value="patience">Patience</option>
+                            <option value="risk-management">Risk Management</option>
+                            <option value="mindset">Mindset</option>
+                            <option value="general">General</option>
                         </select>
                     </div>
                     
@@ -226,9 +226,9 @@
                             <input 
                                 type="checkbox" 
                                 id="isFavorite" 
-                                class="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                                class="w-5 h-5 text-[#C9A84C] border-[rgba(255,255,255,0.08)] rounded focus:ring-[#C9A84C] transition duration-200 bg-transparent"
                             >
-                            <label for="isFavorite" class="ml-3 text-sm font-medium text-gray-700">Mark as favorite</label>
+                            <label for="isFavorite" class="ml-3 text-sm font-medium text-gray-300">Mark as favorite</label>
                         </div>
                         
                         <div class="flex items-center">
@@ -236,9 +236,9 @@
                                 type="checkbox" 
                                 id="isActive" 
                                 checked
-                                class="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 transition duration-200"
+                                class="w-5 h-5 text-[#C9A84C] border-[rgba(255,255,255,0.08)] rounded focus:ring-[#C9A84C] transition duration-200 bg-transparent"
                             >
-                            <label for="isActive" class="ml-3 text-sm font-medium text-gray-700">Active</label>
+                            <label for="isActive" class="ml-3 text-sm font-medium text-gray-300">Active</label>
                         </div>
                     </div>
                     
@@ -246,13 +246,13 @@
                         <button 
                             type="button" 
                             onclick="closeAffirmationModal()" 
-                            class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
+                            class="px-6 py-3 text-gray-400 hover:text-gray-200 font-semibold transition-colors duration-200"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
-                            class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                            class="px-8 py-3 bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
                         >
                             Save Affirmation
                         </button>
@@ -263,33 +263,33 @@
     </div>
 
     <!-- Random Affirmation Modal -->
-    <div id="randomAffirmationModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+    <div id="randomAffirmationModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+        <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95 border border-[rgba(255,255,255,0.06)]">
             <div class="p-8 text-center">
-                <div class="text-6xl mb-6"><i class="fas fa-lightbulb" style="font-size: 3rem; color: #fbbf24;"></i></div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Your Affirmation</h3>
-                <p class="text-sm text-gray-600 mb-6">Take a deep breath and internalize this message</p>
+                <div class="text-6xl mb-6"><i class="fas fa-lightbulb" style="font-size: 3rem; color: #C9A84C;"></i></div>
+                <h3 class="text-xl font-bold text-gray-100 mb-2">Your Affirmation</h3>
+                <p class="text-sm text-gray-400 mb-6">Take a deep breath and internalize this message</p>
                 
-                <div id="randomAffirmationText" class="text-xl text-gray-700 mb-8 min-h-32 bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl border-2 border-blue-100 leading-relaxed">
+                <div id="randomAffirmationText" class="text-xl text-gray-200 mb-8 min-h-32 bg-[rgba(255,255,255,0.03)] p-6 rounded-2xl border border-[rgba(255,255,255,0.06)] leading-relaxed">
                     "I am a disciplined trader who follows my plan with precision."
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3">
                     <button 
                         onclick="useRandomAffirmation()" 
-                        class="col-span-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                        class="col-span-2 bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
                     >
                         <i class="fas fa-check-circle"></i> I'm Using This
                     </button>
                     <button 
                         onclick="showAnotherRandom()" 
-                        class="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-cyan-700 transition-all duration-300 hover:scale-105"
+                        class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
                     >
                         <i class="fas fa-redo"></i> Another
                     </button>
                     <button 
                         onclick="closeRandomModal()" 
-                        class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-gray-600 hover:to-gray-700 transition-all duration-300 hover:scale-105"
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
                     >
                         Close
                     </button>
@@ -302,15 +302,15 @@
     <div class="content-wrapper">
         <div class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
         <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+        <div id="loadingIndicator" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+            <div class="bg-[#0a0a0a] p-6 rounded-lg shadow-xl text-center border border-[rgba(255,255,255,0.06)]">
                 <div class="loading-spinner"></div>
-                <p class="mt-2">Loading your trades...</p>
+                <p class="mt-2 text-gray-300">Loading your trades...</p>
             </div>
         </div>
 
         <!-- Tab Navigation -->
-        <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-lg overflow-x-auto">
+        <div class="flex border-b border-[rgba(255,255,255,0.06)] mb-6 bg-[#0a0a0a] rounded-t-lg overflow-x-auto">
             <button id="dashboardTab" class="tab-button active" data-icon="chart-line">
                 <i class="fas fa-chart-line"></i> Dashboard
             </button>
@@ -346,7 +346,7 @@
                     <div class="form-group">
                         <div class="flex items-center justify-between mb-1">
                             <label>Account Balance ($)</label>
-                            <button type="button" id="lockToggle" class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 transition-colors">
+                            <button type="button" id="lockToggle" class="text-xs bg-[rgba(201,168,76,0.15)] text-[#C9A84C] px-2 py-1 rounded hover:bg-[rgba(201,168,76,0.25)] transition-colors">
                                 <i class="fas fa-lock"></i> Locked
                             </button>
                         </div>
@@ -385,36 +385,36 @@
             <!-- Stats Grid -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="text-xs sm:text-sm">Total Trades</div>
+                    <div class="text-xs sm:text-sm text-gray-400">Total Trades</div>
                     <div class="stat-value" id="totalTrades">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="text-xs sm:text-sm">Win Rate</div>
+                    <div class="text-xs sm:text-sm text-gray-400">Win Rate</div>
                     <div class="stat-value" id="winRate">0%</div>
                 </div>
                 <div class="stat-card">
-                    <div class="text-xs sm:text-sm">Total P&L</div>
+                    <div class="text-xs sm:text-sm text-gray-400">Total P&L</div>
                     <div class="stat-value" id="totalPL">$0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="text-xs sm:text-sm">Balance</div>
+                    <div class="text-xs sm:text-sm text-gray-400">Balance</div>
                     <div class="stat-value" id="currentBalance">$0</div>
                 </div>
             </div>
 
             <!-- AI Trading Assistant Section -->
-            <div class="card bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-indigo-200 mt-6">
+            <div class="card bg-[rgba(201,168,76,0.04)] border border-[rgba(201,168,76,0.15)] mt-6">
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-4">
-                            <div class="bg-indigo-600 text-white p-3 rounded-xl">
+                            <div class="bg-[#C9A84C] text-[#0a0a0a] p-3 rounded-xl">
                                 <i class="fas fa-robot text-xl"></i>
                             </div>
                             <div>
-                                <h3 class="text-xl font-bold text-gray-800">AI Trading Assistant</h3>
-                                <p class="text-sm text-gray-600">Personalized insights based on your trading performance</p>
+                                <h3 class="text-xl font-bold text-gray-100">AI Trading Assistant</h3>
+                                <p class="text-sm text-gray-400">Personalized insights based on your trading performance</p>
                             </div>
-                            <button onclick="refreshAISuggestions()" class="ml-auto bg-white hover:bg-gray-100 text-indigo-600 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200">
+                            <button onclick="refreshAISuggestions()" class="ml-auto bg-[#0a0a0a] hover:bg-[#1a1a1a] text-[#C9A84C] px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 border border-[rgba(255,255,255,0.06)]">
                                 <i class="fas fa-sync-alt mr-2"></i>Refresh Analysis
                             </button>
                         </div>
@@ -422,42 +422,42 @@
                         <!-- Key Insight Cards -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <!-- Primary Insight -->
-                            <div id="primaryInsight" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-indigo-500">
+                            <div id="primaryInsight" class="bg-[#0a0a0a] rounded-xl p-4 shadow-sm border-l-4 border-[#C9A84C]">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <i class="fas fa-lightbulb text-yellow-500"></i>
-                                    <span class="font-semibold text-gray-700">Primary Focus</span>
+                                    <i class="fas fa-lightbulb text-[#C9A84C]"></i>
+                                    <span class="font-semibold text-gray-200">Primary Focus</span>
                                 </div>
-                                <p id="primaryInsightText" class="text-gray-800">Loading analysis...</p>
+                                <p id="primaryInsightText" class="text-gray-300">Loading analysis...</p>
                             </div>
                             
                             <!-- Risk Assessment -->
-                            <div id="riskInsight" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
+                            <div id="riskInsight" class="bg-[#0a0a0a] rounded-xl p-4 shadow-sm border-l-4 border-[#E0565B]">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <i class="fas fa-shield-alt text-red-500"></i>
-                                    <span class="font-semibold text-gray-700">Risk Assessment</span>
+                                    <i class="fas fa-shield-alt text-[#E0565B]"></i>
+                                    <span class="font-semibold text-gray-200">Risk Assessment</span>
                                 </div>
-                                <p id="riskInsightText" class="text-gray-800">Loading analysis...</p>
+                                <p id="riskInsightText" class="text-gray-300">Loading analysis...</p>
                             </div>
                             
                             <!-- Performance Trend -->
-                            <div id="trendInsight" class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-green-500">
+                            <div id="trendInsight" class="bg-[#0a0a0a] rounded-xl p-4 shadow-sm border-l-4 border-[#26A69A]">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <i class="fas fa-chart-line text-green-500"></i>
-                                    <span class="font-semibold text-gray-700">Performance Trend</span>
+                                    <i class="fas fa-chart-line text-[#26A69A]"></i>
+                                    <span class="font-semibold text-gray-200">Performance Trend</span>
                                 </div>
-                                <p id="trendInsightText" class="text-gray-800">Loading analysis...</p>
+                                <p id="trendInsightText" class="text-gray-300">Loading analysis...</p>
                             </div>
                         </div>
                         
                         <!-- Detailed Suggestions -->
-                        <div class="bg-white rounded-xl p-5 shadow-sm">
-                            <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                <i class="fas fa-list-check text-indigo-500"></i>
+                        <div class="bg-[#0a0a0a] rounded-xl p-5 shadow-sm border border-[rgba(255,255,255,0.04)]">
+                            <h4 class="font-semibold text-gray-200 mb-3 flex items-center gap-2">
+                                <i class="fas fa-list-check text-[#C9A84C]"></i>
                                 Actionable Recommendations
                             </h4>
                             <div id="aiRecommendations" class="space-y-3">
                                 <!-- Recommendations will be populated here -->
-                                <div class="text-gray-500 text-center py-4">
+                                <div class="text-gray-400 text-center py-4">
                                     <div class="loading-spinner mx-auto"></div>
                                     <p class="mt-2">Analyzing your trading data...</p>
                                 </div>
@@ -465,7 +465,7 @@
                         </div>
                         
                         <!-- Metrics Summary -->
-                        <div id="aiMetricsSummary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
+                        <div id="aiMetricsSummary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-400">
                             <!-- Metrics summary will be populated here -->
                         </div>
                     </div>
@@ -543,9 +543,9 @@
                                 <div class="psych-label">Confluence Trade Coverage</div>
                             </div>
                         </div>
-                        <div class="mt-4 text-xs text-gray-600">
+                        <div class="mt-4 text-xs text-gray-400">
                             <div>Mood Performance:</div>
-                            <div id="moodPerformance" class="mt-1">No data yet</div>
+                            <div id="moodPerformance" class="mt-1 text-gray-300">No data yet</div>
                         </div>
                     </div>
 
@@ -990,27 +990,27 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="section-title mb-0">📋 Trade History</h3>
                     <div class="flex items-center space-x-2">
-                        <div class="text-sm text-gray-500" id="tradeCount">0 trades</div>
+                        <div class="text-sm text-gray-400" id="tradeCount">0 trades</div>
                         <!-- MetaTrader Import Button -->
-                        <button onclick="importMetaTraderTrades()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1">
+                        <button onclick="importMetaTraderTrades()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm flex items-center gap-1 font-semibold">
                             <i class="fas fa-file-import"></i> Import MT4/MT5
                         </button>
-                        <button onclick="importTrades()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
+                        <button onclick="importTrades()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-semibold">
                             <i class="fas fa-download"></i> Import CSV
                         </button>
-                        <button onclick="exportTrades()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm">
+                        <button onclick="exportTrades()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-semibold">
                             <i class="fas fa-upload"></i> Export CSV
                         </button>
                     </div>
                 </div>
                 <div id="tradeHistory">
-                    <div class="text-center text-gray-500 py-8">
+                    <div class="text-center text-gray-400 py-8">
                         <div class="loading-spinner mx-auto"></div>
                         <p class="mt-2">Loading trades...</p>
                     </div>
                 </div>
                 <!-- Pagination -->
-                <div id="pagination" class="flex justify-center items-center space-x-2 mt-4 pt-4 border-t border-gray-200">
+                <div id="pagination" class="flex justify-center items-center space-x-2 mt-4 pt-4 border-t border-[rgba(255,255,255,0.04)]">
                     <!-- Pagination buttons will be inserted here by JavaScript -->
                 </div>
             </div>
@@ -1019,13 +1019,13 @@
         <!-- Affirmations Tab Content -->
         <div id="affirmationsContent" class="tab-content">
             <!-- Header Section -->
-            <div class="card bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+            <div class="card bg-gradient-to-r from-[#C9A84C] to-[#d4b85a] text-[#0a0a0a]">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div class="flex-1">
                         <h3 class="text-2xl font-bold mb-2"><i class="fas fa-star"></i> Trading Affirmations</h3>
-                        <p class="text-purple-100 opacity-90">Strengthen your mindset with powerful daily affirmations</p>
+                        <p class="text-[#0a0a0a] opacity-80">Strengthen your mindset with powerful daily affirmations</p>
                     </div>
-                    <button onclick="addNewAffirmation()" class="mt-4 md:mt-0 bg-white text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-xl font-semibold flex items-center shadow-lg transition-all duration-300 hover:scale-105">
+                    <button onclick="addNewAffirmation()" class="mt-4 md:mt-0 bg-[#0a0a0a] text-[#C9A84C] hover:bg-[#1a1a1a] px-6 py-3 rounded-xl font-semibold flex items-center shadow-lg transition-all duration-300 hover:scale-105">
                         <span class="mr-2 text-lg">+</span> New Affirmation
                     </button>
                 </div>
@@ -1033,40 +1033,40 @@
 
             <!-- Stats Dashboard -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="affirmation-stat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                <div class="affirmation-stat-card bg-gradient-to-br from-[#C9A84C] to-[#b8983a] text-[#0a0a0a]">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-blue-100 text-sm">Total Affirmations</div>
+                            <div class="text-[#0a0a0a] text-sm opacity-80">Total Affirmations</div>
                             <div class="text-2xl font-bold mt-1" id="totalAffirmations">0</div>
                         </div>
                         <div class="text-3xl opacity-80"><i class="fas fa-book"></i></div>
                     </div>
                 </div>
                 
-                <div class="affirmation-stat-card bg-gradient-to-br from-green-500 to-green-600 text-white">
+                <div class="affirmation-stat-card bg-gradient-to-br from-[#26A69A] to-[#1e8f84] text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-green-100 text-sm">Active Today</div>
+                            <div class="text-white text-sm opacity-80">Active Today</div>
                             <div class="text-2xl font-bold mt-1" id="activeAffirmations">0</div>
                         </div>
                         <div class="text-3xl opacity-80"><i class="fas fa-bolt"></i></div>
                     </div>
                 </div>
                 
-                <div class="affirmation-stat-card bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+                <div class="affirmation-stat-card bg-gradient-to-br from-[#fbbf24] to-[#f59e0b] text-[#0a0a0a]">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-yellow-100 text-sm">Favorites</div>
+                            <div class="text-[#0a0a0a] text-sm opacity-80">Favorites</div>
                             <div class="text-2xl font-bold mt-1" id="favoriteAffirmations">0</div>
                         </div>
                         <div class="text-3xl opacity-80"><i class="fas fa-star"></i></div>
                     </div>
                 </div>
                 
-                <div class="affirmation-stat-card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                <div class="affirmation-stat-card bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-purple-100 text-sm">This Week</div>
+                            <div class="text-white text-sm opacity-80">This Week</div>
                             <div class="text-2xl font-bold mt-1" id="usedThisWeek">0</div>
                         </div>
                         <div class="text-3xl opacity-80">📈</div>
@@ -1075,36 +1075,36 @@
             </div>
 
             <!-- Daily Focus Section -->
-            <div class="card bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white relative overflow-hidden mb-6">
+            <div class="card bg-gradient-to-r from-[#C9A84C] via-[#d4b85a] to-[#b8983a] text-[#0a0a0a] relative overflow-hidden mb-6">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -mr-16 -mt-16"></div>
                 <div class="absolute bottom-0 left-0 w-24 h-24 bg-white bg-opacity-10 rounded-full -ml-12 -mb-12"></div>
                 
                 <div class="relative z-10">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
-                            <h4 class="text-xl font-bold mb-2"><i class="fas fa-lightbulb" style="color: #fbbf24;"></i> Your Daily Focus</h4>
-                            <p class="text-indigo-100 opacity-90">Start your trading day with this powerful affirmation</p>
+                            <h4 class="text-xl font-bold mb-2"><i class="fas fa-lightbulb" style="color: #0a0a0a;"></i> Your Daily Focus</h4>
+                            <p class="text-[#0a0a0a] opacity-80">Start your trading day with this powerful affirmation</p>
                         </div>
                         <div class="flex space-x-2 mt-4 md:mt-0">
-                            <button onclick="refreshDailyAffirmation()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-xl transition-all duration-300 hover:scale-110" title="New Affirmation">
+                            <button onclick="refreshDailyAffirmation()" class="bg-[#0a0a0a] bg-opacity-20 hover:bg-opacity-30 text-[#0a0a0a] p-3 rounded-xl transition-all duration-300 hover:scale-110" title="New Affirmation">
                                 <span class="text-lg"><i class="fas fa-redo"></i></span>
                             </button>
-                            <button onclick="speakAffirmation()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-xl transition-all duration-300 hover:scale-110" title="Listen">
+                            <button onclick="speakAffirmation()" class="bg-[#0a0a0a] bg-opacity-20 hover:bg-opacity-30 text-[#0a0a0a] p-3 rounded-xl transition-all duration-300 hover:scale-110" title="Listen">
                                 <span class="text-lg"><i class="fas fa-volume-up"></i></span>
                             </button>
                         </div>
                     </div>
                     
-                    <div id="dailyAffirmation" class="text-2xl md:text-3xl font-bold mb-6 min-h-24 bg-white bg-opacity-10 p-6 rounded-2xl backdrop-blur-sm border border-white border-opacity-20">
+                    <div id="dailyAffirmation" class="text-2xl md:text-3xl font-bold mb-6 min-h-24 bg-[#0a0a0a] bg-opacity-10 p-6 rounded-2xl backdrop-blur-sm border border-[#0a0a0a] border-opacity-20 text-[#0a0a0a]">
                         "I am a disciplined trader who follows my plan with precision and patience."
                     </div>
                     
                     <div class="flex flex-col md:flex-row justify-between items-center">
                         <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <span id="dailyAffirmationCategory" class="bg-white bg-opacity-20 px-4 py-2 rounded-full font-semibold">Discipline</span>
-                            <span class="text-indigo-100 text-sm">Strength: <span id="affirmationStrength" class="font-bold">92%</span></span>
+                            <span id="dailyAffirmationCategory" class="bg-[#0a0a0a] bg-opacity-20 px-4 py-2 rounded-full font-semibold text-[#0a0a0a]">Discipline</span>
+                            <span class="text-[#0a0a0a] text-sm">Strength: <span id="affirmationStrength" class="font-bold">92%</span></span>
                         </div>
-                        <button onclick="markDailyAsUsed()" class="bg-white text-indigo-600 px-8 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all duration-300 hover:scale-105 shadow-lg">
+                        <button onclick="markDailyAsUsed()" class="bg-[#0a0a0a] text-[#C9A84C] px-8 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all duration-300 hover:scale-105 shadow-lg">
                             <i class="fas fa-check-circle"></i> I Used This Today
                         </button>
                     </div>
@@ -1114,41 +1114,41 @@
             <!-- Quick Actions & Categories -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Quick Actions -->
-                <div class="card bg-gradient-to-br from-gray-50 to-gray-100">
-                    <h4 class="font-semibold text-gray-800 mb-4"><i class="fas fa-rocket"></i> Quick Actions</h4>
+                <div class="card bg-[#0a0a0a] border border-[rgba(255,255,255,0.04)]">
+                    <h4 class="font-semibold text-gray-200 mb-4"><i class="fas fa-rocket"></i> Quick Actions</h4>
                     <div class="space-y-4">
-                        <button onclick="showRandomAffirmation()" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
+                        <button onclick="showRandomAffirmation()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
                             <span class="mr-3 text-lg"><i class="fas fa-random"></i></span> Random Affirmation
                         </button>
-                        <button onclick="showMotivationalQuote()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
+                        <button onclick="showMotivationalQuote()" class="w-full bg-[#0a0a0a] border border-[rgba(255,255,255,0.08)] hover:bg-[#1a1a1a] text-gray-200 px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
                             <span class="mr-3 text-lg"><i class="fas fa-lightbulb"></i></span> Motivational Quote
                         </button>
-                        <button onclick="exportAffirmations()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
+                        <button onclick="exportAffirmations()" class="w-full bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 hover:scale-105">
                             <span class="mr-3 text-lg"><i class="fas fa-upload"></i></span> Export All
                         </button>
                     </div>
                 </div>
 
                 <!-- Categories -->
-                <div class="card bg-gradient-to-br from-blue-50 to-cyan-100 lg:col-span-2">
-                    <h4 class="font-semibold text-gray-800 mb-4"><i class="fas fa-folder"></i> Categories</h4>
+                <div class="card bg-[#0a0a0a] border border-[rgba(255,255,255,0.04)] lg:col-span-2">
+                    <h4 class="font-semibold text-gray-200 mb-4"><i class="fas fa-folder"></i> Categories</h4>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <button class="category-filter active bg-blue-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="all">
+                        <button class="category-filter active bg-[#C9A84C] text-[#0a0a0a] px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="all">
                             <i class="fas fa-rainbow"></i> All
                         </button>
-                        <button class="category-filter bg-green-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="confidence">
+                        <button class="category-filter bg-[#26A69A] text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="confidence">
                             <i class="fas fa-fist-raised"></i> Confidence
                         </button>
-                        <button class="category-filter bg-purple-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="discipline">
+                        <button class="category-filter bg-[#8b5cf6] text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="discipline">
                             <i class="fas fa-bullseye"></i> Discipline
                         </button>
-                        <button class="category-filter bg-yellow-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="patience">
+                        <button class="category-filter bg-[#fbbf24] text-[#0a0a0a] px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="patience">
                             <i class="fas fa-hourglass-end"></i> Patience
                         </button>
-                        <button class="category-filter bg-red-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="risk-management">
+                        <button class="category-filter bg-[#E0565B] text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="risk-management">
                             <i class="fas fa-shield-alt"></i> Risk Management
                         </button>
-                        <button class="category-filter bg-indigo-500 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="mindset">
+                        <button class="category-filter bg-[#6366f1] text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-md" data-category="mindset">
                             <i class="fas fa-brain"></i> Mindset
                         </button>
                     </div>
@@ -1158,13 +1158,13 @@
             <!-- Affirmations Grid -->
             <div class="card">
                 <div class="flex justify-between items-center mb-6">
-                    <h4 class="font-semibold text-gray-800">📝 Your Affirmations</h4>
+                    <h4 class="font-semibold text-gray-200">📝 Your Affirmations</h4>
                     <div class="flex items-center space-x-4">
                         <div class="relative">
-                            <input type="text" id="searchAffirmations" placeholder="Search affirmations..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><i class="fas fa-search"></i></span>
+                            <input type="text" id="searchAffirmations" placeholder="Search affirmations..." class="pl-10 pr-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-gray-100">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"><i class="fas fa-search"></i></span>
                         </div>
-                        <select id="sortAffirmations" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="sortAffirmations" class="px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-gray-100">
                             <option value="newest">Newest First</option>
                             <option value="oldest">Oldest First</option>
                             <option value="most-used">Most Used</option>
@@ -1179,10 +1179,10 @@
 
                 <!-- Empty State -->
                 <div id="emptyAffirmations" class="text-center py-16 hidden">
-                    <div class="text-8xl mb-6 opacity-20"><i class="fas fa-star"></i></div>
-                    <h3 class="text-2xl font-semibold text-gray-700 mb-4">No affirmations yet</h3>
-                    <p class="text-gray-500 mb-8 text-lg">Start building your positive trading mindset with powerful daily affirmations.</p>
-                    <button onclick="addNewAffirmation()" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-lg">
+                    <div class="text-8xl mb-6 opacity-20"><i class="fas fa-star text-[#C9A84C]"></i></div>
+                    <h3 class="text-2xl font-semibold text-gray-300 mb-4">No affirmations yet</h3>
+                    <p class="text-gray-400 mb-8 text-lg">Start building your positive trading mindset with powerful daily affirmations.</p>
+                    <button onclick="addNewAffirmation()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-lg">
                         Create Your First Affirmation
                     </button>
                 </div>
@@ -1197,25 +1197,25 @@
                     <div class="flex flex-wrap gap-3 w-full md:w-auto">
                         <!-- Calendar Navigation -->
                         <div class="flex items-center space-x-2">
-                            <button id="prevMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
+                            <button id="prevMonth" class="bg-[#0a0a0a] hover:bg-[#1a1a1a] border border-[rgba(255,255,255,0.06)] text-gray-300 p-2 rounded-lg transition-colors">
                                 <span><i class="fas fa-arrow-left"></i></span>
                             </button>
-                            <h4 id="currentMonthYear" class="font-bold text-lg text-gray-800 min-w-40 text-center">
+                            <h4 id="currentMonthYear" class="font-bold text-lg text-gray-100 min-w-40 text-center">
                                 Loading...
                             </h4>
-                            <button id="nextMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
+                            <button id="nextMonth" class="bg-[#0a0a0a] hover:bg-[#1a1a1a] border border-[rgba(255,255,255,0.06)] text-gray-300 p-2 rounded-lg transition-colors">
                                 <span><i class="fas fa-arrow-right"></i></span>
                             </button>
                         </div>
                         
                         <!-- View Type Selector -->
-                        <select id="viewType" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="viewType" class="px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-gray-100">
                             <option value="month">Month View</option>
                             <option value="week">Week View</option>
                         </select>
                         
                         <!-- Quick Navigation -->
-                        <select id="quickNav" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="quickNav" class="px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-gray-100">
                             <option value="current">Current Month</option>
                             <option value="lastMonth">Last Month</option>
                             <option value="last3Months">Last 3 Months</option>
@@ -1224,10 +1224,10 @@
                         
                         <!-- Custom Date Range (hidden by default) -->
                         <div id="customRangeContainer" class="hidden flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                            <input type="date" id="startDate" class="px-3 py-2 border border-gray-300 rounded-lg">
-                            <span class="self-center">to</span>
-                            <input type="date" id="endDate" class="px-3 py-2 border border-gray-300 rounded-lg">
-                            <button id="applyCustomRange" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg">
+                            <input type="date" id="startDate" class="px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
+                            <span class="self-center text-gray-400">to</span>
+                            <input type="date" id="endDate" class="px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
+                            <button id="applyCustomRange" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg font-semibold">
                                 Apply
                             </button>
                         </div>
@@ -1236,21 +1236,21 @@
 
                 <!-- Calendar Stats -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="stat-card bg-gradient-to-r from-blue-50 to-blue-100">
-                        <div class="text-sm text-blue-600">Trades This Period</div>
-                        <div class="stat-value text-blue-700" id="periodTradesCount">0</div>
+                    <div class="stat-card bg-[rgba(201,168,76,0.04)] border border-[rgba(201,168,76,0.1)]">
+                        <div class="text-sm text-[#C9A84C]">Trades This Period</div>
+                        <div class="stat-value text-[#C9A84C]" id="periodTradesCount">0</div>
                     </div>
-                    <div class="stat-card bg-gradient-to-r from-green-50 to-green-100">
-                        <div class="text-sm text-green-600">Total Profit</div>
-                        <div class="stat-value text-green-700" id="periodTotalProfit">$0</div>
+                    <div class="stat-card bg-[rgba(38,166,154,0.04)] border border-[rgba(38,166,154,0.1)]">
+                        <div class="text-sm text-[#26A69A]">Total Profit</div>
+                        <div class="stat-value text-[#26A69A]" id="periodTotalProfit">$0</div>
                     </div>
-                    <div class="stat-card bg-gradient-to-r from-purple-50 to-purple-100">
-                        <div class="text-sm text-purple-600">Win Rate</div>
-                        <div class="stat-value text-purple-700" id="periodWinRate">0%</div>
+                    <div class="stat-card bg-[rgba(139,92,246,0.04)] border border-[rgba(139,92,246,0.1)]">
+                        <div class="text-sm text-[#8b5cf6]">Win Rate</div>
+                        <div class="stat-value text-[#8b5cf6]" id="periodWinRate">0%</div>
                     </div>
-                    <div class="stat-card bg-gradient-to-r from-orange-50 to-orange-100">
-                        <div class="text-sm text-orange-600">Avg. Profit/Trade</div>
-                        <div class="stat-value text-orange-700" id="periodAvgProfit">$0</div>
+                    <div class="stat-card bg-[rgba(251,191,36,0.04)] border border-[rgba(251,191,36,0.1)]">
+                        <div class="text-sm text-[#fbbf24]">Avg. Profit/Trade</div>
+                        <div class="stat-value text-[#fbbf24]" id="periodAvgProfit">$0</div>
                     </div>
                 </div>
 
@@ -1259,13 +1259,13 @@
                     <!-- Month View -->
                     <div id="monthView" class="calendar-view">
                         <div class="grid grid-cols-7 gap-1 mb-2">
-                            <div class="text-center font-semibold text-gray-600 py-2">Sun</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Mon</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Tue</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Wed</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Thu</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Fri</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Sat</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Sun</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Mon</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Tue</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Wed</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Thu</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Fri</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Sat</div>
                         </div>
                         <div id="monthGrid" class="grid grid-cols-7 gap-1">
                             <!-- Calendar days will be populated here -->
@@ -1275,14 +1275,14 @@
                     <!-- Week View -->
                     <div id="weekView" class="calendar-view hidden">
                         <div class="grid grid-cols-8 gap-1 mb-2">
-                            <div class="text-center font-semibold text-gray-600 py-2">Time</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Sun</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Mon</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Tue</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Wed</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Thu</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Fri</div>
-                            <div class="text-center font-semibold text-gray-600 py-2">Sat</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Time</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Sun</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Mon</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Tue</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Wed</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Thu</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Fri</div>
+                            <div class="text-center font-semibold text-gray-400 py-2">Sat</div>
                         </div>
                         <div id="weekGrid" class="grid grid-cols-8 gap-1">
                             <!-- Week view will be populated here -->
@@ -1292,8 +1292,8 @@
 
                 <!-- Selected Day Details -->
                 <div id="selectedDayDetails" class="mt-6 hidden">
-                    <div class="border-t pt-4">
-                        <h4 class="font-semibold text-lg mb-3" id="selectedDayTitle">Trades for Selected Day</h4>
+                    <div class="border-t border-[rgba(255,255,255,0.04)] pt-4">
+                        <h4 class="font-semibold text-lg mb-3 text-gray-200" id="selectedDayTitle">Trades for Selected Day</h4>
                         <div id="selectedDayTrades" class="space-y-3">
                             <!-- Trades for selected day will appear here -->
                         </div>
@@ -1306,27 +1306,27 @@
         <div id="toolsContent" class="tab-content">
             <div class="card p-0 overflow-hidden">
                 <div class="flex flex-col lg:flex-row">
-                    <aside class="tools-vertical-nav w-full lg:w-72 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 p-4">
+                    <aside class="tools-vertical-nav w-full lg:w-72 bg-[#0a0a0a] border-b lg:border-b-0 lg:border-r border-[rgba(255,255,255,0.04)] p-4">
                         <div class="mb-5">
-                            <h3 class="font-bold text-gray-800 mb-1"><i class="fas fa-tools mr-2"></i> Tools</h3>
-                            <p class="text-sm text-gray-500">Forex and market utilities</p>
+                            <h3 class="font-bold text-gray-200 mb-1"><i class="fas fa-tools mr-2"></i> Tools</h3>
+                            <p class="text-sm text-gray-400">Forex and market utilities</p>
                         </div>
                         <button id="toolsEconomicCalendarBtn" onclick="switchToolsPanel('economicCalendar')" class="tools-nav-item active w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                            <i class="fas fa-calendar-day w-5 text-gray-500"></i>
+                            <i class="fas fa-calendar-day w-5 text-gray-400"></i>
                             <span>Forex Economic Calendar</span>
                         </button>
                         <button id="toolsPositionSizeCalculatorBtn" onclick="switchToolsPanel('positionSizeCalculator')" class="tools-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                            <i class="fas fa-calculator w-5 text-gray-500"></i>
+                            <i class="fas fa-calculator w-5 text-gray-400"></i>
                             <span>Position Size Calculator</span>
                         </button>
                     </aside>
-                    <div class="flex-1 p-6 bg-white">
+                    <div class="flex-1 p-6 bg-[#0a0a0a]">
                         <div id="economicCalendarPanel" class="tools-panel active">
                             <div class="mb-4">
                                 <h3 class="section-title"><i class="fas fa-calendar-week"></i> Forex Economic Calendar</h3>
-                                <p class="text-sm text-gray-500">Stay updated with key global economic events impacting currencies.</p>
+                                <p class="text-sm text-gray-400">Stay updated with key global economic events impacting currencies.</p>
                             </div>
-                            <div class="economic-calendar-wrapper border border-gray-200 rounded-2xl overflow-hidden relative">
+                            <div class="economic-calendar-wrapper border border-[rgba(255,255,255,0.04)] rounded-2xl overflow-hidden relative">
                                 <!-- myfxbook.com Economic Calendar Widget - Start -->
                                 <iframe class="economic-calendar-iframe" src="https://widget.myfxbook.com/widget/calendar.html?lang=en&impacts=0,1,2,3&symbols=AED,AFN,ALL,AMD,ANG,AOA,ARS,AUD,AWG,AZN,BAM,BBD,BDT,BGN,BHD,BIF,BMD,BND,BOB,BRL,BSD,BTN,BWP,BYN,BZD,CAD,CDF,CHF,CLP,CNY,COP,CRC,CUC,CVE,CZK,DJF,DKK,DOP,DZD,EGP,ERN,ETB,EUR,FJD,FKP,GBP,GEL,GHS,GIP,GMD,GNF,GTQ,GYD,HKD,HNL,HRK,HTG,HUF,IDR,ILS,INR,IQD,IRR,ISK,JMD,JOD,JPY,KES,KGS,KHR,KMF,KPW,KRW,KWD,KYD,KZT,LAK,LBP,LKR,LRD,LSL,LYD,MAD,MDL,MGA,MKD,MMK,MNT,MOP,MRO,MUR,MVR,MWK,MXN,MYR,MZN,NAD,NGN,NIO,NOK,NPR,NZD,OMR,PAB,PEN,PGK,PHP,PKR,PLN,PYG,QAR,RON,RSD,RUB,RWF,SAR,SBD,SCR,SDG,SEK,SGD,SHP,SLL,SOS,SRD,SSP,STD,SYP,SZL,THB,TJS,TMT,TND,TOP,TRY,TTD,TWD,TZS,UAH,UGX,USD,UYU,UZS,VEF,VND,VUV,WST,XAF,XCD,XOF,XPF,YER,ZAR,ZMW" style="border: 0; width:100%; height:100%;"></iframe>
                                 <div class="economic-calendar-overlay"></div>
@@ -1342,9 +1342,9 @@
                         <div id="positionSizeCalculatorPanel" class="tools-panel">
                             <div class="mb-4">
                                 <h3 class="section-title"><i class="fas fa-calculator"></i> Position Size Calculator</h3>
-                                <p class="text-sm text-gray-500">Calculate optimal position size based on your risk management parameters.</p>
+                                <p class="text-sm text-gray-400">Calculate optimal position size based on your risk management parameters.</p>
                             </div>
-                            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                            <div class="border border-[rgba(255,255,255,0.04)] rounded-2xl overflow-hidden">
                                 <div id="position-size-calculator-895896"><script type="text/javascript" src="https://www.cashbackforex.com/Content/remote/remote-widgets.js"></script><script type="text/javascript"> RemoteCalc({"Url":"https://www.cashbackforex.com", "TopPaneStyle":"YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCMzNDM1NDAgMCUsICMyNDI4MzEgMTAwJSk7IGNvbG9yOiB3aGl0ZTsgYm9yZGVyLWJvdHRvbTogbm9uZTs=","BottomPaneStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgYm9yZGVyOiBzb2xpZCAwcHggIzJhMmUzOTsgY29sb3I6ICM5MTk0YTE=","ButtonStyle":"YmFja2dyb3VuZDogIzM0MzU0MDsgY29sb3I6IHdoaXRlOyBib3JkZXItcmFkaXVzOiAyMHB4Ow==","TitleStyle":"dGV4dC1hbGlnbjogbGVmdDsgZm9udC1zaXplOiA0MHB4OyBmb250LXdlaWdodDogNTAwOw==","TextboxStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgY29sb3I6ICM5MTk0YTE7IGJvcmRlcjogc29saWQgMHB4ICM5MTk0YTE=" ,"ContainerWidth":"665","HighlightColor":"rgba(0,0,0,1.0)","IsDisplayTitle":true,"IsShowChartLinks":false,"IsShowEmbedButton":false,"CompactType":"large","Calculator":"position-size-calculator","ContainerId":"position-size-calculator-895896"});</script></div>
                             </div>
                         </div>
@@ -1357,14 +1357,14 @@
         <div id="accountContent" class="tab-content">
             <div class="card">
                 <h3 class="section-title"><i class="fas fa-credit-card mr-2"></i>Trading Accounts</h3>
-                <p class="text-gray-600 mb-6">Select an account to view or manage your trading activity</p>
+                <p class="text-gray-400 mb-6">Select an account to view or manage your trading activity</p>
                 
                 <div id="accountsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <!-- Accounts will be loaded here -->
                 </div>
 
-                <div class="border-t pt-6">
-                    <button onclick="showAddAccountModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200">
+                <div class="border-t border-[rgba(255,255,255,0.04)] pt-6">
+                    <button onclick="showAddAccountModal()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200">
                         <i class="fas fa-plus-circle"></i> Add New Account
                     </button>
                 </div>
@@ -1376,39 +1376,38 @@
             <div class="card p-0 overflow-hidden">
                 <div class="flex flex-col md:flex-row">
                     <!-- Vertical Settings Navigation -->
-                    <div class="settings-vertical-nav w-full md:w-64 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200">
-                        <div class="p-4 border-b border-gray-200">
-                            <h3 class="font-bold text-gray-800"><i class="fas fa-cog mr-2"></i>Settings</h3>
-                            <p class="text-xs text-gray-500 mt-1">Customize your trading journal</p>
+                    <div class="settings-vertical-nav w-full md:w-64 bg-[#0a0a0a] border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.04)]">
+                        <div class="p-4 border-b border-[rgba(255,255,255,0.04)]">
+                            <h3 class="font-bold text-gray-200"><i class="fas fa-cog mr-2"></i>Settings</h3>
+                            <p class="text-xs text-gray-400 mt-1">Customize your trading journal</p>
                         </div>
                         <nav class="p-2">
                             <button onclick="showSettingsSection('general')" data-section="general" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                                <i class="fas fa-sliders-h w-5 text-gray-500"></i>
+                                <i class="fas fa-sliders-h w-5 text-gray-400"></i>
                                 <span>General</span>
                             </button>
                             <button onclick="showSettingsSection('personalInfo')" data-section="personalInfo" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                                <i class="fas fa-user-circle w-5 text-gray-500"></i>
+                                <i class="fas fa-user-circle w-5 text-gray-400"></i>
                                 <span>Personal Info</span>
                             </button>
                             <button onclick="showSettingsSection('preferences')" data-section="preferences" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                                <i class="fas fa-cog w-5 text-gray-500"></i>
+                                <i class="fas fa-cog w-5 text-gray-400"></i>
                                 <span>Preferences</span>
                             </button>
                             <button onclick="showSettingsSection('funds')" data-section="funds" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                                <i class="fas fa-money-bill-wave w-5 text-gray-500"></i>
+                                <i class="fas fa-money-bill-wave w-5 text-gray-400"></i>
                                 <span>Deposits & Withdrawals</span>
                             </button>
                             <button onclick="showSettingsSection('verification')" data-section="verification" class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                                <i class="fas fa-calculator w-5 text-gray-500"></i>
+                                <i class="fas fa-calculator w-5 text-gray-400"></i>
                                 <span>Contract Verification</span>
                             </button>
-                            <!-- ===== NEW: Account button in Settings side nav ===== -->
+                            <!-- Account button in Settings side nav -->
                             <button onclick="document.getElementById('accountTab').click();" 
                                     class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                                <i class="fas fa-credit-card w-5 text-gray-500"></i>
+                                <i class="fas fa-credit-card w-5 text-gray-400"></i>
                                 <span>Account</span>
                             </button>
-                            <!-- ===== END NEW ===== -->
                         </nav>
                     </div>
 
@@ -1416,11 +1415,11 @@
                     <div class="flex-1 p-6">
                         <!-- General Settings Section -->
                         <div id="generalSettingsSection" class="settings-section active">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-sliders-h mr-2"></i>General Settings</h3>
+                            <h3 class="text-xl font-bold text-gray-100 mb-4"><i class="fas fa-sliders-h mr-2"></i>General Settings</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
                                 <div class="form-group">
                                     <label>App Theme</label>
-                                    <select id="themeSelect" class="w-full px-4 py-2 border rounded-lg">
+                                    <select id="themeSelect" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
                                         <option value="light">Light</option>
                                         <option value="dark">Dark</option>
                                         <option value="system">System Default</option>
@@ -1428,15 +1427,15 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Default Account</label>
-                                    <select id="defaultAccountSelect" class="w-full px-4 py-2 border rounded-lg"></select>
+                                    <select id="defaultAccountSelect" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100"></select>
                                 </div>
                                 <div class="form-group">
                                     <label>Risk Per Trade (%)</label>
-                                    <input type="number" id="riskPerTradeSetting" step="0.1" min="0.1" max="5" class="w-full px-4 py-2 border rounded-lg">
+                                    <input type="number" id="riskPerTradeSetting" step="0.1" min="0.1" max="5" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
                                 </div>
                                 <div class="form-group">
                                     <label>Leverage</label>
-                                    <select id="leverageSetting" class="w-full px-4 py-2 border rounded-lg">
+                                    <select id="leverageSetting" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
                                         <option value="10">1:10</option>
                                         <option value="20">1:20</option>
                                         <option value="50">1:50</option>
@@ -1448,23 +1447,23 @@
 
                         <!-- Personal Info Section -->
                         <div id="personalInfoSettingsSection" class="settings-section hidden">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-user-circle mr-2"></i>Personal Information</h3>
+                            <h3 class="text-xl font-bold text-gray-100 mb-4"><i class="fas fa-user-circle mr-2"></i>Personal Information</h3>
                             <div class="max-w-2xl space-y-4">
                                 <div class="form-group">
                                     <label>Full Name</label>
-                                    <input type="text" id="fullName" class="w-full px-4 py-2 border rounded-lg" placeholder="Your full name">
+                                    <input type="text" id="fullName" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100" placeholder="Your full name">
                                 </div>
                                 <div class="form-group">
                                     <label>Display Name</label>
-                                    <input type="text" id="displayName" class="w-full px-4 py-2 border rounded-lg" placeholder="How you want to be seen">
+                                    <input type="text" id="displayName" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100" placeholder="How you want to be seen">
                                 </div>
                                 <div class="form-group">
                                     <label>Email Address</label>
-                                    <input type="email" id="settingsEmail" class="w-full px-4 py-2 border rounded-lg bg-gray-100" readonly disabled>
+                                    <input type="email" id="settingsEmail" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-400" readonly disabled>
                                 </div>
                                 <div class="form-group">
                                     <label>Trading Experience</label>
-                                    <select id="experienceLevel" class="w-full px-4 py-2 border rounded-lg">
+                                    <select id="experienceLevel" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
                                         <option value="beginner">Beginner</option>
                                         <option value="intermediate">Intermediate</option>
                                         <option value="advanced">Advanced</option>
@@ -1472,7 +1471,7 @@
                                     </select>
                                 </div>
                                 <div class="flex justify-end">
-                                    <button onclick="savePersonalInfo()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                                    <button onclick="savePersonalInfo()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-6 py-2 rounded-lg font-semibold transition-colors">
                                         Save Changes
                                     </button>
                                 </div>
@@ -1481,41 +1480,41 @@
 
                         <!-- Preferences Section -->
                         <div id="preferencesSettingsSection" class="settings-section hidden">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>Preferences</h3>
+                            <h3 class="text-xl font-bold text-gray-100 mb-4"><i class="fas fa-cog mr-2"></i>Preferences</h3>
                             <div class="max-w-2xl space-y-4">
-                                <div class="flex items-center justify-between py-3 border-b">
+                                <div class="flex items-center justify-between py-3 border-b border-[rgba(255,255,255,0.04)]">
                                     <div>
-                                        <div class="font-semibold">Compact View</div>
-                                        <div class="text-sm text-gray-500">Show more trades per page with condensed layout</div>
+                                        <div class="font-semibold text-gray-200">Compact View</div>
+                                        <div class="text-sm text-gray-400">Show more trades per page with condensed layout</div>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" id="compactViewToggle" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#C9A84C] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C9A84C]"></div>
                                     </label>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b">
+                                <div class="flex items-center justify-between py-3 border-b border-[rgba(255,255,255,0.04)]">
                                     <div>
-                                        <div class="font-semibold">Confetti Animation</div>
-                                        <div class="text-sm text-gray-500">Show celebration effects on winning trades</div>
+                                        <div class="font-semibold text-gray-200">Confetti Animation</div>
+                                        <div class="text-sm text-gray-400">Show celebration effects on winning trades</div>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" id="confettiToggle" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#C9A84C] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C9A84C]"></div>
                                     </label>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b">
+                                <div class="flex items-center justify-between py-3 border-b border-[rgba(255,255,255,0.04)]">
                                     <div>
-                                        <div class="font-semibold">Auto-save Trades</div>
-                                        <div class="text-sm text-gray-500">Automatically save trade drafts as you type</div>
+                                        <div class="font-semibold text-gray-200">Auto-save Trades</div>
+                                        <div class="text-sm text-gray-400">Automatically save trade drafts as you type</div>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" id="autoSaveToggle" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#C9A84C] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C9A84C]"></div>
                                     </label>
                                 </div>
                                 <div class="form-group">
                                     <label>Default Trade View</label>
-                                    <select id="defaultTradeView" class="w-full px-4 py-2 border rounded-lg">
+                                    <select id="defaultTradeView" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100">
                                         <option value="list">List View</option>
                                         <option value="grid">Grid View</option>
                                     </select>
@@ -1525,46 +1524,46 @@
 
                         <!-- Deposits & Withdrawals Section -->
                         <div id="fundsSettingsSection" class="settings-section hidden">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-money-bill-wave mr-2"></i>Deposits & Withdrawals</h3>
+                            <h3 class="text-xl font-bold text-gray-100 mb-4"><i class="fas fa-money-bill-wave mr-2"></i>Deposits & Withdrawals</h3>
                             
                             <!-- Balance Summary Cards -->
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200">
-                                    <div class="text-sm text-gray-600 mb-1">Current Balance</div>
-                                    <div class="text-2xl font-bold text-blue-600" id="fundsCurrentBalance">$0.00</div>
+                                <div class="bg-[rgba(201,168,76,0.08)] border border-[rgba(201,168,76,0.15)] p-5 rounded-xl">
+                                    <div class="text-sm text-gray-400 mb-1">Current Balance</div>
+                                    <div class="text-2xl font-bold text-[#C9A84C]" id="fundsCurrentBalance">$0.00</div>
                                     <div class="text-xs text-gray-500 mt-2">Includes all trades & transactions</div>
                                 </div>
-                                <div class="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl border border-green-200">
-                                    <div class="text-sm text-gray-600 mb-1">Total Deposits</div>
-                                    <div class="text-2xl font-bold text-green-600" id="totalDepositsAmount">$0.00</div>
+                                <div class="bg-[rgba(38,166,154,0.08)] border border-[rgba(38,166,154,0.15)] p-5 rounded-xl">
+                                    <div class="text-sm text-gray-400 mb-1">Total Deposits</div>
+                                    <div class="text-2xl font-bold text-[#26A69A]" id="totalDepositsAmount">$0.00</div>
                                 </div>
-                                <div class="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl border border-red-200">
-                                    <div class="text-sm text-gray-600 mb-1">Total Withdrawals</div>
-                                    <div class="text-2xl font-bold text-red-600" id="totalWithdrawalsAmount">$0.00</div>
+                                <div class="bg-[rgba(224,86,91,0.08)] border border-[rgba(224,86,91,0.15)] p-5 rounded-xl">
+                                    <div class="text-sm text-gray-400 mb-1">Total Withdrawals</div>
+                                    <div class="text-2xl font-bold text-[#E0565B]" id="totalWithdrawalsAmount">$0.00</div>
                                 </div>
                             </div>
 
                             <!-- Action Buttons -->
                             <div class="flex gap-3 mb-6">
-                                <button onclick="openDepositModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                <button onclick="openDepositModal()" class="bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
                                     <i class="fas fa-plus-circle"></i> Add Deposit
                                 </button>
-                                <button onclick="openWithdrawModal()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                <button onclick="openWithdrawModal()" class="bg-[#E0565B] hover:bg-[#e46b6f] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
                                     <i class="fas fa-minus-circle"></i> Withdraw
                                 </button>
-                                <button onclick="exportTransactions()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                <button onclick="exportTransactions()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
                                     <i class="fas fa-download"></i> Export CSV
                                 </button>
                             </div>
 
                             <!-- Transaction History -->
-                            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                    <h4 class="font-semibold text-gray-800"><i class="fas fa-history mr-2"></i>Transaction History</h4>
+                            <div class="bg-[#0a0a0a] rounded-xl border border-[rgba(255,255,255,0.04)] overflow-hidden">
+                                <div class="px-6 py-4 bg-[#0a0a0a] border-b border-[rgba(255,255,255,0.04)]">
+                                    <h4 class="font-semibold text-gray-200"><i class="fas fa-history mr-2"></i>Transaction History</h4>
                                 </div>
-                                <div id="transactionHistory" class="divide-y divide-gray-100">
+                                <div id="transactionHistory" class="divide-y divide-[rgba(255,255,255,0.04)]">
                                     <!-- Transactions loaded here -->
-                                    <div class="text-center text-gray-500 py-8">
+                                    <div class="text-center text-gray-400 py-8">
                                         <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
                                         <p>No transactions yet</p>
                                     </div>
@@ -1574,56 +1573,56 @@
 
                         <!-- Contract Verification Section -->
                         <div id="verificationSettingsSection" class="settings-section hidden">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-calculator mr-2"></i>Contract Size Verification</h3>
-                            <p class="text-sm text-gray-600 mb-6">Verify and adjust point values for accurate PnL calculations with Deriv synthetic indices</p>
+                            <h3 class="text-xl font-bold text-gray-100 mb-4"><i class="fas fa-calculator mr-2"></i>Contract Size Verification</h3>
+                            <p class="text-sm text-gray-400 mb-6">Verify and adjust point values for accurate PnL calculations with Deriv synthetic indices</p>
                             
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <!-- Left: Symbol Selector -->
-                                <div class="bg-gray-50 p-5 rounded-xl">
-                                    <label class="block text-sm font-semibold mb-3">Select Instrument</label>
-                                    <select id="verificationSymbolSelect" class="w-full px-4 py-2 border rounded-lg mb-4">
+                                <div class="bg-[rgba(255,255,255,0.02)] p-5 rounded-xl border border-[rgba(255,255,255,0.04)]">
+                                    <label class="block text-sm font-semibold text-gray-200 mb-3">Select Instrument</label>
+                                    <select id="verificationSymbolSelect" class="w-full px-4 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100 mb-4">
                                         <option value="">Choose an instrument...</option>
                                     </select>
                                     
                                     <div id="verificationDetails" class="hidden">
-                                        <div class="border-t pt-4 mt-2">
-                                            <h4 class="font-semibold mb-3">Current Configuration</h4>
+                                        <div class="border-t border-[rgba(255,255,255,0.04)] pt-4 mt-2">
+                                            <h4 class="font-semibold text-gray-200 mb-3">Current Configuration</h4>
                                             <div class="space-y-2 text-sm">
-                                                <div class="flex justify-between"><span class="text-gray-600">Point Value:</span><span id="currentPointValue" class="font-mono">-</span></div>
-                                                <div class="flex justify-between"><span class="text-gray-600">Minimum Lot:</span><span id="currentMinLot">-</span></div>
-                                                <div class="flex justify-between"><span class="text-gray-600">Standard Lot:</span><span id="currentStdLot">-</span></div>
+                                                <div class="flex justify-between"><span class="text-gray-400">Point Value:</span><span id="currentPointValue" class="font-mono text-gray-200">-</span></div>
+                                                <div class="flex justify-between"><span class="text-gray-400">Minimum Lot:</span><span id="currentMinLot" class="text-gray-200">-</span></div>
+                                                <div class="flex justify-between"><span class="text-gray-400">Standard Lot:</span><span id="currentStdLot" class="text-gray-200">-</span></div>
                                             </div>
                                             <div class="mt-4">
-                                                <label class="block text-sm font-semibold mb-2">Override Point Value</label>
+                                                <label class="block text-sm font-semibold text-gray-200 mb-2">Override Point Value</label>
                                                 <div class="flex gap-2">
-                                                    <input type="number" id="overridePointValue" step="0.000001" class="flex-1 px-3 py-2 border rounded-lg" placeholder="New point value">
-                                                    <button onclick="overridePointValue()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Update</button>
+                                                    <input type="number" id="overridePointValue" step="0.000001" class="flex-1 px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100" placeholder="New point value">
+                                                    <button onclick="overridePointValue()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-4 py-2 rounded-lg font-semibold">Update</button>
                                                 </div>
-                                                <button onclick="resetPointValue()" class="mt-2 text-sm text-red-600 hover:text-red-800">Reset to Default</button>
+                                                <button onclick="resetPointValue()" class="mt-2 text-sm text-[#E0565B] hover:text-[#e46b6f]">Reset to Default</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Right: PnL Calculator -->
-                                <div class="bg-gray-50 p-5 rounded-xl">
-                                    <h4 class="font-semibold mb-3">PnL Test Calculator</h4>
+                                <div class="bg-[rgba(255,255,255,0.02)] p-5 rounded-xl border border-[rgba(255,255,255,0.04)]">
+                                    <h4 class="font-semibold text-gray-200 mb-3">PnL Test Calculator</h4>
                                     <div class="space-y-3">
-                                        <div><label class="text-xs font-semibold">Entry Price</label><input type="number" id="calcEntryPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg"></div>
-                                        <div><label class="text-xs font-semibold">Exit Price</label><input type="number" id="calcExitPrice" step="0.00001" class="w-full px-3 py-2 border rounded-lg"></div>
-                                        <div><label class="text-xs font-semibold">Lot Size</label><input type="number" id="calcLotSize" step="0.001" value="0.01" class="w-full px-3 py-2 border rounded-lg"></div>
-                                        <div><label class="text-xs font-semibold">Direction</label><select id="calcDirection" class="w-full px-3 py-2 border rounded-lg"><option value="long">Long (Buy)</option><option value="short">Short (Sell)</option></select></div>
-                                        <button onclick="calculateTestPnL()" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">Calculate</button>
-                                        <div id="calcResult" class="hidden mt-4 p-4 bg-white rounded-lg border">
-                                            <div class="flex justify-between"><span>Calculated PnL:</span><span id="calculatedPnL" class="font-bold">-</span></div>
-                                            <div class="flex justify-between mt-2"><span>Points Movement:</span><span id="pointsMovement">-</span></div>
+                                        <div><label class="text-xs font-semibold text-gray-300">Entry Price</label><input type="number" id="calcEntryPrice" step="0.00001" class="w-full px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100"></div>
+                                        <div><label class="text-xs font-semibold text-gray-300">Exit Price</label><input type="number" id="calcExitPrice" step="0.00001" class="w-full px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100"></div>
+                                        <div><label class="text-xs font-semibold text-gray-300">Lot Size</label><input type="number" id="calcLotSize" step="0.001" value="0.01" class="w-full px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100"></div>
+                                        <div><label class="text-xs font-semibold text-gray-300">Direction</label><select id="calcDirection" class="w-full px-3 py-2 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-lg text-gray-100"><option value="long">Long (Buy)</option><option value="short">Short (Sell)</option></select></div>
+                                        <button onclick="calculateTestPnL()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] py-2 rounded-lg font-semibold">Calculate</button>
+                                        <div id="calcResult" class="hidden mt-4 p-4 bg-[rgba(255,255,255,0.02)] rounded-lg border border-[rgba(255,255,255,0.04)]">
+                                            <div class="flex justify-between"><span class="text-gray-400">Calculated PnL:</span><span id="calculatedPnL" class="font-bold text-gray-200">-</span></div>
+                                            <div class="flex justify-between mt-2"><span class="text-gray-400">Points Movement:</span><span id="pointsMovement" class="text-gray-200">-</span></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="mt-6 pt-6 border-t">
-                                <button onclick="fetchAllContractSpecs()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
+                            <div class="mt-6 pt-6 border-t border-[rgba(255,255,255,0.04)]">
+                                <button onclick="fetchAllContractSpecs()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-4 py-2 rounded-lg font-semibold">
                                     <i class="fas fa-cloud-download-alt mr-2"></i>Fetch Deriv Contract Specifications
                                 </button>
                                 <div id="batchFetchResult" class="mt-3"></div>
@@ -1635,23 +1634,23 @@
         </div>
 
         <!-- Add Account Modal -->
-        <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+        <div id="addAccountModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95 border border-[rgba(255,255,255,0.06)]">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-gray-800">Add Trading Account</h3>
-                        <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                        <h3 class="text-xl font-bold text-gray-100">Add Trading Account</h3>
+                        <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-gray-200 text-2xl transition-colors duration-200">
                             ×
                         </button>
                     </div>
                     
                     <form id="addAccountForm" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Account Name</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Account Name</label>
                             <input 
                                 type="text" 
                                 id="accountName" 
-                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                                class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 text-gray-100"
                                 placeholder="e.g., Prop Firm Challenge, Main Account, Demo"
                                 required
                                 maxlength="50"
@@ -1662,11 +1661,11 @@
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Account Balance</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Account Balance</label>
                             <input 
                                 type="number" 
                                 id="accountBalance" 
-                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                                class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 text-gray-100"
                                 placeholder="e.g., 10000"
                                 value="10000"
                                 required
@@ -1676,10 +1675,10 @@
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Account Currency</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Account Currency</label>
                             <select 
                                 id="accountCurrencySelect" 
-                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 appearance-none bg-white"
+                                class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 appearance-none text-gray-100"
                             >
                                 <option value="USD">USD ($)</option>
                                 <option value="EUR">EUR (€)</option>
@@ -1696,13 +1695,13 @@
                             <button 
                                 type="button" 
                                 onclick="closeAddAccountModal()" 
-                                class="px-6 py-3 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200"
+                                class="px-6 py-3 text-gray-400 hover:text-gray-200 font-semibold transition-colors duration-200"
                             >
                                 Cancel
                             </button>
                             <button 
                                 type="submit" 
-                                class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg"
+                                class="px-8 py-3 bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
                             >
                                 Create Account
                             </button>
@@ -1713,15 +1712,15 @@
         </div>
 
         <!-- MetaTrader Import Preview Modal -->
-        <div id="mtImportModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
-                <div class="p-6 border-b border-gray-200">
+        <div id="mtImportModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden border border-[rgba(255,255,255,0.06)]">
+                <div class="p-6 border-b border-[rgba(255,255,255,0.06)]">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800">
-                            <i class="fas fa-file-import text-purple-600 mr-2"></i>
+                        <h3 class="text-xl font-bold text-gray-100">
+                            <i class="fas fa-file-import text-[#C9A84C] mr-2"></i>
                             Import MetaTrader Trades
                         </h3>
-                        <button onclick="closeMTImportModal()" class="text-gray-400 hover:text-gray-600 text-2xl transition-colors duration-200">
+                        <button onclick="closeMTImportModal()" class="text-gray-400 hover:text-gray-200 text-2xl transition-colors duration-200">
                             ×
                         </button>
                     </div>
@@ -1729,52 +1728,52 @@
                 
                 <div class="p-6 overflow-y-auto max-h-[60vh]">
                     <!-- Import Summary -->
-                    <div id="mtImportSummary" class="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div id="mtImportSummary" class="mb-4 p-4 bg-[rgba(255,255,255,0.02)] rounded-lg border border-[rgba(255,255,255,0.04)]">
                         <!-- Summary will be populated here -->
                     </div>
                     
                     <!-- Trades Preview Table -->
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                        <table class="min-w-full divide-y divide-[rgba(255,255,255,0.04)]">
+                            <thead class="bg-[rgba(255,255,255,0.02)]">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Ticket</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Symbol</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Size</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Entry</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Exit</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Profit</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="mtImportPreviewBody" class="bg-white divide-y divide-gray-200">
+                            <tbody id="mtImportPreviewBody" class="bg-[#0a0a0a] divide-y divide-[rgba(255,255,255,0.04)]">
                                 <!-- Preview rows will be populated here -->
                             </tbody>
                         </table>
                     </div>
                     
                     <!-- Duplicates Warning -->
-                    <div id="mtDuplicatesWarning" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg hidden">
+                    <div id="mtDuplicatesWarning" class="mt-4 p-4 bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.15)] rounded-lg hidden">
                         <div class="flex items-start">
-                            <i class="fas fa-exclamation-triangle text-yellow-600 mr-3 mt-1"></i>
+                            <i class="fas fa-exclamation-triangle text-[#fbbf24] mr-3 mt-1"></i>
                             <div>
-                                <h4 class="font-semibold text-yellow-800">Duplicate Trades Detected</h4>
-                                <p class="text-sm text-yellow-700" id="mtDuplicatesMessage"></p>
+                                <h4 class="font-semibold text-[#fbbf24]">Duplicate Trades Detected</h4>
+                                <p class="text-sm text-gray-300" id="mtDuplicatesMessage"></p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="p-6 border-t border-gray-200 flex justify-between items-center">
-                    <div class="text-sm text-gray-500">
+                <div class="p-6 border-t border-[rgba(255,255,255,0.06)] flex justify-between items-center">
+                    <div class="text-sm text-gray-400">
                         <span id="mtImportStats">0 trades ready to import</span>
                     </div>
                     <div class="flex space-x-3">
-                        <button onclick="closeMTImportModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800 font-semibold transition-colors duration-200">
+                        <button onclick="closeMTImportModal()" class="px-6 py-2 text-gray-400 hover:text-gray-200 font-semibold transition-colors duration-200">
                             Cancel
                         </button>
-                        <button onclick="confirmMTImport()" id="mtImportConfirmBtn" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button onclick="confirmMTImport()" id="mtImportConfirmBtn" class="px-6 py-2 bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                             <i class="fas fa-check-circle mr-2"></i>
                             Import Trades
                         </button>
@@ -1784,30 +1783,30 @@
         </div>
 
         <!-- Deposit Modal -->
-        <div id="depositModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
+        <div id="depositModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 border border-[rgba(255,255,255,0.06)]">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-plus-circle text-green-500 mr-2"></i>Add Deposit</h3>
-                        <button onclick="closeDepositModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                        <h3 class="text-xl font-bold text-gray-100"><i class="fas fa-plus-circle text-[#26A69A] mr-2"></i>Add Deposit</h3>
+                        <button onclick="closeDepositModal()" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
                     </div>
                     <form id="depositForm">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Amount (<span id="depositCurrencySymbol">$</span>)</label>
-                                <input type="number" id="depositAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border rounded-xl">
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Amount (<span id="depositCurrencySymbol" class="text-[#C9A84C]">$</span>)</label>
+                                <input type="number" id="depositAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Date & Time</label>
-                                <input type="datetime-local" id="depositDate" required class="w-full px-4 py-3 border rounded-xl">
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Date & Time</label>
+                                <input type="datetime-local" id="depositDate" required class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Description (Optional)</label>
-                                <input type="text" id="depositDescription" placeholder="e.g., Initial deposit, Monthly funding" class="w-full px-4 py-3 border rounded-xl">
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Description (Optional)</label>
+                                <input type="text" id="depositDescription" placeholder="e.g., Initial deposit, Monthly funding" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div class="flex justify-end gap-3 pt-4">
-                                <button type="button" onclick="closeDepositModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl font-semibold">Add Deposit</button>
+                                <button type="button" onclick="closeDepositModal()" class="px-6 py-2 text-gray-400 hover:text-gray-200">Cancel</button>
+                                <button type="submit" class="bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-2 rounded-xl font-semibold">Add Deposit</button>
                             </div>
                         </div>
                     </form>
@@ -1816,34 +1815,34 @@
         </div>
 
         <!-- Withdrawal Modal -->
-        <div id="withdrawModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300">
+        <div id="withdrawModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 border border-[rgba(255,255,255,0.06)]">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-minus-circle text-red-500 mr-2"></i>Withdraw Funds</h3>
-                        <button onclick="closeWithdrawModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                        <h3 class="text-xl font-bold text-gray-100"><i class="fas fa-minus-circle text-[#E0565B] mr-2"></i>Withdraw Funds</h3>
+                        <button onclick="closeWithdrawModal()" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
                     </div>
                     <form id="withdrawForm">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Available Balance</label>
-                                <div class="text-2xl font-bold" id="availableBalance">$0.00</div>
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Available Balance</label>
+                                <div class="text-2xl font-bold text-[#C9A84C]" id="availableBalance">$0.00</div>
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Amount (<span id="withdrawCurrencySymbol">$</span>)</label>
-                                <input type="number" id="withdrawAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border rounded-xl">
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Amount (<span id="withdrawCurrencySymbol" class="text-[#C9A84C]">$</span>)</label>
+                                <input type="number" id="withdrawAmount" step="0.01" min="0.01" required class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Date & Time</label>
-                                <input type="datetime-local" id="withdrawDate" required class="w-full px-4 py-3 border rounded-xl">
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Date & Time</label>
+                                <input type="datetime-local" id="withdrawDate" required class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold mb-2">Description (Optional)</label>
-                                <input type="text" id="withdrawDescription" placeholder="e.g., Profit withdrawal" class="w-full px-4 py-3 border rounded-xl">
+                                <label class="block text-sm font-semibold text-gray-300 mb-2">Description (Optional)</label>
+                                <input type="text" id="withdrawDescription" placeholder="e.g., Profit withdrawal" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div class="flex justify-end gap-3 pt-4">
-                                <button type="button" onclick="closeWithdrawModal()" class="px-6 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl font-semibold">Withdraw</button>
+                                <button type="button" onclick="closeWithdrawModal()" class="px-6 py-2 text-gray-400 hover:text-gray-200">Cancel</button>
+                                <button type="submit" class="bg-[#E0565B] hover:bg-[#e46b6f] text-white px-6 py-2 rounded-xl font-semibold">Withdraw</button>
                             </div>
                         </div>
                     </form>
