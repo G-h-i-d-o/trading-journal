@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TradeWizer Journal - Login</title>
+    <meta name="theme-color" content="#0a0a0a" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* Dark theme inspired by DT Journal */
+        body {
+            background: #121212;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card-glass {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s ease;
+        }
+        .card-glass:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .logo-container {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            background: rgba(201, 168, 76, 0.12);
+            padding: 12px;
+            box-shadow: 0 0 40px rgba(201, 168, 76, 0.05);
+            border: 1px solid rgba(201, 168, 76, 0.15);
+        }
+        .logo-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(201, 168, 76, 0.2);
+        }
+        .gold-text {
+            color: #C9A84C;
+        }
+        .gold-border {
+            border-color: rgba(201, 168, 76, 0.3);
+        }
+        .input-dark {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #fafafa;
+            transition: all 0.2s ease;
+        }
+        .input-dark:focus {
+            outline: none;
+            border-color: rgba(201, 168, 76, 0.4);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.08);
+        }
+        .input-dark::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+        }
+        .btn-gold {
+            background: #C9A84C;
+            color: #0a0a0a;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-gold:hover {
+            background: #d4b85a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(201, 168, 76, 0.25);
+        }
+        .btn-gold:active {
+            transform: translateY(0);
+        }
+        .btn-outline-light {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #d1d5db;
+            transition: all 0.2s ease;
+        }
+        .btn-outline-light:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #fafafa;
+        }
+        .text-muted {
+            color: #9ca3af;
+        }
+        .text-light {
+            color: #fafafa;
+        }
+        .divider {
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .link-gold {
+            color: #C9A84C;
+            transition: color 0.2s ease;
+        }
+        .link-gold:hover {
+            color: #d4b85a;
+            text-decoration: underline;
+        }
+        .spinner-border {
+            display: inline-block;
+            width: 1.2rem;
+            height: 1.2rem;
+            border: 2px solid rgba(10, 10, 10, 0.2);
+            border-top-color: #0a0a0a;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Modal overrides */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-md w-full">
+        <!-- Login Card -->
+        <div id="login-card" class="card-glass p-8 text-white">
+            <!-- Logo -->
+            <div class="text-center mb-6">
+                <div class="logo-container">
+                    <img src="logo_1.png" alt="TradeWizer Journal Logo" class="logo-img" />
+                </div>
+                <h1 class="text-3xl font-bold mb-1 text-light">TradeWizer Journal</h1>
+                <p class="text-muted text-sm">Log in to track your performance</p>
+            </div>
+
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input type="email" id="login-email" required
+                           class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
+                           placeholder="your@email.com" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                    <input type="password" id="login-password" required
+                           class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
+                           placeholder="••••••••" />
+                </div>
+
+                <div class="text-right">
+                    <button type="button" onclick="openResetModal()"
+                            class="text-sm text-gray-400 hover:text-white transition duration-200">
+                        Forgot your password?
+                    </button>
+                </div>
+
+                <button type="submit"
+                        class="w-full btn-gold py-3 rounded-lg flex items-center justify-center gap-2 text-base">
+                    <span id="login-text">Sign In</span>
+                    <div id="login-spinner" class="hidden">
+                        <div class="spinner-border"></div>
+                    </div>
+                </button>
+            </form>
+
+            <div class="text-center mt-6 pt-6 divider">
+                <p class="text-muted text-sm">Don't have an account?</p>
+                <button onclick="switchToSignup()" class="link-gold font-semibold mt-2 text-sm">
+                    Create Account
+                </button>
+            </div>
+        </div>
+
+        <!-- Signup Card (Hidden) -->
+        <div id="signup-card" class="card-glass p-8 text-white hidden">
+            <div class="text-center mb-6">
+                <div class="logo-container">
+                    <img src="logo_1.png" alt="TradeWizer Journal Logo" class="logo-img" />
+                </div>
+                <h1 class="text-3xl font-bold mb-1 text-light">Create Account</h1>
+                <p class="text-muted text-sm">Start your trading journey</p>
+            </div>
+
+            <form id="signup-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input type="email" id="signup-email" required
+                           class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
+                           placeholder="your@email.com" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                    <input type="password" id="signup-password" required
+                           class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
+                           placeholder="••••••••" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                    <input type="password" id="signup-confirm-password" required
+                           class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
+                           placeholder="••••••••" />
+                </div>
+
+                <button type="submit"
+                        class="w-full btn-gold py-3 rounded-lg flex items-center justify-center gap-2 text-base">
+                    <span id="signup-text">🎯 Create Account</span>
+                    <div id="signup-spinner" class="hidden">
+                        <div class="spinner-border"></div>
+                    </div>
+                </button>
+            </form>
+
+            <div class="text-center mt-6 pt-6 divider">
+                <p class="text-muted text-sm">Already have an account?</p>
+                <button onclick="switchToLogin()" class="link-gold font-semibold mt-2 text-sm">
+                    Sign In
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="reset-modal" class="fixed inset-0 modal-overlay flex items-center justify-center p-4 hidden z-50">
+        <div class="card-glass p-8 text-white max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="logo-container" style="width:80px;height:80px;margin-bottom:0.5rem;">
+                    <img src="logo_1.png" alt="TradeWizer Journal Logo" class="logo-img" />
+                </div>
+                <h2 class="text-2xl font-bold text-light">Reset Password</h2>
+                <p class="text-muted text-sm">Enter your email to receive a reset link</p>
+            </div>
+
+            <form id="reset-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input type="email" id="reset-email" required
+                           class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
+                           placeholder="your@email.com" />
+                </div>
+
+                <div class="flex space-x-4">
+                    <button type="button" onclick="closeResetModal()"
+                            class="flex-1 btn-outline-light py-3 rounded-lg font-semibold">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="flex-1 btn-gold py-3 rounded-lg flex items-center justify-center gap-2">
+                        <span id="reset-text">Send Link</span>
+                        <div id="reset-spinner" class="hidden">
+                            <div class="spinner-border"></div>
+                        </div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div id="success-message" class="fixed top-4 right-4 bg-[#26A69A] text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-check-circle"></i>
+            <span id="success-text">Success!</span>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="error-message" class="fixed top-4 right-4 bg-[#E0565B] text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-text">Error occurred</span>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from './firebase-config.js';
+
+        let isLoginMode = true;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.location.href = 'dashboard.html';
+            }
+        });
+
+        window.switchToSignup = () => {
+            document.getElementById('login-card').classList.add('hidden');
+            document.getElementById('signup-card').classList.remove('hidden');
+            document.getElementById('signup-email').focus();
+        };
+
+        window.switchToLogin = () => {
+            document.getElementById('signup-card').classList.add('hidden');
+            document.getElementById('login-card').classList.remove('hidden');
+            document.getElementById('login-email').focus();
+        };
+
+        window.openResetModal = () => {
+            document.getElementById('reset-modal').classList.remove('hidden');
+            const loginEmail = document.getElementById('login-email').value;
+            if (loginEmail) {
+                document.getElementById('reset-email').value = loginEmail;
+            }
+            document.getElementById('reset-email').focus();
+        };
+
+        window.closeResetModal = () => {
+            document.getElementById('reset-modal').classList.add('hidden');
+            document.getElementById('reset-form').reset();
+        };
+
+        function showSuccess(message) {
+            const el = document.getElementById('success-message');
+            const text = document.getElementById('success-text');
+            text.textContent = message;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        function showError(message) {
+            const el = document.getElementById('error-message');
+            const text = document.getElementById('error-text');
+            text.textContent = message;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        function getAuthErrorMessage(error) {
+            switch (error.code) {
+                case 'auth/user-not-found': return 'No account found with this email.';
+                case 'auth/invalid-email': return 'Please enter a valid email address.';
+                case 'auth/too-many-requests': return 'Too many attempts. Please try again later.';
+                case 'auth/network-request-failed': return 'Network error. Please check your connection.';
+                case 'auth/email-already-in-use': return 'This email is already registered.';
+                case 'auth/weak-password': return 'Password should be at least 6 characters.';
+                case 'auth/wrong-password': return 'Incorrect password.';
+                default: return 'An error occurred. Please try again.';
+            }
+        }
+
+        // Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('login-text');
+            const spinner = document.getElementById('login-spinner');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            btn.textContent = 'Signing In...';
+            spinner.classList.remove('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showSuccess('Login successful! Redirecting...');
+                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+            } catch (error) {
+                showError('Error: ' + getAuthErrorMessage(error));
+            } finally {
+                btn.textContent = 'Sign In';
+                spinner.classList.add('hidden');
+            }
+        });
+
+        // Signup
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('signup-text');
+            const spinner = document.getElementById('signup-spinner');
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirm = document.getElementById('signup-confirm-password').value;
+
+            if (password !== confirm) {
+                showError('Passwords do not match.');
+                return;
+            }
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters.');
+                return;
+            }
+
+            btn.textContent = 'Creating Account...';
+            spinner.classList.remove('hidden');
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                showSuccess('Account created! Redirecting...');
+                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+            } catch (error) {
+                showError('Error: ' + getAuthErrorMessage(error));
+            } finally {
+                btn.textContent = '🎯 Create Account';
+                spinner.classList.add('hidden');
+            }
+        });
+
+        // Reset Password
+        document.getElementById('reset-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('reset-text');
+            const spinner = document.getElementById('reset-spinner');
+            const email = document.getElementById('reset-email').value;
+
+            btn.textContent = 'Sending...';
+            spinner.classList.remove('hidden');
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showSuccess('Password reset email sent! Check your inbox.');
+                closeResetModal();
+            } catch (error) {
+                showError('Error: ' + getAuthErrorMessage(error));
+            } finally {
+                btn.textContent = 'Send Link';
+                spinner.classList.add('hidden');
+            }
+        });
+
+        // Modal background click
+        document.getElementById('reset-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'reset-modal') closeResetModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('reset-modal').classList.contains('hidden')) {
+                closeResetModal();
+            }
+        });
+
+        console.log('TradeWizer Auth (Dark Theme) loaded.');
+    </script>
+</body>
+</html>
