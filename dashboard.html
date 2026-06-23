@@ -9,6 +9,22 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="stylesheetDashboard.css">
+    <style>
+        /* Search dropdown */
+        #searchResultsDropdown {
+            transition: opacity 0.15s ease;
+        }
+        .search-result-item:hover {
+            background: rgba(201, 168, 76, 0.08);
+        }
+        #searchResultsDropdown::-webkit-scrollbar {
+            width: 4px;
+        }
+        #searchResultsDropdown::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body class="bg-[#121212] text-gray-100 min-h-screen">
     <!-- Navigation / Sidebar -->
@@ -174,133 +190,40 @@
         </div>
     </nav>
     
-    <!-- Screenshot Modal -->
-    <div id="screenshotModal" class="screenshot-modal">
-        <button class="close-modal" onclick="closeScreenshotModal()">×</button>
-        <img id="screenshotImage" src="" alt="Trade Screenshot">
-    </div>
-
-    <!-- Affirmation Modals -->
-    <div id="affirmationModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95 border border-[rgba(255,255,255,0.06)]">
-            <div class="p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold text-gray-100" id="modalTitle">Create New Affirmation</h3>
-                    <button onclick="closeAffirmationModal()" class="text-gray-400 hover:text-gray-200 text-2xl transition-colors duration-200">
-                        ×
-                    </button>
-                </div>
-                
-                <form id="affirmationForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-3"><i class="fas fa-star"></i> Affirmation Text</label>
-                        <textarea 
-                            id="affirmationText" 
-                            rows="4" 
-                            class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 text-gray-100"
-                            placeholder="Write your powerful trading affirmation..."
-                            required
-                        ></textarea>
-                        <div class="text-right text-sm text-gray-500 mt-2">
-                            <span id="charCount">0</span>/200 characters
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-300 mb-3"><i class="fas fa-folder"></i> Category</label>
-                        <select 
-                            id="affirmationCategorySelect" 
-                            class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 transition-all duration-300 appearance-none text-gray-100"
-                        >
-                            <option value="confidence">Confidence</option>
-                            <option value="discipline">Discipline</option>
-                            <option value="patience">Patience</option>
-                            <option value="risk-management">Risk Management</option>
-                            <option value="mindset">Mindset</option>
-                            <option value="general">General</option>
-                        </select>
-                    </div>
-                    
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <input 
-                                type="checkbox" 
-                                id="isFavorite" 
-                                class="w-5 h-5 text-[#C9A84C] border-[rgba(255,255,255,0.08)] rounded focus:ring-[#C9A84C] transition duration-200 bg-transparent"
-                            >
-                            <label for="isFavorite" class="ml-3 text-sm font-medium text-gray-300">Mark as favorite</label>
-                        </div>
-                        
-                        <div class="flex items-center">
-                            <input 
-                                type="checkbox" 
-                                id="isActive" 
-                                checked
-                                class="w-5 h-5 text-[#C9A84C] border-[rgba(255,255,255,0.08)] rounded focus:ring-[#C9A84C] transition duration-200 bg-transparent"
-                            >
-                            <label for="isActive" class="ml-3 text-sm font-medium text-gray-300">Active</label>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-end space-x-4 pt-4">
-                        <button 
-                            type="button" 
-                            onclick="closeAffirmationModal()" 
-                            class="px-6 py-3 text-gray-400 hover:text-gray-200 font-semibold transition-colors duration-200"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            class="px-8 py-3 bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
-                        >
-                            Save Affirmation
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Random Affirmation Modal -->
-    <div id="randomAffirmationModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
-        <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95 border border-[rgba(255,255,255,0.06)]">
-            <div class="p-8 text-center">
-                <div class="text-6xl mb-6"><i class="fas fa-lightbulb" style="font-size: 3rem; color: #C9A84C;"></i></div>
-                <h3 class="text-xl font-bold text-gray-100 mb-2">Your Affirmation</h3>
-                <p class="text-sm text-gray-400 mb-6">Take a deep breath and internalize this message</p>
-                
-                <div id="randomAffirmationText" class="text-xl text-gray-200 mb-8 min-h-32 bg-[rgba(255,255,255,0.03)] p-6 rounded-2xl border border-[rgba(255,255,255,0.06)] leading-relaxed">
-                    "I am a disciplined trader who follows my plan with precision."
-                </div>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <button 
-                        onclick="useRandomAffirmation()" 
-                        class="col-span-2 bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
-                    >
-                        <i class="fas fa-check-circle"></i> I'm Using This
-                    </button>
-                    <button 
-                        onclick="showAnotherRandom()" 
-                        class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
-                    >
-                        <i class="fas fa-redo"></i> Another
-                    </button>
-                    <button 
-                        onclick="closeRandomModal()" 
-                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Main Content -->
     <div class="content-wrapper">
         <div class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-6 lg:px-8">
+        
+        <!-- ========== TOP BAR: WELCOME + SEARCH ========== -->
+        <div class="welcome-search-bar flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 bg-[#0a0a0a] border border-[rgba(255,255,255,0.04)] rounded-lg mb-4">
+            <!-- Welcome Message -->
+            <div class="flex items-center gap-3">
+                <div id="userAvatar" class="w-10 h-10 rounded-full bg-[#C9A84C] text-[#0a0a0a] flex items-center justify-center font-bold text-lg shadow-md flex-shrink-0">
+                    <span id="avatarLetter">U</span>
+                </div>
+                <div>
+                    <p id="welcomeGreeting" class="text-gray-300 text-sm">Welcome back, <span id="userDisplayName" class="text-white font-semibold">Guest</span>!</p>
+                    <p class="text-xs text-gray-500">Trade Wiser Today!</p>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-72 md:w-96">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
+                    <input type="text" id="globalSearchInput" 
+                           class="w-full pl-9 pr-4 py-2 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg focus:outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/20 text-gray-100 placeholder-gray-500 text-sm"
+                           placeholder="Search trades, accounts, affirmations...">
+                </div>
+                <!-- Search Results Dropdown -->
+                <div id="searchResultsDropdown" class="absolute right-0 mt-1 w-full bg-[#0a0a0a] border border-[rgba(255,255,255,0.06)] rounded-lg shadow-2xl max-h-80 overflow-y-auto hidden z-50">
+                    <div id="searchResultsContent" class="p-2 space-y-1 text-sm">
+                        <!-- Results will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading Indicator -->
         <div id="loadingIndicator" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
             <div class="bg-[#0a0a0a] p-6 rounded-lg shadow-xl text-center border border-[rgba(255,255,255,0.06)]">
@@ -1402,7 +1325,6 @@
                                 <i class="fas fa-calculator w-5 text-gray-400"></i>
                                 <span>Contract Verification</span>
                             </button>
-                            <!-- Account button in Settings side nav -->
                             <button onclick="document.getElementById('accountTab').click();" 
                                     class="settings-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
                                 <i class="fas fa-credit-card w-5 text-gray-400"></i>
@@ -1849,6 +1771,54 @@
                 </div>
             </div>
         </div>
+
+        <!-- ====================== PROFILE COMPLETION MODAL ====================== -->
+        <div id="profileModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="bg-[#0a0a0a] rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-[rgba(255,255,255,0.06)] p-6">
+                <div class="text-center mb-6">
+                    <div class="inline-block p-4 rounded-full bg-[rgba(201,168,76,0.12)] mb-3">
+                        <i class="fas fa-user-plus text-3xl text-[#C9A84C]"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-100">Complete Your Profile</h3>
+                    <p class="text-gray-400 text-sm mt-1">Help us personalize your trading experience</p>
+                </div>
+
+                <form id="profileForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Full Name *</label>
+                        <input type="text" id="profileFullName" required
+                               class="w-full px-4 py-3 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 text-gray-100 placeholder-gray-500"
+                               placeholder="e.g., John Doe">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Display Name</label>
+                        <input type="text" id="profileDisplayName"
+                               class="w-full px-4 py-3 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 text-gray-100 placeholder-gray-500"
+                               placeholder="How you want to be seen">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Trading Experience</label>
+                        <select id="profileExperience"
+                                class="w-full px-4 py-3 bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg focus:outline-none focus:border-[#C9A84C] focus:ring-2 focus:ring-[#C9A84C]/20 text-gray-100">
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate" selected>Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="professional">Professional</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit"
+                                class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i> Save Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- ====================== END PROFILE MODAL ====================== -->
 
         <script>
             function savePersonalInfo(){

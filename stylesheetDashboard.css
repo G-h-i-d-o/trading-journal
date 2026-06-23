@@ -1480,3 +1480,18 @@ body.sidebar-collapsed #sidebar .brand img {
         font-size: 1em;
     }
 }
+
+/* Search results dropdown */
+#searchResultsDropdown {
+    transition: opacity 0.15s ease;
+}
+.search-result-item:hover {
+    background: rgba(201, 168, 76, 0.08);
+}
+#searchResultsDropdown::-webkit-scrollbar {
+    width: 4px;
+}
+#searchResultsDropdown::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+}
