@@ -1495,3 +1495,70 @@ body.sidebar-collapsed #sidebar .brand img {
     background: rgba(255,255,255,0.15);
     border-radius: 4px;
 }
+/* ========== FIX: Account Balance Input ========== */
+#accountSize {
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: #fafafa !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+#accountSize:focus {
+    border-color: rgba(201, 168, 76, 0.4) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.08) !important;
+}
+#accountSize:read-only {
+    background: rgba(255, 255, 255, 0.02) !important;
+    color: #9ca3af !important;
+}
+#accountSize:read-only:focus {
+    box-shadow: none !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ========== FIX: Affirmations Cards ========== */
+.affirmation-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.06) !important;
+    color: #fafafa !important;
+}
+.affirmation-card .text-gray-800,
+.affirmation-card .text-gray-700 {
+    color: #fafafa !important;
+}
+.affirmation-card .text-gray-500,
+.affirmation-card .text-gray-600 {
+    color: #9ca3af !important;
+}
+.affirmation-card .border-gray-100,
+.affirmation-card .border-t {
+    border-color: rgba(255, 255, 255, 0.06) !important;
+}
+.affirmation-card .bg-gray-50,
+.affirmation-card .bg-blue-50,
+.affirmation-card .bg-red-50 {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+.affirmation-card .hover\:shadow-xl:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+.affirmation-card .use-btn {
+    background: rgba(201, 168, 76, 0.15) !important;
+    color: #C9A84C !important;
+}
+.affirmation-card .use-btn:hover {
+    background: rgba(201, 168, 76, 0.25) !important;
+}
+.affirmation-card .copy-btn {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #d1d5db !important;
+}
+.affirmation-card .copy-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+.affirmation-card .delete-btn {
+    background: rgba(224, 86, 91, 0.12) !important;
+    color: #E0565B !important;
+}
+.affirmation-card .delete-btn:hover {
+    background: rgba(224, 86, 91, 0.2) !important;
+}
