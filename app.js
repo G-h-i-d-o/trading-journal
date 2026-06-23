@@ -239,7 +239,7 @@ function getLotSizeInfo(symbol, instrumentType = null) {
             minLot: 0.01,
             maxLot: 100,
             stdLotDisplay: '1.0',
-            pointValue: symbol === 'Gold' ? 0.01 : (symbol === 'Silver' ? 0.001 : 0.01),
+            pointValue: getPointValue(symbol),
             description: symbol === 'Gold' ? 'Std Lot = 100 oz' : 'Std Lot = 1.0',
             warning: null
         };
@@ -669,6 +669,7 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
 
 let pointValueOverrides = {};
 
+// ---------- UPDATED getPointValue with accurate values ----------
 function getPointValue(symbol) {
     if (pointValueOverrides[symbol] !== undefined) {
         return pointValueOverrides[symbol];
@@ -676,12 +677,32 @@ function getPointValue(symbol) {
     if (derivLotSizeConfig[symbol]) {
         return derivLotSizeConfig[symbol].pointValue;
     }
+    // Accurate point values for major instruments (per 1.0 price move, per lot)
     const pointValues = {
-        'US30': 1, 'SPX500': 50, 'NAS100': 20, 'GE30': 1, 'FTSE100': 1, 'NIKKEI225': 1,
-        'AUS200': 1, 'ESTX50': 1, 'FRA40': 1, 'ESP35': 1, 'HKG50': 1
+        // Traditional Indices
+        'US30': 1,
+        'SPX500': 50,
+        'NAS100': 20,
+        'GE30': 5,          // DAX (EUR)
+        'FTSE100': 5,       // GBP
+        'NIKKEI225': 100,   // approximate, in JPY – may need override
+        'AUS200': 1,
+        'ESTX50': 5,
+        'FRA40': 5,
+        'ESP35': 5,
+        'HKG50': 1,
+        // Commodities (value per 1.0 price move per lot)
+        'Gold': 100,        // 1 lot = 100 oz → $1 move = $100
+        'Silver': 5000,     // 1 lot = 5000 oz → $1 move = $5000
+        'Oil': 1000,        // WTI, 1 lot = 1000 barrels
+        'Brent': 1000,
+        'Natural Gas': 10000,
+        'Palladium': 1000,
+        'Platinum': 1000,
     };
     return pointValues[symbol] || 1;
 }
+// ----------------------------------------------------------------
 
 function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
     const instrumentType = getInstrumentType(symbol);
@@ -1638,6 +1659,10 @@ function setupEventListeners() {
                 if (exitPriceField) {
                     exitPriceField.value = '';
                 }
+                const actualProfitField = document.getElementById('actualProfit');
+                if (actualProfitField) {
+                    actualProfitField.value = '';
+                }
             }, 0);
         });
     }
@@ -1754,6 +1779,7 @@ async function loadTrades() {
     }
 }
 
+// ---------- UPDATED addTrade with Actual P&L handling ----------
 async function addTrade(e) {
     e.preventDefault();
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -1778,6 +1804,12 @@ async function addTrade(e) {
         const currentAccount = getCurrentAccount();
         const accountSize = currentAccount.balance;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
+        // --- NEW: Read Actual P&L if provided ---
+        const actualProfitInput = document.getElementById('actualProfit');
+        const actualProfit = actualProfitInput && actualProfitInput.value !== '' 
+            ? parseFloat(actualProfitInput.value) 
+            : null;
+
         if (!symbol || !entryPrice || !lotSize || !tradeType) {
             alert('Please fill all required fields (Entry Price, Size, and Direction are required)');
             return;
@@ -1794,10 +1826,20 @@ async function addTrade(e) {
             alert('For a short position, Stop Loss must be above Entry Price');
             return;
         }
+
         const instrumentType = getInstrumentType(symbol);
-        const actualExitPrice = exitPrice || takeProfit || entryPrice;
-        const profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
+        // Calculate profit or use actual if provided
+        let profit;
+        if (actualProfit !== null) {
+            profit = actualProfit;
+            console.log(`[PnL] Using manually entered actual profit: $${profit}`);
+        } else {
+            const actualExitPrice = exitPrice || takeProfit || entryPrice;
+            profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
+        }
+
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+
         let beforeScreenshot = '';
         let afterScreenshot = '';
         const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
@@ -1814,6 +1856,7 @@ async function addTrade(e) {
         } else if (afterFileInput && afterFileInput.files && afterFileInput.files[0]) {
             afterScreenshot = await uploadScreenshot(afterFileInput.files[0], 'after');
         }
+
         const tradeData = {
             symbol, 
             type: tradeType, 
@@ -1838,8 +1881,10 @@ async function addTrade(e) {
             accountSize: accountSize, 
             leverage: leverage, 
             userId: currentUser.uid,
-            accountId: currentAccountId
+            accountId: currentAccountId,
+            actualProfitUsed: actualProfit !== null // flag for reference
         };
+
         await addDoc(collection(db, 'trades'), tradeData);
         e.target.reset();
         document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
@@ -1858,6 +1903,8 @@ async function addTrade(e) {
             emotionSlider.value = 50;
             updateEmotionDisplay(50);
         }
+        const actualProfitField = document.getElementById('actualProfit');
+        if (actualProfitField) actualProfitField.value = '';
         await loadTrades();
         alert('Trade added successfully!');
     } catch (error) {
@@ -1868,6 +1915,7 @@ async function addTrade(e) {
         submitButton.disabled = false;
     }
 }
+// ----------------------------------------------------------------
 
 function updateConfluenceScoreDisplay() {
     const selected = Array.from(document.querySelectorAll('#confluenceOptions input[type="checkbox"]:checked')).length;
@@ -2004,6 +2052,7 @@ function updateRiskCalculation() {
     const currentAccount = getCurrentAccount();
     const accountSize = currentAccount.balance;
     const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
+
     if (entryPrice > 0 && symbol) {
         const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
         const potentialProfit = takeProfit ? calculateProfitLoss(entryPrice, takeProfit, lotSize, symbol, tradeType) : 0;
@@ -5678,7 +5727,6 @@ function performSearch(query) {
         const matchLabel = item.label.toLowerCase().includes(lower);
         const matchKeywords = item.keywords.some(k => k.toLowerCase().includes(lower));
         if (matchLabel || matchKeywords) {
-            // Avoid duplicates if the same item matches multiple keywords
             if (!results.some(r => r.type === 'feature' && r.label === item.label)) {
                 results.push({
                     ...item,
@@ -5791,7 +5839,6 @@ function renderSearchResults(results) {
                 const tabId = tabMap[tab];
                 if (tabId) {
                     document.getElementById(tabId)?.click();
-                    // If it's a settings feature with a section, open the sub-section
                     if (tab === 'settings' && section) {
                         setTimeout(() => {
                             showSettingsSection(section);
@@ -5799,7 +5846,6 @@ function renderSearchResults(results) {
                     }
                 }
             } else if (type === 'setting') {
-                // Open settings tab first, then the specific section
                 const settingsTab = document.getElementById('settingsTab');
                 if (settingsTab) {
                     settingsTab.click();
@@ -5843,7 +5889,6 @@ function setupGlobalSearch() {
         }, 250);
     });
 
-    // Click outside to close
     document.addEventListener('click', function(e) {
         if (!e.target.closest('#globalSearchInput') && !e.target.closest('#searchResultsDropdown')) {
             dropdown.style.display = 'none';
@@ -5851,7 +5896,6 @@ function setupGlobalSearch() {
         }
     });
 
-    // ESC key to close
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             dropdown.style.display = 'none';
@@ -5861,7 +5905,6 @@ function setupGlobalSearch() {
     });
 }
 
-// ========== PROFILE FORM SUBMIT HANDLER ==========
 document.addEventListener('DOMContentLoaded', function() {
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
@@ -5885,7 +5928,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
     hideLoading();

@@ -24,15 +24,92 @@
             background: rgba(255,255,255,0.15);
             border-radius: 4px;
         }
+
+        /* Sidebar - hide logo when collapsed */
+        body.sidebar-collapsed .sidebar-logo {
+            display: none;
+        }
+        /* No text on desktop sidebar at all */
+        .sidebar-brand-text {
+            display: none !important;
+        }
+        /* Adjust header when collapsed to centre toggle button */
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0.75rem;
+        }
+        body.sidebar-collapsed .sidebar-header {
+            justify-content: center;
+        }
+        body.sidebar-collapsed .brand {
+            display: none;
+        }
+
+        /* Mobile menu: flush with top bar */
+        #mobileMenu {
+            border-top: none; /* remove border */
+            margin-top: 0;
+            padding-top: 0;
+        }
+        /* Mobile menu header – minimal top padding */
+        .mobile-menu-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.25rem 1rem 0.5rem; /* reduced top */
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 0.25rem;
+        }
+        .mobile-menu-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 0.25rem;
+        }
+        .mobile-menu-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .mobile-menu-title .gold-text {
+            color: #C9A84C;
+        }
+        /* Remove top margin from menu inner container */
+        #mobileMenu > div:last-child {
+            padding-top: 0 !important;
+        }
+
+        /* Top bar (mobile) – hide brand, keep hamburger */
+        #mobileTopbar .brand-text {
+            display: none;
+        }
+        #mobileTopbar .brand-logo {
+            display: none;
+        }
+        #mobileTopbar {
+            margin-bottom: 0; /* ensure no extra space */
+        }
+
+        /* Sidebar toggle icon animation */
+        .sidebar-collapse-btn i {
+            transition: transform 0.3s;
+        }
+        body.sidebar-collapsed .sidebar-collapse-btn i {
+            transform: rotate(180deg);
+        }
     </style>
 </head>
 <body class="bg-[#121212] text-gray-100 min-h-screen">
     <!-- Navigation / Sidebar -->
-    <nav class="bg-[#0a0a0a] border-b border-[rgba(255,255,255,0.04)]">
+    <nav class="bg-[#0a0a0a]">
         <!-- Desktop Sidebar -->
         <aside id="sidebar" class="hidden sm:flex flex-col">
             <div class="sidebar-header">
-                <div class="brand"><img src="logo_1.png" alt="Trading Journal Logo" style="width:100px;height:100px;vertical-align:middle;margin-right:8px;border-radius:50%;"></div>
+                <div class="brand">
+                    <img src="logo_1.png" alt="Trading Journal Logo" class="sidebar-logo" style="width:100px;height:100px;border-radius:50%;">
+                </div>
                 <button id="sidebarToggle" class="sidebar-collapse-btn" aria-label="Collapse sidebar">
                     <i class="fas fa-angle-double-left"></i>
                 </button>
@@ -137,9 +214,9 @@
             </div>
         </aside>
 
-        <!-- Mobile Topbar -->
+        <!-- Mobile Topbar (only hamburger) -->
         <div id="mobileTopbar" class="sm:hidden flex items-center justify-between px-3 py-2">
-            <h1 class="text-lg font-bold text-white"><img src="logo_1.png" alt="Trading Journal Logo" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;border-radius:6px;"> TradeWizer Journal</h1>
+            <div></div> <!-- empty placeholder -->
             <div class="sm:hidden flex items-center">
                 <button id="mobileMenuButton" class="text-gray-300 hover:text-white p-2">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,9 +226,14 @@
             </div>
         </div>
 
-        <!-- Mobile Dropdown Menu -->
-        <div id="mobileMenu" class="sm:hidden hidden border-t border-[rgba(255,255,255,0.04)]">
-            <div class="px-2 pt-2 pb-3 space-y-1">
+        <!-- Mobile Dropdown Menu (flush with top bar) -->
+        <div id="mobileMenu" class="sm:hidden hidden">
+            <!-- Mobile header with minimal top padding -->
+            <div class="mobile-menu-header">
+                <img src="logo_1.png" alt="Trading Journal Logo" class="mobile-menu-logo">
+                <div class="mobile-menu-title">Trade<span class="gold-text">Wizer</span> Journal</div>
+            </div>
+            <div class="px-2 pb-3 space-y-1"> <!-- no pt-* class -->
                 <!-- Mobile Accounts Section -->
                 <div class="px-3 py-2">
                     <h4 class="text-sm font-semibold mb-2">Trading Accounts</h4>
@@ -819,6 +901,11 @@
                                 <input type="number" id="exitPrice" step="0.00001">
                                 <div class="pip-display" id="exitPipDisplay"></div>
                                 <small class="text-gray-500 text-xs">Optional: Actual exit price if different from TP</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Actual P&L (optional)</label>
+                                <input type="number" id="actualProfit" step="0.01" placeholder="Enter actual profit/loss if different from calculated">
+                                <small class="text-gray-500 text-xs">If provided, this will override the calculated profit.</small>
                             </div>
                         </div>
 
