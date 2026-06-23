@@ -1,10 +1,9 @@
 /* ============================================
-   TRADEWIZER JOURNAL - DT JOURNAL INSPIRED THEME
-   Color palette extracted from thedtjournal.com
+   TRADEWIZER JOURNAL
    ============================================ */
 
 :root {
-    /* ----- DT Journal Dark Theme Colors ----- */
+    /* -----Journal Dark Theme Colors ----- */
     --dt-bg: 0 0% 7%;          /* #121212 - main background */
     --dt-bg-card: 0 0% 3.9%;   /* #0a0a0a - card background */
     --dt-foreground: 0 0% 98%; /* #fafafa - text color */
