@@ -191,14 +191,7 @@ const derivLotSizeConfig = {
     'Drift Switch 30 Index': { minLot: 0.01, maxLot: 50, pointValue: 0.01, stdLotDisplay: '0.01' }
 };
 
-const standardLotConfig = {
-    forex: { stdLot: 1.0, minLot: 0.01, display: '1.0 (100,000 units)' },
-    indices: { stdLot: 1.0, minLot: 0.1, display: '1.0' },
-    commodities: { stdLot: 1.0, minLot: 0.01, display: '1.0 (100 oz for Gold)' },
-    smarttrader: { stdLot: 1.0, minLot: 1.0, display: '1.0 (stake amount)' },
-    accumulator: { stdLot: 1.0, minLot: 1.0, display: '1.0' }
-};
-
+// UPDATED: indices min lot set to 0.01
 function getLotSizeInfo(symbol, instrumentType = null) {
     if (!instrumentType) {
         instrumentType = getInstrumentType(symbol);
@@ -226,11 +219,11 @@ function getLotSizeInfo(symbol, instrumentType = null) {
     }
     if (instrumentType === 'indices') {
         return {
-            minLot: 0.1,
+            minLot: 0.01, // changed from 0.1 to 0.01
             maxLot: 100,
             stdLotDisplay: '1.0',
             pointValue: getPointValue(symbol),
-            description: 'Std Lot = 1.0 | Min: 0.1',
+            description: 'Std Lot = 1.0 | Min: 0.01',
             warning: null
         };
     }
@@ -274,7 +267,7 @@ function updateLotSizeDisplay() {
         displayText = 'Std Lot = 100,000 units | Min: 0.01 | Pip ≈ $10';
     } else if (instrumentType === 'indices') {
         const pointVal = getPointValue(symbol);
-        displayText = `Std Lot = 1.0 | Point Value: $${pointVal} | Min: 0.1`;
+        displayText = `Std Lot = 1.0 | Point Value: $${pointVal} | Min: 0.01`;
     } else if (instrumentType === 'commodities') {
         if (symbol === 'Gold') {
             displayText = 'Std Lot = 100 oz | Point Value: $1 | Min: 0.01';
@@ -299,7 +292,8 @@ function updateLotSizeDisplay() {
             }
         }
     } else {
-        lotSizeInput.min = instrumentType === 'indices' ? '0.1' : '0.01';
+        // For indices, min lot is now 0.01
+        lotSizeInput.min = (instrumentType === 'indices' || instrumentType === 'forex' || instrumentType === 'commodities') ? '0.01' : '0.01';
         lotSizeInput.max = '100';
         lotSizeInput.step = '0.01';
     }
