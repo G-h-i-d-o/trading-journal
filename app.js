@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH DERIV INSTRUMENTS, MT4/5 IMPORT, PROFILE MANAGEMENT, WELCOME GREETING & GLOBAL SEARCH
+// app.js - COMPLETE WORKING VERSION WITH ADVANCED TRADING OBJECTIVES LOGIC
 import { 
     auth, db, storage, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc,
@@ -219,7 +219,7 @@ function getLotSizeInfo(symbol, instrumentType = null) {
     }
     if (instrumentType === 'indices') {
         return {
-            minLot: 0.01, // changed from 0.1 to 0.01
+            minLot: 0.01,
             maxLot: 100,
             stdLotDisplay: '1.0',
             pointValue: getPointValue(symbol),
@@ -292,7 +292,6 @@ function updateLotSizeDisplay() {
             }
         }
     } else {
-        // For indices, min lot is now 0.01
         lotSizeInput.min = (instrumentType === 'indices' || instrumentType === 'forex' || instrumentType === 'commodities') ? '0.01' : '0.01';
         lotSizeInput.max = '100';
         lotSizeInput.step = '0.01';
@@ -397,6 +396,27 @@ const searchableSettings = [
     { label: 'Deposits & Withdrawals', keywords: ['deposits', 'withdrawals', 'funds', 'balance', 'transactions', 'money', 'cash'], section: 'funds', icon: '💰' },
     { label: 'Contract Verification', keywords: ['contract verification', 'point value', 'pnl', 'deriv', 'synthetic', 'lot size'], section: 'verification', icon: '📐' },
 ];
+
+// ========== NULL-SAFETY HELPERS ==========
+function safeSetValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+}
+
+function safeSetText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+function safeSetInnerHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+function safeGetValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : null;
+}
 
 // ========== MOBILE VIEWPORT SETUP ==========
 function setupMobileViewport() {
@@ -1117,6 +1137,14 @@ async function loadUserAccounts() {
             const accountData = doc.data();
             if (!accountData.transactions) accountData.transactions = [];
             if (!accountData.initialBalance) accountData.initialBalance = accountData.balance || 10000;
+            if (!accountData.objectives) {
+                accountData.objectives = {
+                    maxLossTarget: 500,
+                    dailyLossTarget: 250,
+                    profitTarget: 500,
+                    tradingDaysTarget: 2
+                };
+            }
             accounts.push({ id: doc.id, ...accountData });
         });
         console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
@@ -1130,7 +1158,13 @@ async function loadUserAccounts() {
                 createdAt: new Date().toISOString(),
                 isDefault: true,
                 userId: currentUser.uid,
-                transactions: []
+                transactions: [],
+                objectives: {
+                    maxLossTarget: 500,
+                    dailyLossTarget: 250,
+                    profitTarget: 500,
+                    tradingDaysTarget: 2
+                }
             };
             const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
             userAccounts = [{ id: docRef.id, ...defaultAccount }];
@@ -1162,7 +1196,8 @@ async function loadAccountsFromLocalStorageFallback() {
         userAccounts = parsedAccounts.map(account => ({
             ...account,
             transactions: account.transactions || [],
-            initialBalance: account.initialBalance || account.balance || 10000
+            initialBalance: account.initialBalance || account.balance || 10000,
+            objectives: account.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 }
         }));
         console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
     } else {
@@ -1174,7 +1209,13 @@ async function loadAccountsFromLocalStorageFallback() {
             currency: 'USD',
             createdAt: new Date().toISOString(),
             isDefault: true,
-            transactions: []
+            transactions: [],
+            objectives: {
+                maxLossTarget: 500,
+                dailyLossTarget: 250,
+                profitTarget: 500,
+                tradingDaysTarget: 2
+            }
         }];
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         console.log('🆕 Created default account in localStorage');
@@ -1344,6 +1385,8 @@ window.switchAccount = async (accountId) => {
     await loadAccountData();
     const accountsMenu = document.getElementById('accountsMenu');
     if (accountsMenu) accountsMenu.classList.add('hidden');
+    loadObjectivesSettings();
+    updateTradingObjectivesUI();
     showSuccessMessage(`Switched to ${getCurrentAccount().name}`);
 };
 
@@ -1376,6 +1419,7 @@ async function loadAccountData() {
         calculateAdvancedMetrics(allTrades);
         updateEmotionAnalytics(allTrades);
         initializeAISuggestions();
+        updateTradingObjectivesUI();
         console.log('[SUCCESS] Account data loaded successfully');
     } catch (error) {
         console.error('[ERROR] Error loading account data:', error);
@@ -1441,7 +1485,13 @@ function setupAccountModalListeners() {
                     createdAt: new Date().toISOString(),
                     isDefault: false,
                     userId: currentUser.uid,
-                    transactions: []
+                    transactions: [],
+                    objectives: {
+                        maxLossTarget: 500,
+                        dailyLossTarget: 250,
+                        profitTarget: 500,
+                        tradingDaysTarget: 2
+                    }
                 };
                 console.log('🆕 Creating new account:', newAccount);
                 const docRef = await addDoc(collection(db, 'accounts'), newAccount);
@@ -1528,7 +1578,8 @@ async function deleteAccountTrades(accountId) {
 
 // ========== UTILITY FUNCTIONS ==========
 function getSelectedCurrency() {
-    return document.getElementById('accountCurrency')?.value || 'USD';
+    const el = document.getElementById('accountCurrency');
+    return el ? el.value : 'USD';
 }
 
 function getCurrencySymbol(currencyCode = null) {
@@ -1554,7 +1605,6 @@ function showSuccessMessage(message) {
 let userDisplayName = 'Guest';
 
 function updateWelcomeGreeting(profile) {
-    // Priority: displayName → fullName → email username → 'Guest'
     let name = 'Guest';
     if (profile) {
         name = profile.displayName || profile.fullName || currentUser?.email?.split('@')[0] || 'Guest';
@@ -1602,10 +1652,10 @@ onAuthStateChanged(auth, async (user) => {
             setupCalendar();
             setupMobileViewport();
             initEmotionGauge();
-            // ====== CHECK AND SHOW PROFILE MODAL ======
             await checkAndShowProfileModal();
-            // ====== SETUP GLOBAL SEARCH ======
             setupGlobalSearch();
+            loadObjectivesSettings();
+            updateTradingObjectivesUI();
             console.log('✅ All systems initialized successfully');
         } catch (error) {
             console.error('❌ Error during initialization:', error);
@@ -1633,7 +1683,8 @@ window.logout = async () => {
 // ========== EVENT LISTENERS ==========
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
-    document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+    const tradeDateTime = document.getElementById('tradeDateTime');
+    if (tradeDateTime) tradeDateTime.value = getCurrentDateTimeString();
     const tradeForm = document.getElementById('tradeForm');
     if (tradeForm) {
         tradeForm.addEventListener('submit', (e) => {
@@ -1642,7 +1693,8 @@ function setupEventListeners() {
         });
         tradeForm.addEventListener('reset', () => {
             setTimeout(() => {
-                document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+                const dt = document.getElementById('tradeDateTime');
+                if (dt) dt.value = getCurrentDateTimeString();
                 updateConfluenceScoreDisplay();
                 const emotionSlider = document.getElementById('emotionLevel');
                 if (emotionSlider) {
@@ -1650,13 +1702,9 @@ function setupEventListeners() {
                     updateEmotionDisplay(50);
                 }
                 const exitPriceField = document.getElementById('exitPrice');
-                if (exitPriceField) {
-                    exitPriceField.value = '';
-                }
+                if (exitPriceField) exitPriceField.value = '';
                 const actualProfitField = document.getElementById('actualProfit');
-                if (actualProfitField) {
-                    actualProfitField.value = '';
-                }
+                if (actualProfitField) actualProfitField.value = '';
             }, 0);
         });
     }
@@ -1756,6 +1804,7 @@ async function loadTrades() {
         updateStats(trades);
         renderCharts(trades);
         calculateAdvancedMetrics(trades);
+        updateTradingObjectivesUI();
         console.log('✅ Trades loaded successfully:', trades.length);
     } catch (error) {
         console.error('❌ Error loading trades:', error);
@@ -1793,12 +1842,11 @@ async function addTrade(e) {
         const totalConfluenceOptions = document.querySelectorAll('#confluenceOptions input[type="checkbox"]').length;
         const confluenceScore = totalConfluenceOptions > 0 ? (confluenceOptions.length / totalConfluenceOptions) * 100 : 0;
         const tradeDateTimeInput = document.getElementById('tradeDateTime');
-        const selectedDateTime = tradeDateTimeInput.value;
+        const selectedDateTime = tradeDateTimeInput ? tradeDateTimeInput.value : '';
         const tradeTimestamp = selectedDateTime ? new Date(selectedDateTime).toISOString() : new Date().toISOString();
         const currentAccount = getCurrentAccount();
         const accountSize = currentAccount.balance;
         const leverage = parseInt(document.getElementById('leverage')?.value) || 50;
-        // --- NEW: Read Actual P&L if provided ---
         const actualProfitInput = document.getElementById('actualProfit');
         const actualProfit = actualProfitInput && actualProfitInput.value !== '' 
             ? parseFloat(actualProfitInput.value) 
@@ -1822,7 +1870,6 @@ async function addTrade(e) {
         }
 
         const instrumentType = getInstrumentType(symbol);
-        // Calculate profit or use actual if provided
         let profit;
         if (actualProfit !== null) {
             profit = actualProfit;
@@ -1876,12 +1923,13 @@ async function addTrade(e) {
             leverage: leverage, 
             userId: currentUser.uid,
             accountId: currentAccountId,
-            actualProfitUsed: actualProfit !== null // flag for reference
+            actualProfitUsed: actualProfit !== null
         };
 
         await addDoc(collection(db, 'trades'), tradeData);
         e.target.reset();
-        document.getElementById('tradeDateTime').value = getCurrentDateTimeString();
+        const dt = document.getElementById('tradeDateTime');
+        if (dt) dt.value = getCurrentDateTimeString();
         const beforeUrl = document.getElementById('beforeScreenshotUrl');
         const beforeFile = document.getElementById('beforeScreenshotFile');
         const afterUrl = document.getElementById('afterScreenshotUrl');
@@ -2301,14 +2349,14 @@ function setupAccountBalanceLock() {
             lockToggle.innerHTML = '<i class="fas fa-lock"></i> Locked';
             lockToggle.classList.remove('bg-green-100', 'text-green-600', 'hover:bg-green-200');
             lockToggle.classList.add('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
-            balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
+            if (balanceHelp) balanceHelp.textContent = 'Balance is locked to maintain accurate performance tracking';
         } else {
             accountSizeInput.readOnly = false;
             accountSizeInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
             lockToggle.innerHTML = '🔓 Unlocked';
             lockToggle.classList.remove('bg-blue-100', 'text-blue-600', 'hover:bg-blue-200');
             lockToggle.classList.add('bg-green-100', 'text-green-600', 'hover:bg-green-200');
-            balanceHelp.textContent = 'Set your initial trading capital - lock after setting';
+            if (balanceHelp) balanceHelp.textContent = 'Set your initial trading capital - lock after setting';
         }
     }
     lockToggle.addEventListener('click', async () => {
@@ -2351,8 +2399,10 @@ function setupAccountBalanceLock() {
 async function loadUserSettings() {
     const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
     const leverage = localStorage.getItem('leverage') || 50;
-    document.getElementById('riskPerTrade').value = riskPerTrade;
-    document.getElementById('leverage').value = leverage;
+    const riskEl = document.getElementById('riskPerTrade');
+    const levEl = document.getElementById('leverage');
+    if (riskEl) riskEl.value = riskPerTrade;
+    if (levEl) levEl.value = leverage;
     updateCurrencyDisplay();
     console.log('✅ User settings loaded');
 }
@@ -2766,7 +2816,7 @@ function updateTransactionSummary(account) {
         if (trans.type === 'deposit') {
             totalDeposits += trans.amount;
         } else if (trans.type === 'withdrawal') {
-            totalWithdrawals += trans.amount;
+            totalWithdrawals -= trans.amount;
         }
     });
     const currentBalanceEl = document.getElementById('fundsCurrentBalance');
@@ -2867,6 +2917,19 @@ function setupTabs() {
                     accountContent.classList.add('active');
                     accountContent.style.display = 'block';
                     renderAccountsGrid();
+                    loadObjectivesSettings();
+                    const currentAccount = getCurrentAccount();
+                    if (currentAccount) {
+                        const sizeEl = document.getElementById('accountSize');
+                        const currencyEl = document.getElementById('accountCurrency');
+                        if (sizeEl) sizeEl.value = currentAccount.balance;
+                        if (currencyEl) currencyEl.value = currentAccount.currency;
+                    }
+                    const riskEl = document.getElementById('riskPerTrade');
+                    const levEl = document.getElementById('leverage');
+                    if (riskEl) riskEl.value = localStorage.getItem('riskPerTrade') || 1.0;
+                    if (levEl) levEl.value = localStorage.getItem('leverage') || 50;
+                    showAccountSection('setup');
                 }
                 if (accountTab) accountTab.classList.add('active');
                 break;
@@ -3053,10 +3116,10 @@ function updateAffirmationStats() {
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         return lastUsed > weekAgo;
     }).length;
-    document.getElementById('totalAffirmations').textContent = total;
-    document.getElementById('activeAffirmations').textContent = active;
-    document.getElementById('favoriteAffirmations').textContent = favorites;
-    document.getElementById('usedThisWeek').textContent = usedThisWeek;
+    safeSetText('totalAffirmations', total);
+    safeSetText('activeAffirmations', active);
+    safeSetText('favoriteAffirmations', favorites);
+    safeSetText('usedThisWeek', usedThisWeek);
 }
 
 function renderAffirmationsGrid(filteredAffirmations = null) {
@@ -3064,11 +3127,12 @@ function renderAffirmationsGrid(filteredAffirmations = null) {
     const emptyState = document.getElementById('emptyAffirmations');
     const affirmations = filteredAffirmations || allAffirmations;
     if (affirmations.length === 0) {
-        grid.innerHTML = '';
-        emptyState.classList.remove('hidden');
+        if (grid) grid.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('hidden');
         return;
     }
-    emptyState.classList.add('hidden');
+    if (emptyState) emptyState.classList.add('hidden');
+    if (!grid) return;
     grid.innerHTML = affirmations.map(affirmation => `
         <div class="affirmation-card bg-gradient-to-br from-white to-gray-50 border-l-4 border-${getCategoryColor(affirmation.category)}-500 p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300">
             <div class="flex justify-between items-start mb-4">
@@ -3138,9 +3202,12 @@ function formatRelativeTime(dateString) {
 function setupDailyAffirmation() {
     const dailyAffirmation = getRandomAffirmation();
     if (dailyAffirmation) {
-        document.getElementById('dailyAffirmation').textContent = `"${dailyAffirmation.text}"`;
-        document.getElementById('dailyAffirmationCategory').textContent = getCategoryDisplayName(dailyAffirmation.category);
-        document.getElementById('affirmationStrength').textContent = `${dailyAffirmation.strength}%`;
+        const el = document.getElementById('dailyAffirmation');
+        if (el) el.textContent = `"${dailyAffirmation.text}"`;
+        const catEl = document.getElementById('dailyAffirmationCategory');
+        if (catEl) catEl.textContent = getCategoryDisplayName(dailyAffirmation.category);
+        const strEl = document.getElementById('affirmationStrength');
+        if (strEl) strEl.textContent = `${dailyAffirmation.strength}%`;
     }
 }
 
@@ -3152,22 +3219,30 @@ function getRandomAffirmation() {
 
 window.addNewAffirmation = () => {
     editingAffirmationId = null;
-    document.getElementById('modalTitle').textContent = 'Create New Affirmation';
-    document.getElementById('affirmationText').value = '';
-    document.getElementById('affirmationCategorySelect').value = 'confidence';
-    document.getElementById('isFavorite').checked = false;
-    document.getElementById('isActive').checked = true;
+    const titleEl = document.getElementById('modalTitle');
+    if (titleEl) titleEl.textContent = 'Create New Affirmation';
+    const textEl = document.getElementById('affirmationText');
+    if (textEl) textEl.value = '';
+    const catEl = document.getElementById('affirmationCategorySelect');
+    if (catEl) catEl.value = 'confidence';
+    const favEl = document.getElementById('isFavorite');
+    if (favEl) favEl.checked = false;
+    const actEl = document.getElementById('isActive');
+    if (actEl) actEl.checked = true;
     updateCharCount();
-    document.getElementById('affirmationModal').classList.remove('hidden');
+    const modal = document.getElementById('affirmationModal');
+    if (modal) modal.classList.remove('hidden');
 };
 
 window.closeAffirmationModal = () => {
-    document.getElementById('affirmationModal').classList.add('hidden');
+    const modal = document.getElementById('affirmationModal');
+    if (modal) modal.classList.add('hidden');
 };
 
 function updateCharCount() {
-    const text = document.getElementById('affirmationText').value;
-    document.getElementById('charCount').textContent = text.length;
+    const text = document.getElementById('affirmationText')?.value || '';
+    const countEl = document.getElementById('charCount');
+    if (countEl) countEl.textContent = text.length;
 }
 
 async function handleAffirmationSubmit(e) {
@@ -3277,21 +3352,25 @@ window.deleteAffirmation = async (id) => {
 window.showRandomAffirmation = () => {
     const randomAffirmation = getRandomAffirmation();
     if (randomAffirmation) {
-        document.getElementById('randomAffirmationText').textContent = `"${randomAffirmation.text}"`;
-        document.getElementById('randomAffirmationModal').classList.remove('hidden');
+        const textEl = document.getElementById('randomAffirmationText');
+        if (textEl) textEl.textContent = `"${randomAffirmation.text}"`;
+        const modal = document.getElementById('randomAffirmationModal');
+        if (modal) modal.classList.remove('hidden');
     } else {
         alert('No active affirmations available.');
     }
 };
 
 window.closeRandomModal = () => {
-    document.getElementById('randomAffirmationModal').classList.add('hidden');
+    const modal = document.getElementById('randomAffirmationModal');
+    if (modal) modal.classList.add('hidden');
 };
 
 window.showAnotherRandom = () => {
     const randomAffirmation = getRandomAffirmation();
     if (randomAffirmation) {
-        document.getElementById('randomAffirmationText').textContent = `"${randomAffirmation.text}"`;
+        const textEl = document.getElementById('randomAffirmationText');
+        if (textEl) textEl.textContent = `"${randomAffirmation.text}"`;
     }
 };
 
@@ -3324,7 +3403,7 @@ window.refreshDailyAffirmation = () => {
 
 window.markDailyAsUsed = async () => {
     try {
-        const dailyAffirmationText = document.getElementById('dailyAffirmation').textContent.replace(/"/g, '').trim();
+        const dailyAffirmationText = document.getElementById('dailyAffirmation')?.textContent?.replace(/"/g, '').trim() || '';
         const affirmation = allAffirmations.find(a => a.text === dailyAffirmationText);
         if (affirmation) {
             const updatedData = {
@@ -3345,7 +3424,7 @@ window.markDailyAsUsed = async () => {
 };
 
 window.speakAffirmation = () => {
-    const affirmationText = document.getElementById('dailyAffirmation').textContent;
+    const affirmationText = document.getElementById('dailyAffirmation')?.textContent || '';
     if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(affirmationText);
         utterance.rate = 0.8;
@@ -4330,10 +4409,10 @@ function calculatePsychologicalMetrics(trades) {
     });
     const riskAdherence = calculateRiskAdherence(trades);
     const disciplineScore = Math.min(100, riskAdherence * 100);
-    document.getElementById('bestMood').innerHTML = bestMood;
-    document.getElementById('worstMood').innerHTML = worstMood;
-    document.getElementById('disciplineScore').textContent = `${disciplineScore.toFixed(0)}%`;
-    document.getElementById('riskAdherence').textContent = `${riskAdherence.toFixed(1)}%`;
+    safeSetInnerHTML('bestMood', bestMood);
+    safeSetInnerHTML('worstMood', worstMood);
+    safeSetText('disciplineScore', `${disciplineScore.toFixed(0)}%`);
+    safeSetText('riskAdherence', `${riskAdherence.toFixed(1)}%`);
     const moodPerformanceText = Object.entries(moodPerformance)
         .map(([mood, data]) => 
             `${getMoodEmoji(mood)}: ${formatCurrency(data.total/data.count)} (${((data.wins/data.count)*100).toFixed(0)}% WR)`
@@ -4466,12 +4545,12 @@ function calculateTimeAnalysis(trades) {
         }
     });
     const monthlyTrades = trades.length / (getTradingMonths(trades) || 1);
-    document.getElementById('bestDay').textContent = bestDay;
-    document.getElementById('worstDay').textContent = worstDay;
-    document.getElementById('bestInstrument').textContent = bestInstrument;
-    document.getElementById('worstInstrument').textContent = worstInstrument;
-    document.getElementById('avgDuration').textContent = 'Intraday';
-    document.getElementById('tradesPerMonth').textContent = monthlyTrades.toFixed(1);
+    safeSetText('bestDay', bestDay);
+    safeSetText('worstDay', worstDay);
+    safeSetText('bestInstrument', bestInstrument);
+    safeSetText('worstInstrument', worstInstrument);
+    safeSetText('avgDuration', 'Intraday');
+    safeSetText('tradesPerMonth', monthlyTrades.toFixed(1));
 }
 
 function calculateWeeklyPerformance(trades) {
@@ -5122,48 +5201,58 @@ function generateRecommendations(metrics, trades) {
 }
 
 function showEmptyAISuggestions() {
-    document.getElementById('primaryInsightText').innerHTML = `
+    safeSetInnerHTML('primaryInsightText', `
         <span class="text-gray-500">No trades yet. Add your first trade to get AI insights!</span>
-    `;
-    document.getElementById('riskInsightText').innerHTML = `
+    `);
+    safeSetInnerHTML('riskInsightText', `
         <span class="text-gray-500">Waiting for trade data...</span>
-    `;
-    document.getElementById('trendInsightText').innerHTML = `
+    `);
+    safeSetInnerHTML('trendInsightText', `
         <span class="text-gray-500">Waiting for trade data...</span>
-    `;
-    document.getElementById('aiRecommendations').innerHTML = `
-        <div class="text-center py-4 text-gray-500">
-            <i class="fas fa-chart-bar text-3xl mb-2 opacity-50"></i>
-            <p>Add at least 5 trades to receive personalized AI recommendations.</p>
-        </div>
-    `;
-    document.getElementById('aiMetricsSummary').innerHTML = '';
+    `);
+    const recEl = document.getElementById('aiRecommendations');
+    if (recEl) {
+        recEl.innerHTML = `
+            <div class="text-center py-4 text-gray-500">
+                <i class="fas fa-chart-bar text-3xl mb-2 opacity-50"></i>
+                <p>Add at least 5 trades to receive personalized AI recommendations.</p>
+            </div>
+        `;
+    }
+    const summaryEl = document.getElementById('aiMetricsSummary');
+    if (summaryEl) summaryEl.innerHTML = '';
 }
 
 function updateAISuggestionsUI(primary, risk, trend, recommendations, metrics) {
     const primaryEl = document.getElementById('primaryInsightText');
     const primaryIcon = primary.type === 'success' ? '✅' : (primary.type === 'warning' ? '⚠️' : 'ℹ️');
-    primaryEl.innerHTML = `
-        <div class="font-semibold text-gray-800">${primaryIcon} ${primary.title}</div>
-        <p class="text-sm text-gray-600 mt-1">${primary.message}</p>
-        <p class="text-xs text-indigo-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${primary.action}</p>
-    `;
+    if (primaryEl) {
+        primaryEl.innerHTML = `
+            <div class="font-semibold text-gray-800">${primaryIcon} ${primary.title}</div>
+            <p class="text-sm text-gray-600 mt-1">${primary.message}</p>
+            <p class="text-xs text-indigo-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${primary.action}</p>
+        `;
+    }
     const riskEl = document.getElementById('riskInsightText');
     const riskIcon = risk.type === 'success' ? '✅' : (risk.type === 'danger' ? '🚨' : (risk.type === 'warning' ? '⚠️' : 'ℹ️'));
-    riskEl.innerHTML = `
-        <div class="font-semibold text-gray-800">${riskIcon} ${risk.title}</div>
-        <p class="text-sm text-gray-600 mt-1">${risk.message}</p>
-        <p class="text-xs text-red-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${risk.action}</p>
-    `;
+    if (riskEl) {
+        riskEl.innerHTML = `
+            <div class="font-semibold text-gray-800">${riskIcon} ${risk.title}</div>
+            <p class="text-sm text-gray-600 mt-1">${risk.message}</p>
+            <p class="text-xs text-red-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${risk.action}</p>
+        `;
+    }
     const trendEl = document.getElementById('trendInsightText');
     const trendIcon = trend.type === 'success' ? '📈' : (trend.type === 'warning' ? '📉' : '📊');
-    trendEl.innerHTML = `
-        <div class="font-semibold text-gray-800">${trendIcon} ${trend.title}</div>
-        <p class="text-sm text-gray-600 mt-1">${trend.message}</p>
-        <p class="text-xs text-green-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${trend.action}</p>
-    `;
+    if (trendEl) {
+        trendEl.innerHTML = `
+            <div class="font-semibold text-gray-800">${trendIcon} ${trend.title}</div>
+            <p class="text-sm text-gray-600 mt-1">${trend.message}</p>
+            <p class="text-xs text-green-600 mt-2"><i class="fas fa-arrow-right mr-1"></i>${trend.action}</p>
+        `;
+    }
     const recEl = document.getElementById('aiRecommendations');
-    if (recommendations.length > 0) {
+    if (recEl && recommendations.length > 0) {
         recEl.innerHTML = recommendations.map((rec, index) => {
             const priorityColors = {
                 'critical': 'border-red-500 bg-red-50',
@@ -5186,20 +5275,22 @@ function updateAISuggestionsUI(primary, risk, trend, recommendations, metrics) {
         }).join('');
     }
     const summaryEl = document.getElementById('aiMetricsSummary');
-    summaryEl.innerHTML = `
-        <div class="bg-gray-50 rounded-lg p-2 text-center">
-            <span class="font-semibold">${metrics.totalTrades}</span> Trades
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2 text-center">
-            <span class="font-semibold ${metrics.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}">${metrics.winRate.toFixed(1)}%</span> Win Rate
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2 text-center">
-            <span class="font-semibold ${metrics.profitFactor >= 1.5 ? 'text-green-600' : (metrics.profitFactor >= 1.0 ? 'text-yellow-600' : 'text-red-600')}">${metrics.profitFactor.toFixed(2)}</span> Profit Factor
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2 text-center">
-            <span class="font-semibold ${metrics.expectancy >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(metrics.expectancy)}</span> Expectancy
-        </div>
-    `;
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+            <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <span class="font-semibold">${metrics.totalTrades}</span> Trades
+            </div>
+            <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <span class="font-semibold ${metrics.winRate >= 50 ? 'text-green-600' : 'text-orange-600'}">${metrics.winRate.toFixed(1)}%</span> Win Rate
+            </div>
+            <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <span class="font-semibold ${metrics.profitFactor >= 1.5 ? 'text-green-600' : (metrics.profitFactor >= 1.0 ? 'text-yellow-600' : 'text-red-600')}">${metrics.profitFactor.toFixed(2)}</span> Profit Factor
+            </div>
+            <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <span class="font-semibold ${metrics.expectancy >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(metrics.expectancy)}</span> Expectancy
+            </div>
+        `;
+    }
 }
 
 window.refreshAISuggestions = () => {
@@ -5276,17 +5367,21 @@ async function populateVerificationSymbols() {
 window.showVerificationDetails = () => {
     const symbol = document.getElementById('verificationSymbolSelect')?.value;
     if (!symbol) {
-        document.getElementById('verificationDetails').classList.add('hidden');
+        const details = document.getElementById('verificationDetails');
+        if (details) details.classList.add('hidden');
         return;
     }
     const pointValue = getPointValue(symbol);
     const lotInfo = getLotSizeInfo(symbol);
     const hasOverride = pointValueOverrides[symbol] !== undefined;
-    document.getElementById('currentPointValue').innerHTML = 
-        `$${pointValue} ${hasOverride ? '<span class="text-xs text-orange-600 ml-2">(overridden)</span>' : ''}`;
-    document.getElementById('currentMinLot').textContent = lotInfo.minLot;
-    document.getElementById('currentStdLot').textContent = lotInfo.stdLotDisplay;
-    document.getElementById('verificationDetails').classList.remove('hidden');
+    const pvEl = document.getElementById('currentPointValue');
+    if (pvEl) pvEl.innerHTML = `$${pointValue} ${hasOverride ? '<span class="text-xs text-orange-600 ml-2">(overridden)</span>' : ''}`;
+    const minEl = document.getElementById('currentMinLot');
+    if (minEl) minEl.textContent = lotInfo.minLot;
+    const stdEl = document.getElementById('currentStdLot');
+    if (stdEl) stdEl.textContent = lotInfo.stdLotDisplay;
+    const details = document.getElementById('verificationDetails');
+    if (details) details.classList.remove('hidden');
 };
 
 window.overridePointValue = () => {
@@ -5315,7 +5410,8 @@ window.resetPointValue = () => {
     }
     delete pointValueOverrides[symbol];
     savePointValueOverrides();
-    document.getElementById('overridePointValue').value = '';
+    const overrideInput = document.getElementById('overridePointValue');
+    if (overrideInput) overrideInput.value = '';
     showSuccessMessage(`Point value for ${symbol} reset to default`);
     showVerificationDetails();
     populateVerificationSymbols();
@@ -5338,21 +5434,28 @@ window.calculateTestPnL = () => {
     const pointValue = getPointValue(symbol);
     const points = direction === 'long' ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
     const pnl = points * pointValue * lotSize;
-    document.getElementById('calculatedPnL').textContent = formatCurrency(pnl);
-    document.getElementById('calculatedPnL').className = `font-bold text-lg ${pnl >= 0 ? 'profit' : 'loss'}`;
-    document.getElementById('pointsMovement').textContent = points.toFixed(4);
-    document.getElementById('calcResult').classList.remove('hidden');
+    const pnlEl = document.getElementById('calculatedPnL');
+    if (pnlEl) {
+        pnlEl.textContent = formatCurrency(pnl);
+        pnlEl.className = `font-bold text-lg ${pnl >= 0 ? 'profit' : 'loss'}`;
+    }
+    const pointsEl = document.getElementById('pointsMovement');
+    if (pointsEl) pointsEl.textContent = points.toFixed(4);
+    const resultEl = document.getElementById('calcResult');
+    if (resultEl) resultEl.classList.remove('hidden');
 };
 
 window.fetchAllContractSpecs = async () => {
     const resultDiv = document.getElementById('batchFetchResult');
     try {
-        resultDiv.innerHTML = `
-            <div class="bg-blue-50 p-4 rounded-lg">
-                <div class="loading-spinner"></div>
-                <span class="ml-2">Fetching contract specifications from Deriv API...</span>
-            </div>
-        `;
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="loading-spinner"></div>
+                    <span class="ml-2">Fetching contract specifications from Deriv API...</span>
+                </div>
+            `;
+        }
         await derivAPI.connect();
         const activeSymbols = await derivAPI.getActiveSymbols();
         const syntheticSymbols = activeSymbols.filter(s => 
@@ -5415,15 +5518,17 @@ window.fetchAllContractSpecs = async () => {
                 </p>
             </div>
         `;
-        resultDiv.innerHTML = html;
+        if (resultDiv) resultDiv.innerHTML = html;
     } catch (error) {
         console.error('Error fetching specs:', error);
-        resultDiv.innerHTML = `
-            <div class="bg-red-50 p-4 rounded-lg text-red-800">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                Error fetching specifications: ${error.message}
-            </div>
-        `;
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div class="bg-red-50 p-4 rounded-lg text-red-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Error fetching specifications: ${error.message}
+                </div>
+            `;
+        }
     }
 };
 
@@ -5527,19 +5632,6 @@ function updateEmotionAnalytics(trades) {
     updateEmotionInsights(emotionCounts, totalTrades, trades);
 }
 
-function updateEmotionCards(counts, total) {
-    const emotions = ['calm', 'anxious', 'frustrated', 'focused'];
-    emotions.forEach(emotion => {
-        const countElement = document.getElementById(`${emotion}Trades`);
-        const percentElement = document.getElementById(`${emotion}Percent`);
-        if (countElement) countElement.textContent = counts[emotion] || 0;
-        if (percentElement) {
-            const percent = total > 0 ? Math.round((counts[emotion] / total) * 100) : 0;
-            percentElement.textContent = `${percent}%`;
-        }
-    });
-}
-
 function updateEmotionInsights(counts, total, trades) {
     const insightsElement = document.getElementById('emotionInsights');
     if (!insightsElement) return;
@@ -5599,15 +5691,18 @@ async function checkAndShowProfileModal() {
         const profileData = userSnap.exists() ? userSnap.data() : null;
 
         if (profileData && profileData.fullName) {
-            document.getElementById('profileModal').classList.add('hidden');
+            const modal = document.getElementById('profileModal');
+            if (modal) modal.classList.add('hidden');
             fillPersonalInfoForm(profileData);
             updateWelcomeGreeting(profileData);
             return;
         }
 
         updateWelcomeGreeting(null);
-        document.getElementById('profileModal').classList.remove('hidden');
-        document.getElementById('profileFullName').focus();
+        const modal = document.getElementById('profileModal');
+        if (modal) modal.classList.remove('hidden');
+        const nameField = document.getElementById('profileFullName');
+        if (nameField) nameField.focus();
     } catch (error) {
         console.error('Error checking profile:', error);
         updateWelcomeGreeting(null);
@@ -5622,7 +5717,8 @@ async function saveUserProfile(profileData) {
         console.log('Profile saved successfully');
         fillPersonalInfoForm(profileData);
         updateWelcomeGreeting(profileData);
-        document.getElementById('profileModal').classList.add('hidden');
+        const modal = document.getElementById('profileModal');
+        if (modal) modal.classList.add('hidden');
         showSuccessMessage('Profile saved successfully!');
     } catch (error) {
         console.error('Error saving profile:', error);
@@ -5716,7 +5812,7 @@ function performSearch(query) {
         }
     });
 
-    // 4. Search Static Features (Navigation Menus)
+    // 4. Search Static Features
     searchableFeatures.forEach(item => {
         const matchLabel = item.label.toLowerCase().includes(lower);
         const matchKeywords = item.keywords.some(k => k.toLowerCase().includes(lower));
@@ -5750,7 +5846,6 @@ function performSearch(query) {
         }
     });
 
-    // Limit results for performance
     return results.slice(0, 30);
 }
 
@@ -5766,7 +5861,6 @@ function renderSearchResults(results) {
         return;
     }
 
-    // Group by type
     const groups = {};
     const typeOrder = ['trade', 'account', 'affirmation', 'feature', 'setting'];
     const typeLabels = {
@@ -5806,19 +5900,16 @@ function renderSearchResults(results) {
     dropdown.style.display = 'block';
     dropdown.classList.remove('hidden');
 
-    // Attach click listeners
     container.querySelectorAll('.search-result-item').forEach(el => {
         el.addEventListener('click', function() {
             const tab = this.dataset.tab;
             const section = this.dataset.section;
             const type = this.dataset.type;
 
-            // Close dropdown
             dropdown.style.display = 'none';
             dropdown.classList.add('hidden');
             document.getElementById('globalSearchInput').value = '';
 
-            // Handle navigation
             if (type === 'feature' || type === 'navigation') {
                 const tabMap = {
                     dashboard: 'dashboardTab',
@@ -5921,6 +6012,377 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ========== ADVANCED TRADING OBJECTIVES FUNCTIONS ==========
+
+function computeTradingMetrics(trades, objectives) {
+    const account = getCurrentAccount();
+    const initialBalance = account.initialBalance || account.balance;
+    let totalProfit = 0;
+    let todayProfit = 0;
+    const now = new Date();
+    const todayStr = now.toDateString();
+    let peak = initialBalance;
+    let currentEquity = initialBalance;
+    const uniqueDays = new Set();
+    const dailyProfits = {};
+
+    const sortedTrades = [...trades].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+    sortedTrades.forEach(trade => {
+        const tradeDate = new Date(trade.timestamp);
+        const tradeDay = tradeDate.toDateString();
+        uniqueDays.add(tradeDay);
+        const profit = trade.profit || 0;
+        totalProfit += profit;
+        currentEquity = initialBalance + totalProfit;
+        if (currentEquity > peak) peak = currentEquity;
+        if (tradeDay === todayStr) {
+            todayProfit += profit;
+        }
+        if (!dailyProfits[tradeDay]) dailyProfits[tradeDay] = 0;
+        dailyProfits[tradeDay] += profit;
+    });
+
+    // First profitable day
+    let firstProfitableDay = false;
+    for (const day in dailyProfits) {
+        if (dailyProfits[day] > 0) {
+            firstProfitableDay = true;
+            break;
+        }
+    }
+
+    // Max loss from initial (only if negative)
+    const currentLossFromInitial = Math.max(0, initialBalance - currentEquity);
+    const maxLossTarget = objectives.maxLossTarget || 500;
+    const maxLossRemaining = Math.max(0, maxLossTarget - currentLossFromInitial);
+    const maxLossProgress = maxLossTarget > 0 ? Math.min(100, (currentLossFromInitial / maxLossTarget) * 100) : 0;
+    const maxLossViolated = currentLossFromInitial >= maxLossTarget;
+
+    // Daily loss
+    const todayLoss = Math.min(0, todayProfit);
+    const dailyLossUsed = Math.abs(todayLoss);
+    const dailyLossTarget = objectives.dailyLossTarget || 250;
+    const dailyLossRemaining = Math.max(0, dailyLossTarget - dailyLossUsed);
+    const dailyLossProgress = dailyLossTarget > 0 ? Math.min(100, (dailyLossUsed / dailyLossTarget) * 100) : 0;
+    const dailyLossViolated = dailyLossUsed >= dailyLossTarget;
+
+    // Risk rules maintained
+    const riskRulesMaintained = !maxLossViolated && !dailyLossViolated;
+
+    // Consistency
+    const tradingDaysTarget = objectives.tradingDaysTarget || 2;
+    const completedDays = uniqueDays.size;
+    const daysRemaining = Math.max(0, tradingDaysTarget - completedDays);
+    const avgTradesPerDay = completedDays > 0 ? (trades.length / completedDays) : 0;
+    const consistency = tradingDaysTarget > 0 ? Math.min(100, (completedDays / tradingDaysTarget) * 100) : 0;
+
+    // Streak (winning days)
+    let streak = 0;
+    const sortedDays = Array.from(uniqueDays).sort((a,b) => new Date(a) - new Date(b));
+    for (let i = sortedDays.length - 1; i >= 0; i--) {
+        const day = sortedDays[i];
+        const dayPL = dailyProfits[day] || 0;
+        if (dayPL > 0) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+
+    // Discipline
+    const riskAdherence = calculateRiskAdherence(trades);
+    const disciplineScore = Math.min(100, riskAdherence * 100);
+
+    // Risk score
+    const avgRisk = trades.length > 0 ? trades.reduce((s, t) => s + (t.riskPercent || 0), 0) / trades.length : 0;
+    const riskScore = Math.max(0, 100 - (avgRisk * 10));
+
+    // Journal completion
+    const withNotes = trades.filter(t => t.notes && t.notes.trim().length > 0).length;
+    const journalCompletion = trades.length > 0 ? (withNotes / trades.length) * 100 : 0;
+
+    // Trader level
+    let level = 'Bronze Trader';
+    if (totalProfit > 1000 && consistency > 70) level = 'Gold Trader';
+    else if (totalProfit > 500 && consistency > 50) level = 'Silver Trader';
+
+    // Profit
+    const profitTarget = objectives.profitTarget || 500;
+    const currentProfit = totalProfit;
+    const profitRemaining = Math.max(0, profitTarget - currentProfit);
+    const profitProgress = profitTarget > 0 ? Math.min(100, (currentProfit / profitTarget) * 100) : 0;
+
+    // Milestones
+    const milestones = [
+        { title: 'First Profitable Day', completed: firstProfitableDay },
+        { title: 'Risk Rules Maintained', completed: riskRulesMaintained },
+        { title: 'Trading Day Completed', completed: completedDays >= 1 },
+        { title: 'Profit Target', completed: currentProfit >= profitTarget },
+        { title: 'Challenge Passed', completed: currentProfit >= profitTarget && completedDays >= tradingDaysTarget && riskRulesMaintained }
+    ];
+
+    // Overall progress: if profit is negative, set to 0; else weighted average
+    let overallProgress = 0;
+    if (totalProfit > 0) {
+        overallProgress = Math.min(100, (profitProgress * 0.5) + (consistency * 0.5));
+    } else {
+        overallProgress = 0;
+    }
+
+    // Status
+    let status = 'excellent';
+    let statusTitle = 'Excellent Progress';
+    let statusSub = "You're on track to pass your funded challenge.";
+    let statusIcon = 'fa-flag-checkered';
+    let bannerClass = '';
+    if (milestones.find(m => m.title === 'Challenge Passed')?.completed) {
+        status = 'complete';
+        statusTitle = '🏆 Challenge Complete';
+        statusSub = 'Congratulations! You’ve achieved your targets.';
+        statusIcon = 'fa-trophy';
+        bannerClass = 'complete';
+    } else if (dailyLossProgress > 70 || maxLossProgress > 70 || totalProfit < 0) {
+        status = 'warning';
+        statusTitle = totalProfit < 0 ? '⚠️ Negative P&L' : '⚠️ Risk Warning';
+        statusSub = totalProfit < 0 ? 'You are in negative territory. Focus on recovery.' : 'Trade carefully. You are approaching your loss limits.';
+        statusIcon = 'fa-exclamation-triangle';
+        bannerClass = 'warning';
+    }
+
+    return {
+        trader: {
+            level,
+            streak,
+            discipline: Math.round(disciplineScore),
+            risk: Math.round(riskScore),
+            journalCompletion: Math.round(journalCompletion)
+        },
+        challenge: {
+            progress: Math.round(overallProgress),
+            remainingProfit: Math.max(0, profitRemaining),
+            status
+        },
+        risk: {
+            maxLoss: {
+                target: maxLossTarget,
+                remaining: maxLossRemaining,
+                threshold: initialBalance - maxLossTarget,
+                current: -currentLossFromInitial
+            },
+            dailyLoss: {
+                target: dailyLossTarget,
+                remaining: dailyLossRemaining,
+                threshold: initialBalance - dailyLossTarget,
+                current: todayLoss,
+                resetTime: getCountdownToMidnight()
+            }
+        },
+        performance: {
+            target: profitTarget,
+            current: currentProfit,
+            remaining: profitRemaining
+        },
+        consistency: {
+            targetDays: tradingDaysTarget,
+            completedDays,
+            remainingDays: daysRemaining,
+            averageTrades: avgTradesPerDay,
+            consistency: Math.round(consistency)
+        },
+        milestones
+    };
+}
+
+function getCountdownToMidnight() {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const diff = midnight - now;
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function renderTradingObjectives(metrics) {
+    // Trader Profile
+    safeSetText('traderLevel', metrics.trader.level);
+    safeSetText('traderStreak', metrics.trader.streak);
+    safeSetText('traderDiscipline', metrics.trader.discipline + '%');
+    safeSetText('traderRisk', metrics.trader.risk + '%');
+    safeSetText('traderJournal', metrics.trader.journalCompletion + '%');
+
+    // Status Banner
+    const banner = document.getElementById('statusBanner');
+    if (banner) {
+        banner.className = 'status-banner';
+        if (metrics.challenge.status === 'complete') banner.classList.add('complete');
+        else if (metrics.challenge.status === 'warning') banner.classList.add('warning');
+    }
+    const iconEl = document.getElementById('bannerIcon');
+    if (iconEl) {
+        iconEl.innerHTML = `<i class="fas ${metrics.challenge.status === 'complete' ? 'fa-trophy' : metrics.challenge.status === 'warning' ? 'fa-exclamation-triangle' : 'fa-flag-checkered'}"></i>`;
+    }
+    const titleEl = document.getElementById('bannerTitle');
+    if (titleEl) {
+        titleEl.textContent = metrics.challenge.status === 'complete' ? '🏆 Challenge Complete' : metrics.challenge.status === 'warning' ? (metrics.performance.current < 0 ? '⚠️ Negative P&L' : '⚠️ Risk Warning') : 'Excellent Progress';
+    }
+    const subEl = document.getElementById('bannerSub');
+    if (subEl) {
+        subEl.textContent = metrics.challenge.status === 'complete' ? 'Congratulations! You’ve achieved your targets.' : metrics.challenge.status === 'warning' ? (metrics.performance.current < 0 ? 'You are in negative territory. Focus on recovery.' : 'Trade carefully. You are approaching your loss limits.') : "You're on track to pass your funded challenge.";
+    }
+    const fillEl = document.getElementById('bannerProgressFill');
+    if (fillEl) fillEl.style.width = metrics.challenge.progress + '%';
+    const percentEl = document.getElementById('bannerPercent');
+    if (percentEl) percentEl.textContent = metrics.challenge.progress + '%';
+    const remainingEl = document.getElementById('bannerRemaining');
+    if (remainingEl) remainingEl.textContent = `$${metrics.challenge.remainingProfit.toFixed(2)} left until target.`;
+
+    // Risk Card
+    safeSetText('riskMaxLossTarget', '$' + metrics.risk.maxLoss.target);
+    safeSetText('riskRemainingLoss', '$' + metrics.risk.maxLoss.remaining.toFixed(2));
+    safeSetText('riskThreshold', '$' + metrics.risk.maxLoss.threshold.toFixed(2));
+    safeSetText('riskCurrentLoss', '$' + metrics.risk.maxLoss.current.toFixed(2));
+    const lossProgress = (metrics.risk.maxLoss.target > 0) ? (Math.abs(metrics.risk.maxLoss.current) / metrics.risk.maxLoss.target) * 100 : 0;
+    const lossFill = document.getElementById('riskLossProgress');
+    if (lossFill) lossFill.style.width = Math.min(100, lossProgress) + '%';
+    safeSetText('riskDailyLossTarget', '$' + metrics.risk.dailyLoss.target);
+    safeSetText('riskDailyRemaining', '$' + metrics.risk.dailyLoss.remaining.toFixed(2));
+    safeSetText('riskDailyThreshold', '$' + metrics.risk.dailyLoss.threshold.toFixed(2));
+    const dailyProgress = (metrics.risk.dailyLoss.target > 0) ? (Math.abs(metrics.risk.dailyLoss.current) / metrics.risk.dailyLoss.target) * 100 : 0;
+    const dailyFill = document.getElementById('riskDailyProgress');
+    if (dailyFill) dailyFill.style.width = Math.min(100, dailyProgress) + '%';
+    safeSetText('riskCountdown', metrics.risk.dailyLoss.resetTime);
+
+    // Performance Card
+    safeSetText('perfTarget', '$' + metrics.performance.target);
+    safeSetText('perfCurrent', '$' + metrics.performance.current.toFixed(2));
+    safeSetText('perfRemaining', '$' + metrics.performance.remaining.toFixed(2));
+    safeSetText('perfTotalProfit', '$' + metrics.performance.current.toFixed(2));
+    const perfProgress = (metrics.performance.target > 0) ? (metrics.performance.current / metrics.performance.target) * 100 : 0;
+    const perfFill = document.getElementById('perfProgress');
+    if (perfFill) perfFill.style.width = Math.min(100, Math.max(0, perfProgress)) + '%';
+
+    // Consistency Card
+    safeSetText('consDaysTarget', metrics.consistency.targetDays);
+    safeSetText('consDaysCompleted', metrics.consistency.completedDays);
+    safeSetText('consDaysRemaining', metrics.consistency.remainingDays);
+    safeSetText('consAvgTrades', metrics.consistency.averageTrades.toFixed(1));
+    safeSetText('consistencyPercent', metrics.consistency.consistency + '%');
+    const consFill = document.getElementById('consistencyProgress');
+    if (consFill) consFill.style.width = metrics.consistency.consistency + '%';
+
+    // Milestones Card
+    const totalMilestones = metrics.milestones.length;
+    const completedMilestones = metrics.milestones.filter(m => m.completed).length;
+    const milestonePercent = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+    safeSetText('milestonePercent', Math.round(milestonePercent) + '%');
+    const circumference = 2 * Math.PI * 54;
+    const offset = circumference - (milestonePercent / 100) * circumference;
+    const circle = document.getElementById('milestoneCircle');
+    if (circle) circle.setAttribute('stroke-dasharray', `${offset}, ${circumference}`);
+
+    // Milestone list
+    const list = document.getElementById('milestoneList');
+    if (list) {
+        list.innerHTML = metrics.milestones.map(m => `
+            <div class="milestone-item ${m.completed ? 'completed' : 'pending'}">
+                <div class="check ${m.completed ? 'completed' : 'pending'}">
+                    ${m.completed ? '<i class="fas fa-check"></i>' : '<i class="fas fa-circle"></i>'}
+                </div>
+                <span class="text">${m.title}</span>
+            </div>
+        `).join('');
+    }
+}
+
+function updateTradingObjectivesUI() {
+    const trades = allTrades || [];
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+    const objectives = currentAccount.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 };
+    const metrics = computeTradingMetrics(trades, objectives);
+    renderTradingObjectives(metrics);
+}
+
+window.saveObjectivesSettings = async function() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) {
+        alert('No account selected.');
+        return;
+    }
+    const maxLoss = parseFloat(document.getElementById('objMaxLoss')?.value);
+    const dailyLoss = parseFloat(document.getElementById('objDailyLoss')?.value);
+    const profitTarget = parseFloat(document.getElementById('objProfitTarget')?.value);
+    const tradingDays = parseInt(document.getElementById('objTradingDays')?.value);
+    if (isNaN(maxLoss) || isNaN(dailyLoss) || isNaN(profitTarget) || isNaN(tradingDays)) {
+        alert('Please fill all fields with valid numbers.');
+        return;
+    }
+    currentAccount.objectives = {
+        maxLossTarget: maxLoss,
+        dailyLossTarget: dailyLoss,
+        profitTarget: profitTarget,
+        tradingDaysTarget: tradingDays
+    };
+    await saveUserAccounts();
+    showSuccessMessage('Trading objectives updated!');
+    updateTradingObjectivesUI();
+};
+
+window.saveAccountSetup = async function() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+    const balance = parseFloat(document.getElementById('accountSize')?.value);
+    const currency = document.getElementById('accountCurrency')?.value;
+    const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value);
+    const leverage = document.getElementById('leverage')?.value;
+    if (!isNaN(balance) && balance > 0) {
+        currentAccount.balance = balance;
+        currentAccount.currency = currency;
+        localStorage.setItem('riskPerTrade', riskPerTrade);
+        localStorage.setItem('leverage', leverage);
+        await saveUserAccounts();
+        updateStats(allTrades);
+        renderCharts(allTrades);
+        showSuccessMessage('Account setup saved!');
+    } else {
+        alert('Please enter a valid balance.');
+    }
+};
+
+function loadObjectivesSettings() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+    const obj = currentAccount.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 };
+    const maxEl = document.getElementById('objMaxLoss');
+    if (maxEl) maxEl.value = obj.maxLossTarget;
+    const dailyEl = document.getElementById('objDailyLoss');
+    if (dailyEl) dailyEl.value = obj.dailyLossTarget;
+    const profitEl = document.getElementById('objProfitTarget');
+    if (profitEl) profitEl.value = obj.profitTarget;
+    const daysEl = document.getElementById('objTradingDays');
+    if (daysEl) daysEl.value = obj.tradingDaysTarget;
+}
+
+window.showAccountSection = function(section) {
+    document.querySelectorAll('.account-section').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('hidden');
+    });
+    document.querySelectorAll('.account-nav-item').forEach(el => {
+        el.classList.remove('active');
+    });
+    const target = document.getElementById(`account${section.charAt(0).toUpperCase() + section.slice(1)}Section`);
+    if (target) {
+        target.classList.add('active');
+        target.classList.remove('hidden');
+    }
+    const btn = document.querySelector(`.account-nav-item[data-section="${section}"]`);
+    if (btn) btn.classList.add('active');
+    if (section === 'objectives') loadObjectivesSettings();
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
