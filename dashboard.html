@@ -439,33 +439,33 @@
             </div>
 
             <div class="sidebar-section">
-                <button class="sidebar-btn" title="Dashboard" onclick="document.getElementById('dashboardTab').click();">
+                <button class="sidebar-btn" data-tab="dashboard" title="Dashboard" onclick="document.getElementById('dashboardTab').click();">
                     <span class="icon"><i class="fas fa-chart-line"></i></span>
                     <span class="label">Dashboard</span>
                 </button>
                 
-                <button class="sidebar-btn" title="Add Trade" onclick="document.getElementById('addTradeTab').click();">
+                <button class="sidebar-btn" data-tab="addTrade" title="Add Trade" onclick="document.getElementById('addTradeTab').click();">
                     <span class="icon"><i class="fas fa-plus-circle"></i></span>
                     <span class="label">Add Trade</span>
                 </button>
-                <button class="sidebar-btn" title="Trade History" onclick="document.getElementById('tradesTab').click();">
+                <button class="sidebar-btn" data-tab="trades" title="Trade History" onclick="document.getElementById('tradesTab').click();">
                     <span class="icon"><i class="fas fa-history"></i></span>
                     <span class="label">Trade History</span>
                 </button>
-                <button class="sidebar-btn" title="Affirmations" onclick="document.getElementById('affirmationsTab').click();">
+                <button class="sidebar-btn" data-tab="affirmations" title="Affirmations" onclick="document.getElementById('affirmationsTab').click();">
                     <span class="icon"><i class="fas fa-star"></i></span>
                     <span class="label">Affirmations</span>
                 </button>
-                <button class="sidebar-btn" title="Calendar" onclick="document.getElementById('calendarTab').click();">
+                <button class="sidebar-btn" data-tab="calendar" title="Calendar" onclick="document.getElementById('calendarTab').click();">
                     <span class="icon"><i class="fas fa-calendar"></i></span>
                     <span class="label">Calendar</span>
                 </button>
-                <button class="sidebar-btn" title="Tools" onclick="document.getElementById('toolsTab').click();">
+                <button class="sidebar-btn" data-tab="tools" title="Tools" onclick="document.getElementById('toolsTab').click();">
                     <span class="icon"><i class="fas fa-tools"></i></span>
                     <span class="label">Tools</span>
                 </button>
                 
-                <button class="sidebar-btn" title="Account" onclick="document.getElementById('accountTab').click();">
+                <button class="sidebar-btn" data-tab="account" title="Account" onclick="document.getElementById('accountTab').click();">
                     <span class="icon"><i class="fas fa-credit-card"></i></span>
                     <span class="label">Account</span>
                 </button>
@@ -673,7 +673,7 @@
                     <!-- Trader Profile Card -->
                     <div class="trader-profile-card" id="traderProfileCard">
                         <div class="trader-level">
-                            <i class="fas fa-star"></i> <span id="traderLevel">Gold Trader</span> <i class="fas fa-crown" style="color:#D4AF37;"></i>
+                            <i class="fas fa-star"></i> <span id="traderLevel">Trader</span> <i class="fas fa-crown" style="color:#D4AF37;"></i>
                         </div>
                         <div class="trader-stats">
                             <div class="trader-stat-item">

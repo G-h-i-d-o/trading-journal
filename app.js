@@ -2867,6 +2867,7 @@ function setupTabs() {
         [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, toolsTab, accountTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
+        document.querySelectorAll('#sidebar .sidebar-btn').forEach(btn => btn.classList.remove('active'));
         switch(tabName) {
             case 'dashboard':
                 if (dashboardContent) {
@@ -2941,6 +2942,8 @@ function setupTabs() {
                 if (settingsTab) settingsTab.classList.add('active');
                 break;
         }
+        const sidebarBtn = document.querySelector(`#sidebar .sidebar-btn[data-tab="${tabName}"]`);
+        if (sidebarBtn) sidebarBtn.classList.add('active');
     }
     if (dashboardTab) dashboardTab.addEventListener('click', () => switchToTab('dashboard'));
     if (addTradeTab) addTradeTab.addEventListener('click', () => switchToTab('addTrade'));
@@ -3058,6 +3061,10 @@ function setupSidebarCollapse() {
         if (label && !btn.hasAttribute('title')) {
             btn.setAttribute('title', label.textContent.trim());
         }
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#sidebar .sidebar-btn').forEach(item => item.classList.remove('active'));
+            btn.classList.add('active');
+        });
     });
     console.log('✅ Sidebar collapse setup complete - Initial state:', storedCollapsed === 'true' ? 'collapsed' : 'expanded');
 }
@@ -4496,7 +4503,32 @@ function calculateRiskAdherence(trades) {
         const riskPercent = trade.riskPercent || 0;
         return riskPercent >= acceptableRiskRange[0] && riskPercent <= acceptableRiskRange[1];
     });
-    return (withinRiskTrades.length / trades.length) * 100;
+    return (withinRiskTrades.length / trades.length);
+}
+
+function getMostTradedProfitableInstrument(trades) {
+    if (trades.length === 0) return null;
+    const symbolStats = {};
+    trades.forEach(trade => {
+        const symbol = trade.symbol || 'Unknown';
+        if (!symbolStats[symbol]) {
+            symbolStats[symbol] = { count: 0, profit: 0 };
+        }
+        symbolStats[symbol].count++;
+        symbolStats[symbol].profit += trade.profit || 0;
+    });
+    let bestSymbol = null;
+    let bestScore = -Infinity;
+    Object.entries(symbolStats).forEach(([symbol, stats]) => {
+        if (stats.profit > 0) {
+            const score = (stats.count * 0.4) + (stats.profit * 0.6);
+            if (score > bestScore) {
+                bestScore = score;
+                bestSymbol = symbol;
+            }
+        }
+    });
+    return bestSymbol || null;
 }
 
 function calculateTimeAnalysis(trades) {
@@ -6077,35 +6109,40 @@ function computeTradingMetrics(trades, objectives) {
     const avgTradesPerDay = completedDays > 0 ? (trades.length / completedDays) : 0;
     const consistency = tradingDaysTarget > 0 ? Math.min(100, (completedDays / tradingDaysTarget) * 100) : 0;
 
-    // Streak (winning days)
+    // Streak (consecutive winning days from most recent)
     let streak = 0;
     const sortedDays = Array.from(uniqueDays).sort((a,b) => new Date(a) - new Date(b));
-    for (let i = sortedDays.length - 1; i >= 0; i--) {
-        const day = sortedDays[i];
-        const dayPL = dailyProfits[day] || 0;
-        if (dayPL > 0) {
-            streak++;
-        } else {
-            break;
+    if (sortedDays.length > 0) {
+        for (let i = sortedDays.length - 1; i >= 0; i--) {
+            const day = sortedDays[i];
+            const dayPL = dailyProfits[day] || 0;
+            if (dayPL > 0) {
+                streak++;
+            } else {
+                break;
+            }
         }
     }
 
-    // Discipline
+    // Journal completion (needed for discipline calculation)
+    const withNotes = trades.filter(t => t.notes && t.notes.trim().length > 0).length;
+    const journalCompletion = trades.length > 0 ? (withNotes / trades.length) * 100 : 0;
+
+    // Discipline: Rule adherence (risk management + journal)
     const riskAdherence = calculateRiskAdherence(trades);
-    const disciplineScore = Math.min(100, riskAdherence * 100);
+    const journalRatio = trades.length > 0 ? withNotes / trades.length : 0;
+    const disciplineScore = Math.min(100, (riskAdherence * 60 + journalRatio * 40) * 100);
 
     // Risk score
     const avgRisk = trades.length > 0 ? trades.reduce((s, t) => s + (t.riskPercent || 0), 0) / trades.length : 0;
     const riskScore = Math.max(0, 100 - (avgRisk * 10));
 
-    // Journal completion
-    const withNotes = trades.filter(t => t.notes && t.notes.trim().length > 0).length;
-    const journalCompletion = trades.length > 0 ? (withNotes / trades.length) * 100 : 0;
-
-    // Trader level
-    let level = 'Bronze Trader';
-    if (totalProfit > 1000 && consistency > 70) level = 'Gold Trader';
-    else if (totalProfit > 500 && consistency > 50) level = 'Silver Trader';
+    // Trader level with instrument
+    const mostProfitableSymbol = getMostTradedProfitableInstrument(trades);
+    let levelSuffix = 'Trader';
+    if (totalProfit > 1000 && consistency > 70) levelSuffix = 'Gold Trader';
+    else if (totalProfit > 500 && consistency > 50) levelSuffix = 'Silver Trader';
+    const level = mostProfitableSymbol ? `${mostProfitableSymbol} ${levelSuffix}` : levelSuffix;
 
     // Profit
     const profitTarget = objectives.profitTarget || 500;

@@ -726,6 +726,10 @@ select option:focus {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+#sidebar .sidebar-btn {
+    border: 1px solid transparent;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
 #sidebar .sidebar-section {
     margin-bottom: 0.75rem;
 }
@@ -808,8 +812,30 @@ body.sidebar-collapsed #sidebar .sidebar-btn .icon {
 body.sidebar-collapsed #sidebar .brand {
     justify-content: center;
 }
+#sidebar .brand img {
+    width: 100px !important;
+    height: 100px !important;
+    object-fit: cover;
+    border-radius: 50%;
+    transition: width 0.25s ease, height 0.25s ease, opacity 0.25s ease;
+}
 body.sidebar-collapsed #sidebar .brand img {
-    margin-right: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    display: none !important;
+}
+
+/* Active sidebar button */
+#sidebar .sidebar-btn.active,
+#sidebar .sidebar-btn.active:hover {
+    background: rgba(201, 168, 76, 0.18);
+    color: #fafafa;
+    border-color: rgba(201, 168, 76, 0.28);
+}
+#sidebar .sidebar-btn.active .icon {
+    opacity: 1;
+    color: #D4AF37;
 }
 
 /* ----- Content Wrapper ----- */
