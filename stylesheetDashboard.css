@@ -915,6 +915,73 @@ body.sidebar-collapsed #sidebar .brand img {
     right: 0;
     z-index: 50;
 }
+#mobileMenu {
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+#mobileMenu .mobile-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+#mobileMenu .mobile-menu-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+#mobileMenu .mobile-menu-title {
+    font-weight: 800;
+    color: #fafafa;
+    font-size: 1rem;
+}
+#mobileMenu .mobile-menu-title .gold-text { color: #C9A84C; }
+
+/* Mobile nav buttons styled like the desktop sidebar */
+.mobile-menu-nav { padding: 6px 12px; }
+.mobile-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: transparent;
+    color: #d1d5db;
+    border: 1px solid transparent;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: left;
+    font-weight: 700;
+    font-size: 15px;
+}
+.mobile-nav-btn .icon { flex: 0 0 28px; text-align: center; font-size: 1.05rem; opacity: 0.9; }
+.mobile-nav-btn .label { flex: 1 1 auto; }
+.mobile-nav-btn:hover { background: rgba(255,255,255,0.04); color: #fafafa; }
+.mobile-nav-btn.active,
+.mobile-nav-btn.active:hover {
+    background: rgba(201,168,76,0.14);
+    color: #fafafa;
+    border-color: rgba(201,168,76,0.22);
+}
+
+/* Mobile accounts collapsible container */
+.mobile-accounts .mobile-submenu { display: none; padding: 8px 0 12px; }
+.mobile-accounts.open .mobile-submenu { display: block; }
+.mobile-accounts .mobile-submenu h4 { margin-top: 6px; }
+
+/* Slight typography tweaks for small screens */
+@media (max-width: 420px) {
+    #mobileMenu .mobile-menu-title { font-size: 0.95rem; }
+    .mobile-nav-btn { padding: 10px 12px; font-size: 14px; }
+    .mobile-nav-btn .icon { flex-basis: 26px; }
+}
+
 #mobileMenu .block {
     color: #d1d5db;
     transition: all 0.2s ease;

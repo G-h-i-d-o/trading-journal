@@ -2993,10 +2993,12 @@ function setupMobileMenu() {
         });
         mobileMenu.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') {
-                if (!e.target.closest('#mobileAccountsList')) {
-                    mobileMenu.classList.add('hidden');
-                    document.body.style.overflow = 'auto';
+                // Do not auto-close when interacting with the accounts list or toggles
+                if (e.target.closest('#mobileAccountsList') || e.target.closest('#mobileAccountsContainer') || e.target.closest('#mobileSettings')) {
+                    return;
                 }
+                mobileMenu.classList.add('hidden');
+                document.body.style.overflow = 'auto';
             }
         });
         document.addEventListener('keydown', (e) => {
