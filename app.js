@@ -2974,6 +2974,17 @@ window.switchToolsPanel = switchToolsPanel;
 function setupMobileMenu() {
     const mobileMenuButton = document.getElementById('mobileMenuButton');
     const mobileMenu = document.getElementById('mobileMenu');
+    const mobileTopbar = document.getElementById('mobileTopbar');
+    
+    // Position menu right after topbar with no gap
+    if (mobileMenu && mobileTopbar) {
+        const positionMenu = () => {
+            mobileMenu.style.top = mobileTopbar.offsetHeight + 'px';
+        };
+        positionMenu();
+        window.addEventListener('resize', positionMenu);
+    }
+    
     if (mobileMenuButton && mobileMenu) {
         mobileMenuButton.addEventListener('click', (e) => {
             e.stopPropagation();
