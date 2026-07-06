@@ -3569,7 +3569,11 @@ window.importTrades = () => {
 function parseCSV(csvText) {
     const lines = csvText.split('\n').filter(line => line.trim());
     if (lines.length < 2) return [];
-    const headers = lines[0].split(',').map(h => h.trim());
+    // Parse headers using CSV line parser to correctly handle quoted headers
+    const rawHeaderValues = parseCSVLine(lines[0]);
+    const headers = rawHeaderValues.map(h => h.trim());
+    // Create normalized headers (remove unit suffixes like " (USD)") to match export format
+    const normalizedHeaders = headers.map(h => h.replace(/\s*\(.*\)\s*$/,'').trim());
     const trades = [];
     for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
@@ -3577,7 +3581,11 @@ function parseCSV(csvText) {
         try {
             const getValue = (possibleHeaders) => {
                 for (const header of possibleHeaders) {
-                    const index = headers.indexOf(header);
+                    // exact match on original headers
+                    let index = headers.findIndex(h => h.toLowerCase() === header.toLowerCase());
+                    if (index !== -1 && values[index] !== undefined) return values[index];
+                    // match on normalized headers (e.g., "Profit (USD)" -> "Profit")
+                    index = normalizedHeaders.findIndex(h => h.toLowerCase() === header.toLowerCase());
                     if (index !== -1 && values[index] !== undefined) return values[index];
                 }
                 return '';
