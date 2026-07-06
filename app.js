@@ -5715,6 +5715,7 @@ function updateEmotionAnalytics(trades) {
     console.log('[EMOTION] Updating emotion analytics for', trades?.length, 'trades');
     if (!trades || trades.length === 0) {
         resetEmotionAnalytics();
+        updateSessionDashboard([]);
         return;
     }
     const emotionCounts = {
@@ -5749,6 +5750,69 @@ function updateEmotionAnalytics(trades) {
         }
     });
     updateEmotionInsights(emotionCounts, totalTrades, trades);
+    updateSessionDashboard(trades);
+}
+
+function updateSessionDashboard(trades) {
+    const container = document.getElementById('sessionDashboard');
+    if (!container) return;
+
+    if (!trades || trades.length === 0) {
+        container.innerHTML = '<div class="text-sm text-gray-400">No session data yet. Add a few trades to view profitable and unprofitable sessions.</div>';
+        return;
+    }
+
+    const sessionPerformance = analyzeSessionPerformance(trades);
+    const sessions = Object.entries(sessionPerformance)
+        .filter(([, data]) => data.count > 0)
+        .map(([session, data]) => ({
+            session,
+            count: data.count,
+            avg: data.count > 0 ? data.total / data.count : 0,
+            wins: data.wins,
+            total: data.total
+        }))
+        .sort((a, b) => b.avg - a.avg);
+
+    if (sessions.length === 0) {
+        container.innerHTML = '<div class="text-sm text-gray-400">No session data yet. Add a few trades to view profitable and unprofitable sessions.</div>';
+        return;
+    }
+
+    const profitableSession = sessions.find(item => item.avg > 0) || sessions[0];
+    const unprofitableSession = sessions.slice().reverse().find(item => item.avg < 0) || sessions[sessions.length - 1];
+
+    const renderSessionCard = (sessionData, type) => {
+        const isProfitable = type === 'profitable';
+        const progress = Math.min(100, Math.max(10, Math.abs(sessionData.avg) > 0 ? Math.min(100, Math.abs(sessionData.avg) * 10 + 20) : 15));
+        const color = isProfitable ? '#26A69A' : '#E0565B';
+        const ringStyle = `--clock-color:${color}; background: conic-gradient(${color} 0deg ${progress * 3.6}deg, rgba(255,255,255,0.08) ${progress * 3.6}deg 360deg);`;
+        const label = isProfitable ? 'Profitable Session' : 'Unprofitable Session';
+        const note = isProfitable
+            ? `${sessionData.wins}/${sessionData.count} winning trades`
+            : `${sessionData.count - sessionData.wins}/${sessionData.count} losing trades`;
+
+        return `
+            <div class="session-clock-card ${isProfitable ? 'profitable' : 'unprofitable'}">
+                <div class="session-clock" style="${ringStyle}">
+                    <div class="session-clock-inner">${sessionData.session}</div>
+                </div>
+                <div class="session-clock-meta">
+                    <div class="session-clock-label">${label}</div>
+                    <div class="session-clock-name">${sessionData.session}</div>
+                    <div class="session-clock-metric">${formatCurrency(sessionData.avg)}</div>
+                    <div class="session-clock-note">${note}</div>
+                </div>
+            </div>
+        `;
+    };
+
+    container.innerHTML = `
+        <div class="session-dashboard">
+            ${renderSessionCard(profitableSession, 'profitable')}
+            ${renderSessionCard(unprofitableSession, 'unprofitable')}
+        </div>
+    `;
 }
 
 function updateEmotionInsights(counts, total, trades) {

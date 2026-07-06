@@ -506,6 +506,96 @@ select option:focus {
     line-height: 1.5;
 }
 
+/* ----- Session Dashboard ----- */
+.session-dashboard {
+    display: grid;
+    gap: 12px;
+}
+.session-clock-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.session-clock-card.profitable {
+    border-color: rgba(38, 166, 154, 0.25);
+}
+.session-clock-card.unprofitable {
+    border-color: rgba(224, 86, 91, 0.25);
+}
+.session-clock {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    padding: 6px;
+    background: conic-gradient(var(--clock-color) 0deg, rgba(255,255,255,0.08) 0deg);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+.session-clock-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #111827;
+    position: relative;
+    display: grid;
+    place-items: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f9fafb;
+    text-align: center;
+}
+.session-clock-inner::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 20px;
+    background: #f9fafb;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 999px;
+}
+.session-clock-inner::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--clock-color);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.session-clock-meta {
+    flex: 1;
+}
+.session-clock-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+    margin-bottom: 2px;
+}
+.session-clock-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fafafa;
+}
+.session-clock-metric {
+    font-size: 0.9rem;
+    color: #d1d5db;
+    margin-top: 2px;
+}
+.session-clock-note {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
 /* ----- Emotion Gauge ----- */
 .emotion-gauge-container {
     margin: 16px 0;
