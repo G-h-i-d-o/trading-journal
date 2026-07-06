@@ -577,7 +577,12 @@ function mapMTSymbol(mtSymbol) {
     cleanSymbol = cleanSymbol.replace(/\.pro$/i, '');
     cleanSymbol = cleanSymbol.replace(/\.ecn$/i, '');
     cleanSymbol = cleanSymbol.replace(/\.std$/i, '');
-    cleanSymbol = cleanSymbol.replace(/[mxic]$/i, '');
+    cleanSymbol = cleanSymbol.replace(/\.m$/i, '');
+    cleanSymbol = cleanSymbol.replace(/\.micro$/i, '');
+    cleanSymbol = cleanSymbol.replace(/\.mini$/i, '');
+    cleanSymbol = cleanSymbol.replace(/-micro$/i, '');
+    cleanSymbol = cleanSymbol.replace(/-mini$/i, '');
+    cleanSymbol = cleanSymbol.replace(/\s+/g, '');
     if (mtSymbolMapping[cleanSymbol]) {
         return mtSymbolMapping[cleanSymbol];
     }
@@ -1754,6 +1759,7 @@ function setupEventListeners() {
             updateCurrencyDisplay();
             updateStats(allTrades);
             renderCharts(allTrades);
+            updateTradingObjectivesUI();
             updateRiskCalculation();
         });
     }
@@ -3814,43 +3820,103 @@ function parseCSVLineWithDelimiter(line, delimiter) {
     });
 }
 
+function detectDelimiter(sampleLine) {
+    const candidates = [',', ';', '\t'];
+    const counts = candidates.map(delim => ({
+        delim,
+        count: (sampleLine.match(new RegExp(escapeRegExp(delim), 'g')) || []).length
+    }));
+    counts.sort((a, b) => b.count - a.count);
+    return counts[0].count > 0 ? counts[0].delim : ',';
+}
+
+function normalizeHeader(header) {
+    return header
+        .replace(/"/g, '')
+        .trim()
+        .replace(/\s*\/\s*/g, '/')
+        .replace(/\s*-\s*/g, '-')
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+}
+
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function cleanMTNumber(value) {
+    if (!value && value !== 0) return '';
+    return String(value)
+        .replace(/"/g, '')
+        .replace(/\s+/g, '')
+        .replace(/,/g, '')
+        .trim();
+}
+
 function parseMetaTraderCSV(csvText) {
-    const lines = csvText.split('\n').filter(line => line.trim());
+    const rawLines = csvText.split('\n');
+    const lines = rawLines.map(line => line.replace(/\r$/, '')).filter(line => line.trim());
     if (lines.length < 2) return [];
-    const firstLine = lines[0];
-    const delimiter = firstLine.includes('\t') ? '\t' : ',';
-    const headers = firstLine.split(delimiter).map(h => h.trim().replace(/"/g, ''));
+    const headerLineIndex = lines.findIndex(line => {
+        const lower = line.toLowerCase();
+        return lower.includes('symbol') && lower.includes('type') && (lower.includes('s / l') || lower.includes('s/l') || lower.includes('sl')) && (lower.includes('t / p') || lower.includes('t/p') || lower.includes('tp'));
+    });
+    const firstLine = (headerLineIndex >= 0 ? lines[headerLineIndex] : lines[0]).replace(/^\uFEFF/, '');
+    const delimiter = detectDelimiter(firstLine);
+    const rawHeaders = parseCSVLineWithDelimiter(firstLine, delimiter);
+    const headers = rawHeaders.map(header => normalizeHeader(header));
     console.log('[MT IMPORT] Headers detected:', headers);
+    const headerMap = new Map();
+    headers.forEach((header, index) => {
+        if (!headerMap.has(header)) headerMap.set(header, []);
+        headerMap.get(header).push(index);
+    });
+    const findHeaderIndex = (possibleNames, second = false) => {
+        for (const name of possibleNames) {
+            const normalizedName = normalizeHeader(name);
+            if (headerMap.has(normalizedName)) {
+                const indexes = headerMap.get(normalizedName);
+                if (second && indexes.length > 1) return indexes[1];
+                return indexes[0];
+            }
+        }
+        return -1;
+    };
+    const getValue = (possibleNames, second = false) => {
+        const index = findHeaderIndex(possibleNames, second);
+        if (index !== -1 && index < values.length && values[index] !== undefined) {
+            return values[index].replace(/"/g, '').trim();
+        }
+        return '';
+    };
     const trades = [];
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = headerLineIndex >= 0 ? headerLineIndex + 1 : 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
         const values = parseCSVLineWithDelimiter(line, delimiter);
-        if (values.length < headers.length) continue;
+        if (values.length < 2) continue;
         try {
-            const getValue = (possibleNames) => {
-                for (const name of possibleNames) {
-                    const index = headers.findIndex(h => h === name);
-                    if (index !== -1 && values[index] !== undefined) {
-                        return values[index].replace(/"/g, '').trim();
-                    }
+            const getValue = (possibleNames, second = false) => {
+                const index = findHeaderIndex(possibleNames, second);
+                if (index !== -1 && index < values.length && values[index] !== undefined) {
+                    return values[index].replace(/"/g, '').trim();
                 }
                 return '';
             };
-            const ticket = getValue(['Ticket', 'ticket', 'Order', 'order']);
-            const openTime = getValue(['Open Time', 'openTime', 'OpenTime', 'Time']);
-            const type = getValue(['Type', 'type', 'Action']).toLowerCase();
-            const size = getValue(['Size', 'size', 'Volume', 'volume', 'Lots', 'lots']);
-            const item = getValue(['Item', 'item', 'Symbol', 'symbol', 'Instrument']);
-            const openPrice = getValue(['Open Price', 'openPrice', 'Open', 'Price']);
-            const sl = getValue(['S/L', 'SL', 'Stop Loss', 'stopLoss', 'StopLoss']);
-            const tp = getValue(['T/P', 'TP', 'Take Profit', 'takeProfit', 'TakeProfit']);
-            const closeTime = getValue(['Close Time', 'closeTime', 'CloseTime']);
-            const closePrice = getValue(['Close Price', 'closePrice', 'Close']);
-            const commission = getValue(['Commission', 'commission', 'Commis']);
-            const swap = getValue(['Swap', 'swap', 'Storage']);
-            const profit = getValue(['Profit', 'profit', 'P/L']);
-            const comment = getValue(['Comment', 'comment', 'Note']);
+            const ticket = getValue(['Position', 'position', 'Ticket', 'ticket', 'Order', 'order']).trim();
+            const openTime = getValue(['Open Time', 'openTime', 'OpenTime', 'Time']).trim();
+            const type = getValue(['Type', 'type', 'Action']).trim().toLowerCase();
+            const size = getValue(['Size', 'size', 'Volume', 'volume', 'Lots', 'lots']).trim();
+            const item = getValue(['Item', 'item', 'Symbol', 'symbol', 'Instrument']).trim();
+            const openPrice = getValue(['Open Price', 'openPrice', 'Open', 'Price']).trim();
+            const sl = getValue(['S/L', 'SL', 'Stop Loss', 'stopLoss', 'StopLoss']).trim();
+            const tp = getValue(['T/P', 'TP', 'Take Profit', 'takeProfit', 'TakeProfit']).trim();
+            const closeTime = getValue(['Close Time', 'closeTime', 'CloseTime', 'Time'], true).trim();
+            const closePrice = getValue(['Close Price', 'closePrice', 'Close', 'Price'], true).trim();
+            const commission = getValue(['Commission', 'commission', 'Commis']).trim();
+            const swap = getValue(['Swap', 'swap', 'Storage']).trim();
+            const profit = getValue(['Profit', 'profit', 'P/L']).trim();
+            const comment = getValue(['Comment', 'comment', 'Note']).trim();
             if (!closeTime || closeTime === '') {
                 console.log('[MT IMPORT] Skipping open trade:', ticket);
                 continue;
@@ -6264,6 +6330,10 @@ function getCountdownToMidnight() {
 }
 
 function renderTradingObjectives(metrics) {
+    const currentAccount = getCurrentAccount();
+    const currencyCode = currentAccount?.currency || getSelectedCurrency() || 'USD';
+    const currencySymbol = getCurrencySymbol(currencyCode);
+
     // Trader Profile
     safeSetText('traderLevel', metrics.trader.level);
     safeSetText('traderStreak', metrics.trader.streak);
@@ -6295,29 +6365,29 @@ function renderTradingObjectives(metrics) {
     const percentEl = document.getElementById('bannerPercent');
     if (percentEl) percentEl.textContent = metrics.challenge.progress + '%';
     const remainingEl = document.getElementById('bannerRemaining');
-    if (remainingEl) remainingEl.textContent = `$${metrics.challenge.remainingProfit.toFixed(2)} left until target.`;
+    if (remainingEl) remainingEl.textContent = `${currencySymbol}${metrics.challenge.remainingProfit.toFixed(2)} left until target.`;
 
     // Risk Card
-    safeSetText('riskMaxLossTarget', '$' + metrics.risk.maxLoss.target);
-    safeSetText('riskRemainingLoss', '$' + metrics.risk.maxLoss.remaining.toFixed(2));
-    safeSetText('riskThreshold', '$' + metrics.risk.maxLoss.threshold.toFixed(2));
-    safeSetText('riskCurrentLoss', '$' + metrics.risk.maxLoss.current.toFixed(2));
+    safeSetText('riskMaxLossTarget', formatCurrency(metrics.risk.maxLoss.target, currencyCode));
+    safeSetText('riskRemainingLoss', formatCurrency(metrics.risk.maxLoss.remaining, currencyCode));
+    safeSetText('riskThreshold', formatCurrency(metrics.risk.maxLoss.threshold, currencyCode));
+    safeSetText('riskCurrentLoss', formatCurrency(metrics.risk.maxLoss.current, currencyCode));
     const lossProgress = (metrics.risk.maxLoss.target > 0) ? (Math.abs(metrics.risk.maxLoss.current) / metrics.risk.maxLoss.target) * 100 : 0;
     const lossFill = document.getElementById('riskLossProgress');
     if (lossFill) lossFill.style.width = Math.min(100, lossProgress) + '%';
-    safeSetText('riskDailyLossTarget', '$' + metrics.risk.dailyLoss.target);
-    safeSetText('riskDailyRemaining', '$' + metrics.risk.dailyLoss.remaining.toFixed(2));
-    safeSetText('riskDailyThreshold', '$' + metrics.risk.dailyLoss.threshold.toFixed(2));
+    safeSetText('riskDailyLossTarget', formatCurrency(metrics.risk.dailyLoss.target, currencyCode));
+    safeSetText('riskDailyRemaining', formatCurrency(metrics.risk.dailyLoss.remaining, currencyCode));
+    safeSetText('riskDailyThreshold', formatCurrency(metrics.risk.dailyLoss.threshold, currencyCode));
     const dailyProgress = (metrics.risk.dailyLoss.target > 0) ? (Math.abs(metrics.risk.dailyLoss.current) / metrics.risk.dailyLoss.target) * 100 : 0;
     const dailyFill = document.getElementById('riskDailyProgress');
     if (dailyFill) dailyFill.style.width = Math.min(100, dailyProgress) + '%';
     safeSetText('riskCountdown', metrics.risk.dailyLoss.resetTime);
 
     // Performance Card
-    safeSetText('perfTarget', '$' + metrics.performance.target);
-    safeSetText('perfCurrent', '$' + metrics.performance.current.toFixed(2));
-    safeSetText('perfRemaining', '$' + metrics.performance.remaining.toFixed(2));
-    safeSetText('perfTotalProfit', '$' + metrics.performance.current.toFixed(2));
+    safeSetText('perfTarget', formatCurrency(metrics.performance.target, currencyCode));
+    safeSetText('perfCurrent', formatCurrency(metrics.performance.current, currencyCode));
+    safeSetText('perfRemaining', formatCurrency(metrics.performance.remaining, currencyCode));
+    safeSetText('perfTotalProfit', formatCurrency(metrics.performance.current, currencyCode));
     const perfProgress = (metrics.performance.target > 0) ? (metrics.performance.current / metrics.performance.target) * 100 : 0;
     const perfFill = document.getElementById('perfProgress');
     if (perfFill) perfFill.style.width = Math.min(100, Math.max(0, perfProgress)) + '%';
@@ -6404,6 +6474,7 @@ window.saveAccountSetup = async function() {
         await saveUserAccounts();
         updateStats(allTrades);
         renderCharts(allTrades);
+        updateTradingObjectivesUI();
         showSuccessMessage('Account setup saved!');
     } else {
         alert('Please enter a valid balance.');
