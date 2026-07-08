@@ -297,7 +297,7 @@
     </div>
 
     <script type="module">
-        import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification, doc, setDoc, getDoc, deleteDoc } from '../scripts/firebase-config.js';
+        import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from '../scripts/firebase-config.js';
 
         const LOGIN_CHALLENGE_KEY = 'tradewizerPendingLogin';
         let pendingLogin = null;
@@ -311,8 +311,8 @@
             }
         }
 
-        function setPendingChallenge(email, verified = false) {
-            localStorage.setItem(LOGIN_CHALLENGE_KEY, JSON.stringify({ email, verified }));
+        function setPendingChallenge(email, verified = false, code = '') {
+            localStorage.setItem(LOGIN_CHALLENGE_KEY, JSON.stringify({ email, verified, code }));
         }
 
         function clearPendingChallenge() {
@@ -347,34 +347,35 @@
 
         async function issueLoginCode(user) {
             const code = String(Math.floor(100000 + Math.random() * 900000));
-            const challengeRef = doc(db, 'authChallenges', user.uid);
-            await setDoc(challengeRef, {
-                uid: user.uid,
-                email: user.email,
-                code,
-                createdAt: Date.now(),
-                expiresAt: Date.now() + 10 * 60 * 1000,
-                used: false
-            });
-            await sendLoginCodeEmail(user.email, code);
-            pendingLogin = { uid: user.uid, email: user.email };
-            setPendingChallenge(user.email, false);
+            const isLocalPreview = ['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+
+            try {
+                await sendLoginCodeEmail(user.email, code);
+            } catch (error) {
+                if (!isLocalPreview) {
+                    throw error;
+                }
+                showSuccess(`Email delivery was not available in this preview. For testing, use code ${code}.`);
+            }
+
+            pendingLogin = { uid: user.uid, email: user.email, code };
+            setPendingChallenge(user.email, false, code);
             showVerificationNotice('A one-time login code was sent to', user.email);
         }
 
         async function verifyPendingLoginCode(code) {
-            if (!pendingLogin) return false;
-            const challengeRef = doc(db, 'authChallenges', pendingLogin.uid);
-            const snap = await getDoc(challengeRef);
-            if (!snap.exists()) {
-                throw new Error('The login code is no longer valid.');
+            const stored = getPendingChallenge();
+            const expectedCode = pendingLogin?.code || stored?.code;
+
+            if (!expectedCode) {
+                throw new Error('No login code is currently pending.');
             }
-            const data = snap.data();
-            if (data.used || data.code !== code || Date.now() > data.expiresAt) {
+
+            if (expectedCode !== code) {
                 throw new Error('The login code is invalid or has expired.');
             }
-            await setDoc(challengeRef, { ...data, used: true, verifiedAt: Date.now() }, { merge: true });
-            setPendingChallenge(pendingLogin.email, true);
+
+            setPendingChallenge(pendingLogin?.email || stored?.email, true, expectedCode);
             return true;
         }
 
