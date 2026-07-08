@@ -1,10 +1,6 @@
 [build]
   publish = "."
 
-[build.environment]
-  RESEND_API_KEY = "re_PKpKmA1N_4eCfoejivqpdvY3diXqcyaP8"
-  RESEND_FROM = "reaselekegift@gmail.com"
-
 [[redirects]]
   from = "/*"
   to = "/index.html"
