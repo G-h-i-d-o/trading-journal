@@ -53,7 +53,7 @@ const DEFAULT_CONFLUENCE_OPTIONS = [
 // MetaTrader Import Settings
 let mtImportSettings = {
     useMTProfit: true,
-    includeCommission: false,
+    includeCommission: true,
     includeSwap: false,
     defaultMood: '',
     autoAddNotes: true
@@ -3859,7 +3859,13 @@ function parseMetaTraderCSV(csvText) {
     if (lines.length < 2) return [];
     const headerLineIndex = lines.findIndex(line => {
         const lower = line.toLowerCase();
-        return lower.includes('symbol') && lower.includes('type') && (lower.includes('s / l') || lower.includes('s/l') || lower.includes('sl')) && (lower.includes('t / p') || lower.includes('t/p') || lower.includes('tp'));
+        const hasSymbol = lower.includes('symbol');
+        const hasType = lower.includes('type');
+        const hasSL = lower.includes('s / l') || lower.includes('s/l') || lower.includes('sl');
+        const hasTP = lower.includes('t / p') || lower.includes('t/p') || lower.includes('tp');
+        const hasProfit = lower.includes('profit') || lower.includes('p/l');
+        const hasPosition = lower.includes('position') || lower.includes('deal');
+        return hasSymbol && hasType && hasSL && hasTP && (hasPosition || hasProfit);
     });
     const firstLine = (headerLineIndex >= 0 ? lines[headerLineIndex] : lines[0]).replace(/^\uFEFF/, '');
     const delimiter = detectDelimiter(firstLine);
@@ -3890,9 +3896,13 @@ function parseMetaTraderCSV(csvText) {
         return '';
     };
     const trades = [];
+    const sectionMarkers = [/^orders\b/i, /^deals\b/i, /^results\b/i, /^balance:/i, /^trade history report/i];
     for (let i = headerLineIndex >= 0 ? headerLineIndex + 1 : 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
+        if (sectionMarkers.some(marker => marker.test(line))) {
+            break;
+        }
         const values = parseCSVLineWithDelimiter(line, delimiter);
         if (values.length < 2) continue;
         try {
@@ -3946,6 +3956,7 @@ function parseMetaTraderCSV(csvText) {
                 takeProfit: parseFloat(tp) || null,
                 lotSize: parseFloat(size) || 0.01,
                 closePrice: parseFloat(closePrice) || 0,
+                baseProfit: finalProfit,
                 profit: finalProfit,
                 commission: parseFloat(commission) || 0,
                 swap: parseFloat(swap) || 0,
@@ -4009,6 +4020,7 @@ window.importMetaTraderTrades = () => {
                 }
             });
             pendingMTTrades = newTrades;
+            recalculateMTPendingTrades();
             showMTImportPreview(newTrades, duplicates, trades.length);
         } catch (error) {
             console.error('[MT IMPORT] Error:', error);
@@ -4143,7 +4155,7 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
 
 function recalculateMTPendingTrades() {
     pendingMTTrades.forEach(trade => {
-        let finalProfit = trade.profit;
+        let finalProfit = trade.baseProfit ?? trade.profit ?? 0;
         if (!mtImportSettings.useMTProfit) {
             const exitPrice = trade.closePrice || 0;
             const entryPrice = trade.entryPrice || 0;
@@ -4151,9 +4163,8 @@ function recalculateMTPendingTrades() {
                 finalProfit = calculateProfitLoss(entryPrice, exitPrice, trade.lotSize, trade.symbol, trade.type);
             }
         } else {
-            finalProfit = trade.profit;
-            if (mtImportSettings.includeCommission) finalProfit += trade.commission;
-            if (mtImportSettings.includeSwap) finalProfit += trade.swap;
+            if (mtImportSettings.includeCommission) finalProfit += trade.commission || 0;
+            if (mtImportSettings.includeSwap) finalProfit += trade.swap || 0;
         }
         trade.profit = finalProfit;
     });
