@@ -171,6 +171,21 @@
                         <div class="spinner-border"></div>
                     </div>
                 </button>
+
+                <div id="verification-panel" class="hidden rounded-lg border border-[#C9A84C]/30 bg-[rgba(201,168,76,0.08)] p-3 text-sm">
+                    <div class="font-semibold text-[#C9A84C]">Login code required</div>
+                    <p id="verification-message" class="text-gray-300 mt-1">We’ll send a one-time code to your email address.</p>
+                    <div class="mt-3 space-y-2">
+                        <label class="block text-xs uppercase tracking-wide text-gray-400">Enter the 6-digit code</label>
+                        <input id="login-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40" placeholder="123456" />
+                        <button type="button" id="verify-login-code-btn" class="w-full btn-gold py-3 rounded-lg flex items-center justify-center gap-2 text-base">
+                            Verify Code
+                        </button>
+                        <button type="button" id="resend-verification-btn" class="text-sm text-[#C9A84C] hover:text-[#d4b85a]">
+                            Resend code
+                        </button>
+                    </div>
+                </div>
             </form>
 
             <div class="text-center mt-6 pt-6 divider">
@@ -284,12 +299,103 @@
     <script type="module">
         import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from '../scripts/firebase-config.js';
 
-        let isLoginMode = true;
+        const LOGIN_CHALLENGE_KEY = 'tradewizerPendingLogin';
+        let pendingLogin = null;
+
+        function getPendingChallenge() {
+            try {
+                const raw = localStorage.getItem(LOGIN_CHALLENGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function setPendingChallenge(email, verified = false, code = '') {
+            localStorage.setItem(LOGIN_CHALLENGE_KEY, JSON.stringify({ email, verified, code }));
+        }
+
+        function clearPendingChallenge() {
+            localStorage.removeItem(LOGIN_CHALLENGE_KEY);
+        }
+
+        function showVerificationNotice(message, email = '') {
+            const panel = document.getElementById('verification-panel');
+            const text = document.getElementById('verification-message');
+            if (panel) panel.classList.remove('hidden');
+            if (text) {
+                text.textContent = email ? `${message} ${email}` : message;
+            }
+        }
+
+        function hideVerificationNotice() {
+            const panel = document.getElementById('verification-panel');
+            if (panel) panel.classList.add('hidden');
+        }
+
+        async function sendLoginCodeEmail(email, code) {
+            const response = await fetch('/.netlify/functions/send-login-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Unable to send login code email.');
+            }
+        }
+
+        async function issueLoginCode(user) {
+            const code = String(Math.floor(100000 + Math.random() * 900000));
+            const isLocalPreview = ['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+
+            try {
+                await sendLoginCodeEmail(user.email, code);
+            } catch (error) {
+                if (!isLocalPreview) {
+                    throw error;
+                }
+                showSuccess(`Email delivery was not available in this preview. For testing, use code ${code}.`);
+            }
+
+            pendingLogin = { uid: user.uid, email: user.email, code };
+            setPendingChallenge(user.email, false, code);
+            showVerificationNotice('A one-time login code was sent to', user.email);
+        }
+
+        async function verifyPendingLoginCode(code) {
+            const stored = getPendingChallenge();
+            const expectedCode = pendingLogin?.code || stored?.code;
+
+            if (!expectedCode) {
+                throw new Error('No login code is currently pending.');
+            }
+
+            if (expectedCode !== code) {
+                throw new Error('The login code is invalid or has expired.');
+            }
+
+            setPendingChallenge(pendingLogin?.email || stored?.email, true, expectedCode);
+            return true;
+        }
 
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.location.href = 'dashboard.html';
+            const pending = getPendingChallenge();
+            if (!user) {
+                clearPendingChallenge();
+                hideVerificationNotice();
+                return;
             }
+            if (pending?.email === user.email && pending?.verified) {
+                hideVerificationNotice();
+                window.location.href = 'dashboard.html';
+                return;
+            }
+            if (pending?.email === user.email) {
+                showVerificationNotice('Enter the one-time code sent to', user.email);
+                return;
+            }
+            hideVerificationNotice();
         });
 
         window.switchToSignup = () => {
@@ -359,9 +465,10 @@
             spinner.classList.remove('hidden');
 
             try {
-                await signInWithEmailAndPassword(auth, email, password);
-                showSuccess('Login successful! Redirecting...');
-                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await issueLoginCode(user);
+                showSuccess('A one-time login code has been sent to your email.');
             } catch (error) {
                 showError('Error: ' + getAuthErrorMessage(error));
             } finally {
@@ -392,9 +499,9 @@
             spinner.classList.remove('hidden');
 
             try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                showSuccess('Account created! Redirecting...');
-                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await issueLoginCode(userCredential.user);
+                showSuccess('Account created! A one-time login code has been sent to your email.');
             } catch (error) {
                 showError('Error: ' + getAuthErrorMessage(error));
             } finally {
@@ -422,6 +529,39 @@
             } finally {
                 btn.textContent = 'Send Link';
                 spinner.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('verify-login-code-btn').addEventListener('click', async () => {
+            const codeInput = document.getElementById('login-code-input').value.trim();
+            if (!/^[0-9]{6}$/.test(codeInput)) {
+                showError('Please enter the 6-digit code from your email.');
+                return;
+            }
+            try {
+                const verified = await verifyPendingLoginCode(codeInput);
+                if (verified) {
+                    showSuccess('Code verified. Redirecting...');
+                    setTimeout(() => window.location.href = 'dashboard.html', 800);
+                }
+            } catch (error) {
+                showError(error.message || 'Could not verify the code.');
+            }
+        });
+
+        document.getElementById('resend-verification-btn').addEventListener('click', async () => {
+            if (!pendingLogin) {
+                showError('Please sign in again to receive a new code.');
+                return;
+            }
+            try {
+                const user = auth.currentUser;
+                if (user) {
+                    await issueLoginCode(user);
+                    showSuccess('A new login code was sent to your email.');
+                }
+            } catch (error) {
+                showError(error.message || 'Unable to resend the login code.');
             }
         });
 

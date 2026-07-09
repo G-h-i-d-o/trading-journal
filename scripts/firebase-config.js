@@ -6,7 +6,8 @@ import {
     createUserWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendEmailVerification
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { 
     getFirestore, 
@@ -58,7 +59,7 @@ console.log('✅ Firebase Storage initialized');
 // Export all necessary functions
 export { 
     auth, db, storage,
-    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail,
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, sendEmailVerification,
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc, onSnapshot,
     ref, uploadBytes, getDownloadURL, deleteObject
 };
