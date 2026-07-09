@@ -6321,14 +6321,13 @@ function computeTradingMetrics(trades, objectives) {
         { title: 'Challenge Passed', completed: currentProfit >= profitTarget && completedDays >= tradingDaysTarget && riskRulesMaintained }
     ];
 
-    // Overall progress: combine profit target progress, trading-day consistency,
-    // and risk-limit health so the banner reflects the real challenge status.
-    const maxLossUsage = maxLossTarget > 0 ? Math.min(100, (currentLossFromInitial / maxLossTarget) * 100) : 0;
-    const dailyLossUsage = dailyLossTarget > 0 ? Math.min(100, (dailyLossUsed / dailyLossTarget) * 100) : 0;
-    const riskHealthProgress = Math.max(0, 100 - Math.max(maxLossUsage, dailyLossUsage));
-    const overallProgress = Math.max(0, Math.min(100, Math.round(
-        (profitProgress * 0.5) + (consistency * 0.3) + (riskHealthProgress * 0.2)
-    )));
+    // Overall progress: if profit is negative, set to 0; else weighted average
+    let overallProgress = 0;
+    if (totalProfit > 0) {
+        overallProgress = Math.min(100, (profitProgress * 0.5) + (consistency * 0.5));
+    } else {
+        overallProgress = 0;
+    }
 
     // Status
     let status = 'excellent';
