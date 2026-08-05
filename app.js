@@ -59,6 +59,21 @@ let mtImportSettings = {
     autoAddNotes: true
 };
 
+function getDefaultTradeLockerSettings() {
+    return {
+        enabled: false,
+        isLocked: false,
+        mtAccountId: '',
+        platform: 'MT4',
+        rules: {
+            maxLoss: 500,
+            dailyLoss: 250,
+            profitTarget: 500,
+            maxConsecutiveLosses: 3
+        }
+    };
+}
+
 // Store pending MT trades for import
 let pendingMTTrades = [];
 let existingTicketNumbers = new Set();
@@ -1210,6 +1225,9 @@ async function loadUserAccounts() {
                     tradingDaysTarget: 2
                 };
             }
+            if (!accountData.tradeLocker) {
+                accountData.tradeLocker = getDefaultTradeLockerSettings();
+            }
             accounts.push({ id: doc.id, ...accountData });
         });
         console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
@@ -1229,7 +1247,8 @@ async function loadUserAccounts() {
                     dailyLossTarget: 250,
                     profitTarget: 500,
                     tradingDaysTarget: 2
-                }
+                },
+                tradeLocker: getDefaultTradeLockerSettings()
             };
             const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
             userAccounts = [{ id: docRef.id, ...defaultAccount }];
@@ -1262,7 +1281,8 @@ async function loadAccountsFromLocalStorageFallback() {
             ...account,
             transactions: account.transactions || [],
             initialBalance: account.initialBalance || account.balance || 10000,
-            objectives: account.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 }
+            objectives: account.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 },
+            tradeLocker: account.tradeLocker || getDefaultTradeLockerSettings()
         }));
         console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
     } else {
@@ -1280,7 +1300,8 @@ async function loadAccountsFromLocalStorageFallback() {
                 dailyLossTarget: 250,
                 profitTarget: 500,
                 tradingDaysTarget: 2
-            }
+            },
+            tradeLocker: getDefaultTradeLockerSettings()
         }];
         localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
         console.log('🆕 Created default account in localStorage');
@@ -1438,6 +1459,8 @@ function updateAccountSettingsForm(account) {
     if (accountSizeInput) accountSizeInput.value = account.balance;
     if (accountCurrencySelect) accountCurrencySelect.value = account.currency;
     updateCurrencyDisplay();
+    loadLockerSettings();
+    updateLockerSummary();
 }
 
 window.switchAccount = async (accountId) => {
@@ -1556,7 +1579,8 @@ function setupAccountModalListeners() {
                         dailyLossTarget: 250,
                         profitTarget: 500,
                         tradingDaysTarget: 2
-                    }
+                    },
+                    tradeLocker: getDefaultTradeLockerSettings()
                 };
                 console.log('🆕 Creating new account:', newAccount);
                 const docRef = await addDoc(collection(db, 'accounts'), newAccount);
@@ -1851,6 +1875,7 @@ function setupEventListeners() {
     setupSidebarCollapse();
     setupAffirmationsEventListeners();
     setupAccountBalanceLock();
+    setupTradeLockerPanel();
     console.log('✅ Event listeners setup complete');
 }
 
@@ -2013,6 +2038,12 @@ async function addTrade(e) {
             accountId: currentAccountId,
             actualProfitUsed: actualProfit !== null
         };
+
+        const lockerCheck = enforceLockerRuleOnTrade(tradeData);
+        if (!lockerCheck.allowed) {
+            alert(lockerCheck.message);
+            return;
+        }
 
         await addDoc(collection(db, 'trades'), tradeData);
         e.target.reset();
@@ -2496,6 +2527,151 @@ function setupAccountBalanceLock() {
     });
     updateLockState();
     console.log('✅ Account balance lock setup complete');
+}
+
+function loadLockerSettings() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+    const locker = currentAccount.tradeLocker || getDefaultTradeLockerSettings();
+    const platform = document.getElementById('lockerPlatform');
+    const accountId = document.getElementById('lockerMtAccountId');
+    const maxLoss = document.getElementById('lockerMaxLoss');
+    const dailyLoss = document.getElementById('lockerDailyLoss');
+    const profitTarget = document.getElementById('lockerProfitTarget');
+    const consecutive = document.getElementById('lockerMaxConsecutiveLosses');
+    const button = document.getElementById('lockerToggleEnabled');
+    const badge = document.getElementById('lockerStatusBadge');
+    if (platform) platform.value = locker.platform || 'MT4';
+    if (accountId) accountId.value = locker.mtAccountId || '';
+    if (maxLoss) maxLoss.value = locker.rules?.maxLoss ?? 500;
+    if (dailyLoss) dailyLoss.value = locker.rules?.dailyLoss ?? 250;
+    if (profitTarget) profitTarget.value = locker.rules?.profitTarget ?? 500;
+    if (consecutive) consecutive.value = locker.rules?.maxConsecutiveLosses ?? 3;
+    if (button) button.textContent = locker.enabled ? 'Disable Locker' : 'Enable Locker';
+    if (badge) {
+        badge.textContent = locker.enabled ? 'Active' : 'Inactive';
+        badge.className = locker.enabled ? 'inline-flex items-center px-3 py-2 rounded-full text-xs font-semibold text-white bg-green-600' : 'inline-flex items-center px-3 py-2 rounded-full text-xs font-semibold text-white bg-gray-600';
+    }
+    updateLockerSummary();
+}
+
+function updateLockerSummary() {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount) return;
+    const objectives = currentAccount.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 };
+    const summaryMaxLoss = document.getElementById('lockerObjectiveMaxLoss');
+    const summaryDailyLoss = document.getElementById('lockerObjectiveDailyLoss');
+    const summaryProfit = document.getElementById('lockerObjectiveProfit');
+    const summaryStatus = document.getElementById('lockerObjectiveStatus');
+    if (summaryMaxLoss) summaryMaxLoss.textContent = formatCurrency(objectives.maxLossTarget);
+    if (summaryDailyLoss) summaryDailyLoss.textContent = formatCurrency(objectives.dailyLossTarget);
+    if (summaryProfit) summaryProfit.textContent = formatCurrency(objectives.profitTarget);
+    const locker = currentAccount.tradeLocker || getDefaultTradeLockerSettings();
+    if (summaryStatus) summaryStatus.textContent = locker.enabled ? 'Enabled' : 'Disabled';
+}
+
+function setLockerPanelMessage(message, type = 'info') {
+    const messageEl = document.getElementById('lockerMessage');
+    if (!messageEl) return;
+    messageEl.textContent = message;
+    messageEl.className = 'mt-4 rounded-xl px-4 py-3 text-sm ' +
+        (type === 'error'
+            ? 'bg-red-500 text-white'
+            : type === 'success'
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-900 text-gray-100');
+}
+
+function clearLockerPanelMessage() {
+    const messageEl = document.getElementById('lockerMessage');
+    if (!messageEl) return;
+    messageEl.textContent = '';
+    messageEl.className = 'mt-4 rounded-xl px-4 py-3 hidden';
+}
+
+function validateLockerRules(rules, objectives) {
+    const errors = [];
+    if (rules.maxLoss > objectives.maxLossTarget) errors.push('Maximum Loss must be less than or equal to your objective max loss.');
+    if (rules.dailyLoss > objectives.dailyLossTarget) errors.push('Daily Loss Limit must be less than or equal to your objective daily loss.');
+    if (rules.profitTarget > objectives.profitTarget) errors.push('Profit Target must be less than or equal to your objective profit target.');
+    if (rules.maxConsecutiveLosses < 0) errors.push('Max Consecutive Losses must be zero or higher.');
+    return errors;
+}
+
+function setupTradeLockerPanel() {
+    const saveBtn = document.getElementById('lockerSaveRules');
+    const toggleBtn = document.getElementById('lockerToggleEnabled');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+            clearLockerPanelMessage();
+            const currentAccount = getCurrentAccount();
+            if (!currentAccount) return;
+            const objectives = currentAccount.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 };
+            const locker = currentAccount.tradeLocker || getDefaultTradeLockerSettings();
+            const updatedRules = {
+                maxLoss: parseFloat(document.getElementById('lockerMaxLoss')?.value) || locker.rules.maxLoss,
+                dailyLoss: parseFloat(document.getElementById('lockerDailyLoss')?.value) || locker.rules.dailyLoss,
+                profitTarget: parseFloat(document.getElementById('lockerProfitTarget')?.value) || locker.rules.profitTarget,
+                maxConsecutiveLosses: parseInt(document.getElementById('lockerMaxConsecutiveLosses')?.value) || locker.rules.maxConsecutiveLosses
+            };
+            const updatedPlatform = document.getElementById('lockerPlatform')?.value || locker.platform;
+            const updatedMtAccountId = document.getElementById('lockerMtAccountId')?.value.trim() || locker.mtAccountId;
+            const validation = validateLockerRules(updatedRules, objectives);
+            if (validation.length > 0) {
+                setLockerPanelMessage(validation.join('\n'), 'error');
+                return;
+            }
+            currentAccount.tradeLocker = {
+                ...locker,
+                platform: updatedPlatform,
+                mtAccountId: updatedMtAccountId,
+                rules: updatedRules
+            };
+            await saveUserAccounts();
+            loadLockerSettings();
+            updateLockerSummary();
+            setLockerPanelMessage('Trade Locker settings saved.', 'success');
+        });
+    }
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', async () => {
+            clearLockerPanelMessage();
+            const currentAccount = getCurrentAccount();
+            if (!currentAccount) return;
+            const locker = currentAccount.tradeLocker || getDefaultTradeLockerSettings();
+            const mtAccountId = document.getElementById('lockerMtAccountId')?.value.trim() || locker.mtAccountId;
+            if (!mtAccountId) {
+                setLockerPanelMessage('Please set your MT Account ID before enabling the locker.', 'error');
+                return;
+            }
+            locker.mtAccountId = mtAccountId;
+            locker.enabled = !locker.enabled;
+            currentAccount.tradeLocker = locker;
+            await saveUserAccounts();
+            loadLockerSettings();
+            updateLockerSummary();
+            setLockerPanelMessage(locker.enabled ? 'Trade Locker enabled.' : 'Trade Locker disabled.', locker.enabled ? 'success' : 'info');
+        });
+    }
+    loadLockerSettings();
+    updateLockerSummary();
+}
+
+function enforceLockerRuleOnTrade(trade) {
+    const currentAccount = getCurrentAccount();
+    if (!currentAccount || !currentAccount.tradeLocker || !currentAccount.tradeLocker.enabled) return { allowed: true };
+    const locker = currentAccount.tradeLocker;
+    if (!locker.rules) return { allowed: true };
+    const objectives = currentAccount.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 };
+    const validation = validateLockerRules(locker.rules, objectives);
+    if (validation.length > 0) return { allowed: false, message: validation.join('\n') };
+    if (trade.riskAmount > locker.rules.maxLoss) {
+        return { allowed: false, message: `Trade risk amount exceeds locker max loss ($${locker.rules.maxLoss}).` };
+    }
+    if (trade.profit > locker.rules.profitTarget) {
+        return { allowed: false, message: `Trade profit exceeds locker profit target ($${locker.rules.profitTarget}).` };
+    }
+    return { allowed: true };
 }
 
 // ========== USER SETTINGS ==========
@@ -3069,6 +3245,9 @@ function switchToolsPanel(panelName) {
     const activeButton = document.getElementById(`tools${panelName.charAt(0).toUpperCase() + panelName.slice(1)}Btn`);
     if (activePanel) activePanel.classList.add('active');
     if (activeButton) activeButton.classList.add('active');
+    if (panelName === 'tradeLocker') {
+        loadLockerSettings();
+    }
 }
 
 window.switchToolsPanel = switchToolsPanel;
@@ -4319,6 +4498,16 @@ window.confirmMTImport = async () => {
                     mtSwap: trade.swap,
                     mtCloseTime: trade.closeTime
                 };
+                const lockerCheck = enforceLockerRuleOnTrade(tradeData);
+                if (!lockerCheck.allowed) {
+                    failed++;
+                    importErrors.push({
+                        ticket: trade.mtTicket,
+                        symbol: trade.symbol,
+                        error: lockerCheck.message
+                    });
+                    continue;
+                }
                 await addDoc(collection(db, 'trades'), tradeData);
                 imported++;
                 if (imported % 10 === 0) {
