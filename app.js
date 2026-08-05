@@ -686,6 +686,66 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
     }
 }
 
+function getPricePipsMode() {
+    return document.getElementById('pricePipsMode')?.value || 'price';
+}
+
+function getPricePrecision(symbol) {
+    if (!symbol) return 4;
+    if (symbol.includes('JPY')) return 3;
+    const instrumentType = getInstrumentType(symbol);
+    return instrumentType === 'forex' ? 5 : 4;
+}
+
+function getStopLossTakeProfitFromInput(entry, slInput, tpInput, symbol, type, mode) {
+    const instrumentType = getInstrumentType(symbol);
+    const pipSize = instrumentType === 'forex' ? getPipSize(symbol) : 1;
+    let stopLoss = null;
+    let takeProfit = null;
+    let slDistance = null;
+    let tpDistance = null;
+
+    if (mode === 'pips') {
+        if (slInput != null && !Number.isNaN(slInput)) {
+            slDistance = Math.abs(slInput);
+            stopLoss = type === 'long' ? entry - slDistance * pipSize : entry + slDistance * pipSize;
+        }
+        if (tpInput != null && !Number.isNaN(tpInput)) {
+            tpDistance = Math.abs(tpInput);
+            takeProfit = type === 'long' ? entry + tpDistance * pipSize : entry - tpDistance * pipSize;
+        }
+    } else {
+        if (slInput != null && !Number.isNaN(slInput)) {
+            stopLoss = slInput;
+            slDistance = type === 'long' ? (entry - stopLoss) / pipSize : (stopLoss - entry) / pipSize;
+        }
+        if (tpInput != null && !Number.isNaN(tpInput)) {
+            takeProfit = tpInput;
+            tpDistance = type === 'long' ? (takeProfit - entry) / pipSize : (entry - takeProfit) / pipSize;
+        }
+    }
+
+    return { stopLoss, takeProfit, slDistance, tpDistance };
+}
+
+function updatePricePipsModeUI() {
+    const mode = getPricePipsMode();
+    const stopLossInput = document.getElementById('stopLoss');
+    const takeProfitInput = document.getElementById('takeProfit');
+    const hint = document.getElementById('pricePipsHint');
+    if (!stopLossInput || !takeProfitInput || !hint) return;
+
+    if (mode === 'pips') {
+        stopLossInput.placeholder = 'Enter SL distance in pips/points';
+        takeProfitInput.placeholder = 'Enter TP distance in pips/points';
+        hint.textContent = 'Enter SL/TP distance from entry in pips or points. Entry price remains exact.';
+    } else {
+        stopLossInput.placeholder = 'Enter SL price level';
+        takeProfitInput.placeholder = 'Enter TP price level';
+        hint.textContent = 'Use exact price levels, or enter stop loss and take profit as pip/point distances from entry.';
+    }
+}
+
 let pointValueOverrides = {};
 
 // ---------- UPDATED getPointValue with accurate values ----------
@@ -1710,6 +1770,8 @@ function setupEventListeners() {
                 if (exitPriceField) exitPriceField.value = '';
                 const actualProfitField = document.getElementById('actualProfit');
                 if (actualProfitField) actualProfitField.value = '';
+                updatePricePipsModeUI();
+                updateRiskCalculation();
             }, 0);
         });
     }
@@ -1748,6 +1810,13 @@ function setupEventListeners() {
             });
         }
     });
+    const pricePipsMode = document.getElementById('pricePipsMode');
+    if (pricePipsMode) {
+        pricePipsMode.addEventListener('change', () => {
+            updatePricePipsModeUI();
+            updateRiskCalculation();
+        });
+    }
     const accountCurrency = document.getElementById('accountCurrency');
     if (accountCurrency) {
         accountCurrency.addEventListener('change', async (e) => {
@@ -1763,7 +1832,7 @@ function setupEventListeners() {
             updateRiskCalculation();
         });
     }
-    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood'].forEach(id => {
+    ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'direction', 'symbol', 'mood', 'pricePipsMode'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.addEventListener('input', () => updateRiskCalculation());
@@ -1777,6 +1846,7 @@ function setupEventListeners() {
             updateLotSizeDisplay();
         });
     }
+    updatePricePipsModeUI();
     updateRiskCalculation();
     setupSidebarCollapse();
     setupAffirmationsEventListeners();
@@ -1838,8 +1908,10 @@ async function addTrade(e) {
     try {
         const symbol = document.getElementById('symbol')?.value;
         const entryPrice = parseFloat(document.getElementById('entryPrice')?.value);
-        const stopLoss = parseFloat(document.getElementById('stopLoss')?.value) || null;
-        const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || null;
+        const stopLossValue = document.getElementById('stopLoss')?.value;
+        const takeProfitValue = document.getElementById('takeProfit')?.value;
+        const stopLossInput = stopLossValue !== '' ? parseFloat(stopLossValue) : null;
+        const takeProfitInput = takeProfitValue !== '' ? parseFloat(takeProfitValue) : null;
         const exitPrice = parseFloat(document.getElementById('exitPrice')?.value) || null;
         const lotSize = parseFloat(document.getElementById('lotSize')?.value);
         const tradeType = document.getElementById('direction')?.value;
@@ -1866,11 +1938,18 @@ async function addTrade(e) {
             alert('Please select at least one confluence element before saving the trade.');
             return;
         }
-        if (tradeType === 'long' && stopLoss >= entryPrice) {
+        const mode = getPricePipsMode();
+        const resolvedSlTp = getStopLossTakeProfitFromInput(entryPrice, stopLossInput, takeProfitInput, symbol, tradeType, mode);
+        const actualStopLoss = resolvedSlTp.stopLoss;
+        const actualTakeProfit = resolvedSlTp.takeProfit;
+        const stopLossDistance = resolvedSlTp.slDistance;
+        const takeProfitDistance = resolvedSlTp.tpDistance;
+
+        if (tradeType === 'long' && actualStopLoss >= entryPrice) {
             alert('For a long position, Stop Loss must be below Entry Price');
             return;
         }
-        if (tradeType === 'short' && stopLoss <= entryPrice) {
+        if (tradeType === 'short' && actualStopLoss <= entryPrice) {
             alert('For a short position, Stop Loss must be above Entry Price');
             return;
         }
@@ -1881,11 +1960,11 @@ async function addTrade(e) {
             profit = actualProfit;
             console.log(`[PnL] Using manually entered actual profit: $${profit}`);
         } else {
-            const actualExitPrice = exitPrice || takeProfit || entryPrice;
+            const actualExitPrice = exitPrice || actualTakeProfit || entryPrice;
             profit = calculateProfitLoss(entryPrice, actualExitPrice, lotSize, symbol, tradeType);
         }
 
-        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
+        const pipPointInfo = calculatePipsPoints(entryPrice, actualStopLoss, actualTakeProfit, symbol, tradeType);
 
         let beforeScreenshot = '';
         let afterScreenshot = '';
@@ -1909,9 +1988,12 @@ async function addTrade(e) {
             type: tradeType, 
             instrumentType, 
             entryPrice, 
-            stopLoss, 
-            takeProfit, 
-            exitPrice, 
+            stopLoss: actualStopLoss,
+            takeProfit: actualTakeProfit,
+            stopLossPips: stopLossDistance,
+            takeProfitPips: takeProfitDistance,
+            pricePipsMode: mode,
+            exitPrice,
             lotSize,
             mood: mood,
             emotionLevel: getEmotionLevel(),
@@ -1923,8 +2005,8 @@ async function addTrade(e) {
             timestamp: tradeTimestamp,
             profit: profit, 
             pipsPoints: pipPointInfo.risk,
-            riskAmount: stopLoss ? Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) : 0,
-            riskPercent: stopLoss ? (Math.abs(calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType)) / accountSize) * 100 : 0,
+            riskAmount: actualStopLoss ? Math.abs(calculateProfitLoss(entryPrice, actualStopLoss, lotSize, symbol, tradeType)) : 0,
+            riskPercent: actualStopLoss ? (Math.abs(calculateProfitLoss(entryPrice, actualStopLoss, lotSize, symbol, tradeType)) / accountSize) * 100 : 0,
             accountSize: accountSize, 
             leverage: leverage, 
             userId: currentUser.uid,
@@ -2093,28 +2175,37 @@ function formatConfluenceDetails(trade) {
 function updateRiskCalculation() {
     const symbol = document.getElementById('symbol')?.value;
     const entryPrice = parseFloat(document.getElementById('entryPrice')?.value) || 0;
-    const stopLoss = parseFloat(document.getElementById('stopLoss')?.value) || 0;
-    const takeProfit = parseFloat(document.getElementById('takeProfit')?.value) || 0;
+    const stopLossValue = document.getElementById('stopLoss')?.value;
+    const takeProfitValue = document.getElementById('takeProfit')?.value;
+    const stopLoss = stopLossValue !== '' ? parseFloat(stopLossValue) : null;
+    const takeProfit = takeProfitValue !== '' ? parseFloat(takeProfitValue) : null;
     const lotSize = parseFloat(document.getElementById('lotSize')?.value) || 0.01;
     const tradeType = document.getElementById('direction')?.value;
     const currentAccount = getCurrentAccount();
     const accountSize = currentAccount.balance;
     const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value) || 1.0;
+    const mode = getPricePipsMode();
+    const resolved = getStopLossTakeProfitFromInput(entryPrice, stopLoss, takeProfit, symbol, tradeType, mode);
+    const actualStopLoss = resolved.stopLoss;
+    const actualTakeProfit = resolved.takeProfit;
+    const slDistance = resolved.slDistance;
+    const tpDistance = resolved.tpDistance;
 
     if (entryPrice > 0 && symbol) {
-        const pipPointInfo = calculatePipsPoints(entryPrice, stopLoss, takeProfit, symbol, tradeType);
-        const potentialProfit = takeProfit ? calculateProfitLoss(entryPrice, takeProfit, lotSize, symbol, tradeType) : 0;
-        const potentialLoss = stopLoss > 0 ? calculateProfitLoss(entryPrice, stopLoss, lotSize, symbol, tradeType) : 0;
-        const riskRewardRatio = takeProfit && potentialLoss !== 0 ? Math.abs(potentialProfit / potentialLoss) : 0;
+        const pipPointInfo = calculatePipsPoints(entryPrice, actualStopLoss, actualTakeProfit, symbol, tradeType);
+        const potentialProfit = actualTakeProfit ? calculateProfitLoss(entryPrice, actualTakeProfit, lotSize, symbol, tradeType) : 0;
+        const potentialLoss = actualStopLoss ? calculateProfitLoss(entryPrice, actualStopLoss, lotSize, symbol, tradeType) : 0;
+        const riskRewardRatio = actualTakeProfit && potentialLoss !== 0 ? Math.abs(potentialProfit / potentialLoss) : 0;
         const maxRiskAmount = accountSize * (riskPerTrade / 100);
-        const riskPerLot = stopLoss > 0 ? Math.abs(calculateProfitLoss(entryPrice, stopLoss, 1, symbol, tradeType)) : 0;
+        const riskPerLot = actualStopLoss ? Math.abs(calculateProfitLoss(entryPrice, actualStopLoss, 1, symbol, tradeType)) : 0;
         const recommendedLotSize = riskPerLot > 0 ? (maxRiskAmount / riskPerLot).toFixed(2) : 0;
         const instrumentType = getInstrumentType(symbol);
         const unitType = instrumentType === 'forex' ? 'pips' : 'points';
+        const displayPrecision = getPricePrecision(symbol);
         const riskElements = {
-            'pipsRisk': stopLoss > 0 ? pipPointInfo.risk.toFixed(1) + ' ' + unitType : 'N/A',
-            'totalRisk': stopLoss > 0 ? formatCurrency(Math.abs(potentialLoss)) : '$0.00',
-            'riskPercentage': stopLoss > 0 ? (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%' : '0.00%',
+            'pipsRisk': actualStopLoss ? pipPointInfo.risk.toFixed(1) + ' ' + unitType : 'N/A',
+            'totalRisk': actualStopLoss ? formatCurrency(Math.abs(potentialLoss)) : '$0.00',
+            'riskPercentage': actualStopLoss ? (Math.abs(potentialLoss) / accountSize * 100).toFixed(2) + '%' : '0.00%',
             'riskRewardRatio': riskRewardRatio.toFixed(2),
             'recommendedLotSize': recommendedLotSize
         };
@@ -2123,9 +2214,15 @@ function updateRiskCalculation() {
             if (element) element.textContent = value;
         });
         const pipDisplays = {
-            'entryPipDisplay': `Entry: ${entryPrice}`,
-            'slPipDisplay': stopLoss > 0 ? `SL: ${stopLoss} (${pipPointInfo.risk.toFixed(1)} ${unitType})` : 'SL: Not set',
-            'tpPipDisplay': takeProfit ? `TP: ${takeProfit} (${pipPointInfo.reward.toFixed(1)} ${unitType})` : '',
+            'entryPipDisplay': `Entry: ${entryPrice.toFixed(displayPrecision)}`,
+            'slPipDisplay': actualStopLoss ? (mode === 'pips'
+                ? `SL distance: ${slDistance != null ? slDistance.toFixed(1) : 'N/A'} ${unitType} → ${actualStopLoss.toFixed(displayPrecision)}`
+                : `SL: ${actualStopLoss.toFixed(displayPrecision)} (${pipPointInfo.risk.toFixed(1)} ${unitType})`
+            ) : 'SL: Not set',
+            'tpPipDisplay': actualTakeProfit ? (mode === 'pips'
+                ? `TP distance: ${tpDistance != null ? tpDistance.toFixed(1) : 'N/A'} ${unitType} → ${actualTakeProfit.toFixed(displayPrecision)}`
+                : `TP: ${actualTakeProfit.toFixed(displayPrecision)} (${pipPointInfo.reward.toFixed(1)} ${unitType})`
+            ) : '',
             'exitPipDisplay': ''
         };
         Object.entries(pipDisplays).forEach(([id, value]) => {
