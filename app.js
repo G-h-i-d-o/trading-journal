@@ -17,6 +17,7 @@ let performanceChart = null;
 let winLossChart = null;
 let marketTypeChart = null;
 let confluenceChart = null;
+let balanceProgressFilter = 'all';
 let editingTradeId = null;
 let currentPage = 1;
 const tradesPerPage = 10;
@@ -1758,6 +1759,15 @@ window.logout = async () => {
 // ========== EVENT LISTENERS ==========
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
+
+    const balanceProgressFilter = document.getElementById('balanceProgressFilter');
+    if (balanceProgressFilter) {
+        balanceProgressFilter.value = balanceProgressFilter.value || 'all';
+        balanceProgressFilter.addEventListener('change', (event) => {
+            setBalanceProgressFilter(event.target.value);
+        });
+    }
+
     const tradeDateTime = document.getElementById('tradeDateTime');
     if (tradeDateTime) tradeDateTime.value = getCurrentDateTimeString();
     const tradeForm = document.getElementById('tradeForm');
@@ -4974,6 +4984,57 @@ function getTradingMonths(trades) {
 }
 
 // ========== CHART FUNCTIONS ==========
+function getBalanceProgressFilterOptions() {
+    return [
+        { value: 'all', label: 'All trades' },
+        { value: '30d', label: 'Last 30 days' },
+        { value: '90d', label: 'Last 90 days' },
+        { value: '180d', label: 'Last 180 days' },
+        { value: 'last50', label: 'Last 50 trades' },
+        { value: 'last100', label: 'Last 100 trades' }
+    ];
+}
+
+function getFilteredBalanceProgressTrades(trades = []) {
+    const selectedFilter = balanceProgressFilter || 'all';
+    if (!Array.isArray(trades) || trades.length === 0) return [];
+
+    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const now = Date.now();
+
+    let filtered = sortedTrades;
+    if (selectedFilter === '30d') {
+        const cutoff = now - (30 * 24 * 60 * 60 * 1000);
+        filtered = sortedTrades.filter((trade) => new Date(trade.timestamp).getTime() >= cutoff);
+    } else if (selectedFilter === '90d') {
+        const cutoff = now - (90 * 24 * 60 * 60 * 1000);
+        filtered = sortedTrades.filter((trade) => new Date(trade.timestamp).getTime() >= cutoff);
+    } else if (selectedFilter === '180d') {
+        const cutoff = now - (180 * 24 * 60 * 60 * 1000);
+        filtered = sortedTrades.filter((trade) => new Date(trade.timestamp).getTime() >= cutoff);
+    } else if (selectedFilter === 'last50') {
+        filtered = sortedTrades.slice(-50);
+    } else if (selectedFilter === 'last100') {
+        filtered = sortedTrades.slice(-100);
+    }
+
+    if (filtered.length > 75) {
+        const step = Math.ceil(filtered.length / 75);
+        filtered = filtered.filter((_, index) => index % step === 0 || index === filtered.length - 1);
+    }
+
+    return filtered;
+}
+
+function setBalanceProgressFilter(value) {
+    balanceProgressFilter = value || 'all';
+    const filterSelect = document.getElementById('balanceProgressFilter');
+    if (filterSelect) {
+        filterSelect.value = balanceProgressFilter;
+    }
+    renderCharts(allTrades);
+}
+
 function renderCharts(trades = []) {
     renderPerformanceChart(trades);
     renderWinLossChart(trades);
@@ -4985,9 +5046,10 @@ function renderPerformanceChart(trades) {
     const ctx = document.getElementById('performanceChart');
     if (!ctx) return;
     if (performanceChart) performanceChart.destroy();
-    const selectedCurrency = getSelectedCurrency();
     const currencySymbol = getCurrencySymbol();
-    if (trades.length === 0) {
+    const filteredTrades = getFilteredBalanceProgressTrades(trades);
+
+    if (filteredTrades.length === 0 && trades.length === 0) {
         performanceChart = new Chart(ctx, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
@@ -4995,19 +5057,22 @@ function renderPerformanceChart(trades) {
         });
         return;
     }
-    const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    const sortedTrades = [...filteredTrades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const currentAccount = getCurrentAccount();
-    const accountSize = currentAccount.balance;
+    const accountSize = currentAccount ? currentAccount.balance : 0;
     let balance = accountSize;
     const balanceData = [balance];
     const labels = ['Start'];
+
     sortedTrades.forEach((trade) => {
-        balance += trade.profit;
+        balance += Number(trade.profit || 0);
         balanceData.push(balance);
         const tradeDate = new Date(trade.timestamp);
         const dateLabel = tradeDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         labels.push(dateLabel);
     });
+
     performanceChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -5037,7 +5102,7 @@ function renderPerformanceChart(trades) {
                             if (idx === 0) return balanceStr + ' (Start)';
                             const trade = sortedTrades[idx - 1];
                             if (!trade) return balanceStr;
-                            const pl = trade.profit || 0;
+                            const pl = Number(trade.profit || 0);
                             const sign = pl > 0 ? '+' : '';
                             const plStr = `P/L: ${sign}${currencySymbol}${pl.toFixed(2)}`;
                             return `${balanceStr} — ${plStr}`;
@@ -5059,7 +5124,7 @@ function renderPerformanceChart(trades) {
                 }
                 const trade = sortedTrades[idx - 1];
                 if (!trade) return;
-                const pl = trade.profit || 0;
+                const pl = Number(trade.profit || 0);
                 const sign = pl > 0 ? '+' : '';
                 const date = new Date(trade.timestamp).toLocaleString();
                 const symbol = trade.symbol || 'N/A';

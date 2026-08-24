@@ -1150,7 +1150,20 @@
             </div>
 
             <div class="card mt-16">
-                <h3 class="section-title"><i class="fas fa-chart-line"></i> Balance Progress</h3>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <h3 class="section-title mb-0"><i class="fas fa-chart-line"></i> Balance Progress</h3>
+                    <div class="flex items-center gap-2">
+                        <label for="balanceProgressFilter" class="text-xs uppercase tracking-wide text-gray-400">Filter</label>
+                        <select id="balanceProgressFilter" class="text-sm rounded-lg border border-gray-700 bg-gray-900 text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                            <option value="all">All trades</option>
+                            <option value="30d">Last 30 days</option>
+                            <option value="90d">Last 90 days</option>
+                            <option value="180d">Last 180 days</option>
+                            <option value="last50">Last 50 trades</option>
+                            <option value="last100">Last 100 trades</option>
+                        </select>
+                    </div>
+                </div>
                 <div style="height: 250px;">
                     <canvas id="performanceChart"></canvas>
                 </div>
