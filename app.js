@@ -4,6 +4,13 @@ import {
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc,
     ref, uploadBytes, getDownloadURL, deleteObject
 } from './firebase-config.js';
+import {
+    DEFAULT_ACCOUNT_OBJECTIVES,
+    normalizeAccount,
+    readCachedAccounts,
+    persistAccountCache
+} from './account-storage.js';
+import { showToast } from './ui-feedback.js';
 
 let currentUser = null;
 let performanceChart = null;
@@ -1198,7 +1205,6 @@ function updateCalendarStats() {
     }
 }
 
-// ========== ACCOUNT MANAGEMENT SYSTEM ==========
 async function initializeAccounts() {
     console.log('🔄 Initializing accounts system...');
     await loadUserAccounts();
@@ -1212,28 +1218,21 @@ async function loadUserAccounts() {
         console.log('📁 Loading accounts from Firestore for user:', currentUser.uid);
         const q = query(collection(db, 'accounts'), where('userId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
-        const accounts = [];
+        const firestoreAccounts = [];
         querySnapshot.forEach((doc) => {
-            const accountData = doc.data();
-            if (!accountData.transactions) accountData.transactions = [];
-            if (!accountData.initialBalance) accountData.initialBalance = accountData.balance || 10000;
-            if (!accountData.objectives) {
-                accountData.objectives = {
-                    maxLossTarget: 500,
-                    dailyLossTarget: 250,
-                    profitTarget: 500,
-                    tradingDaysTarget: 2
-                };
-            }
-            if (!accountData.tradeLocker) {
-                accountData.tradeLocker = getDefaultTradeLockerSettings();
-            }
-            accounts.push({ id: doc.id, ...accountData });
+            firestoreAccounts.push(normalizeAccount({ id: doc.id, ...doc.data() }, currentUser.uid));
         });
-        console.log('[ACCOUNTS] Accounts found in Firestore:', accounts.length);
-        if (accounts.length === 0) {
+
+        const cachedAccounts = readCachedAccounts();
+        const finalAccounts = firestoreAccounts.length > 0 ? firestoreAccounts : cachedAccounts;
+
+        if (firestoreAccounts.length === 0 && cachedAccounts.length > 0) {
+            console.warn('[ACCOUNTS] Firestore empty; seeding accounts from local cache');
+            userAccounts = cachedAccounts;
+            await saveUserAccounts();
+        } else if (firestoreAccounts.length === 0) {
             console.log('🆕 Creating default account...');
-            const defaultAccount = {
+            const defaultAccount = normalizeAccount({
                 name: 'Main Account',
                 balance: 10000,
                 initialBalance: 10000,
@@ -1242,21 +1241,19 @@ async function loadUserAccounts() {
                 isDefault: true,
                 userId: currentUser.uid,
                 transactions: [],
-                objectives: {
-                    maxLossTarget: 500,
-                    dailyLossTarget: 250,
-                    profitTarget: 500,
-                    tradingDaysTarget: 2
-                },
+                objectives: DEFAULT_ACCOUNT_OBJECTIVES,
                 tradeLocker: getDefaultTradeLockerSettings()
-            };
-            const docRef = await addDoc(collection(db, 'accounts'), defaultAccount);
-            userAccounts = [{ id: docRef.id, ...defaultAccount }];
+            }, currentUser.uid);
+            const docRef = await addDoc(collection(db, 'accounts'), { ...defaultAccount, id: undefined });
+            userAccounts = [{ ...defaultAccount, id: docRef.id }];
+            persistAccountCache(userAccounts);
             console.log('[SUCCESS] Default account created with ID:', docRef.id);
         } else {
-            userAccounts = accounts;
+            userAccounts = finalAccounts;
+            persistAccountCache(userAccounts);
             console.log('[SUCCESS] Accounts loaded from Firestore:', userAccounts.length);
         }
+
         const savedCurrentAccount = localStorage.getItem('currentAccountId');
         currentAccountId = savedCurrentAccount || userAccounts[0].id;
         if (!userAccounts.some(acc => acc.id === currentAccountId)) {
@@ -1274,19 +1271,12 @@ async function loadUserAccounts() {
 
 async function loadAccountsFromLocalStorageFallback() {
     console.log('🔄 Falling back to localStorage for accounts...');
-    const savedAccounts = localStorage.getItem('userAccounts');
-    if (savedAccounts) {
-        const parsedAccounts = JSON.parse(savedAccounts);
-        userAccounts = parsedAccounts.map(account => ({
-            ...account,
-            transactions: account.transactions || [],
-            initialBalance: account.initialBalance || account.balance || 10000,
-            objectives: account.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 },
-            tradeLocker: account.tradeLocker || getDefaultTradeLockerSettings()
-        }));
+    const cachedAccounts = readCachedAccounts();
+    if (cachedAccounts.length > 0) {
+        userAccounts = cachedAccounts;
         console.log('📁 Loaded existing accounts from localStorage:', userAccounts.length);
     } else {
-        userAccounts = [{
+        userAccounts = [normalizeAccount({
             id: 'main_' + Date.now(),
             name: 'Main Account',
             balance: 10000,
@@ -1295,15 +1285,10 @@ async function loadAccountsFromLocalStorageFallback() {
             createdAt: new Date().toISOString(),
             isDefault: true,
             transactions: [],
-            objectives: {
-                maxLossTarget: 500,
-                dailyLossTarget: 250,
-                profitTarget: 500,
-                tradingDaysTarget: 2
-            },
+            objectives: DEFAULT_ACCOUNT_OBJECTIVES,
             tradeLocker: getDefaultTradeLockerSettings()
-        }];
-        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        }, currentUser?.uid || '')];
+        persistAccountCache(userAccounts);
         console.log('🆕 Created default account in localStorage');
     }
     const savedCurrentAccount = localStorage.getItem('currentAccountId');
@@ -1315,26 +1300,26 @@ async function loadAccountsFromLocalStorageFallback() {
 async function saveUserAccounts() {
     try {
         console.log('[SAVE] Saving accounts to Firestore...');
+        userAccounts = userAccounts.map((account) => normalizeAccount(account, currentUser?.uid || ''));
+        persistAccountCache(userAccounts);
+
         if (!currentUser) {
             console.log('[ERROR] No user, saving to localStorage only');
-            localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
             return;
         }
+
         const savePromises = userAccounts.map(async (account) => {
             try {
+                const accountData = { ...account };
+                delete accountData.id;
+
                 if (account.id && !account.id.startsWith('local_') && !account.id.startsWith('main_')) {
                     const accountRef = doc(db, 'accounts', account.id);
-                    const accountData = { ...account };
-                    delete accountData.id;
-                    await setDoc(accountRef, accountData, { merge: true });
+                    await setDoc(accountRef, { ...accountData, userId: currentUser.uid }, { merge: true });
                     console.log('[SUCCESS] Updated account in Firestore:', account.id);
-                } else if (!account.id || account.id.startsWith('local_') || account.id.startsWith('main_')) {
-                    const accountData = { ...account };
-                    if (account.id?.startsWith('local_') || account.id?.startsWith('main_')) {
-                        delete accountData.id;
-                    }
-                    accountData.userId = currentUser.uid;
-                    const docRef = await addDoc(collection(db, 'accounts'), accountData);
+                } else {
+                    const newAccount = { ...accountData, userId: currentUser.uid };
+                    const docRef = await addDoc(collection(db, 'accounts'), newAccount);
                     account.id = docRef.id;
                     console.log('[SUCCESS] Created new account in Firestore:', docRef.id);
                 }
@@ -1343,12 +1328,13 @@ async function saveUserAccounts() {
                 throw error;
             }
         });
+
         await Promise.all(savePromises);
+        persistAccountCache(userAccounts);
         console.log('[SUCCESS] All accounts saved to Firestore');
-        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
     } catch (error) {
         console.error('[ERROR] Error saving accounts to Firestore:', error);
-        localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+        persistAccountCache(userAccounts);
         console.log('📁 Accounts saved to localStorage as fallback');
     }
 }
@@ -1549,15 +1535,15 @@ function setupAccountModalListeners() {
             const accountBalance = parseFloat(document.getElementById('accountBalance').value);
             const accountCurrency = document.getElementById('accountCurrencySelect').value;
             if (!accountName) {
-                alert('Please enter an account name.');
+                showErrorMessage('Please enter an account name.');
                 return;
             }
             if (accountName.length > 50) {
-                alert('Account name must be 50 characters or less.');
+                showErrorMessage('Account name must be 50 characters or less.');
                 return;
             }
             if (userAccounts.some(acc => acc.name.toLowerCase() === accountName.toLowerCase())) {
-                alert('An account with this name already exists. Please choose a different name.');
+                showErrorMessage('An account with this name already exists. Please choose a different name.');
                 return;
             }
             const submitButton = addAccountForm.querySelector('button[type="submit"]');
@@ -1604,7 +1590,7 @@ function setupAccountModalListeners() {
                 } else {
                     errorMessage += `Technical issue: ${error.message}`;
                 }
-                alert(errorMessage);
+                showErrorMessage(errorMessage);
             } finally {
                 submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
@@ -1683,11 +1669,11 @@ function formatCurrency(amount, currencyCode = null) {
 }
 
 function showSuccessMessage(message) {
-    const successDiv = document.createElement('div');
-    successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-    successDiv.innerHTML = message;
-    document.body.appendChild(successDiv);
-    setTimeout(() => successDiv.remove(), 3000);
+    showToast({ message, type: 'success' });
+}
+
+function showErrorMessage(message) {
+    showToast({ message, type: 'error' });
 }
 
 // ========== USER DISPLAY NAME & WELCOME GREETING ==========
@@ -1956,11 +1942,11 @@ async function addTrade(e) {
             : null;
 
         if (!symbol || !entryPrice || !lotSize || !tradeType) {
-            alert('Please fill all required fields (Entry Price, Size, and Direction are required)');
+            showErrorMessage('Please fill all required fields (Entry Price, Size, and Direction are required)');
             return;
         }
         if (confluenceOptions.length === 0) {
-            alert('Please select at least one confluence element before saving the trade.');
+            showErrorMessage('Please select at least one confluence element before saving the trade.');
             return;
         }
         const mode = getPricePipsMode();
@@ -1971,11 +1957,11 @@ async function addTrade(e) {
         const takeProfitDistance = resolvedSlTp.tpDistance;
 
         if (tradeType === 'long' && actualStopLoss >= entryPrice) {
-            alert('For a long position, Stop Loss must be below Entry Price');
+            showErrorMessage('For a long position, Stop Loss must be below Entry Price');
             return;
         }
         if (tradeType === 'short' && actualStopLoss <= entryPrice) {
-            alert('For a short position, Stop Loss must be above Entry Price');
+            showErrorMessage('For a short position, Stop Loss must be above Entry Price');
             return;
         }
 
@@ -2041,7 +2027,7 @@ async function addTrade(e) {
 
         const lockerCheck = enforceLockerRuleOnTrade(tradeData);
         if (!lockerCheck.allowed) {
-            alert(lockerCheck.message);
+            showErrorMessage(lockerCheck.message);
             return;
         }
 
@@ -2067,10 +2053,10 @@ async function addTrade(e) {
         const actualProfitField = document.getElementById('actualProfit');
         if (actualProfitField) actualProfitField.value = '';
         await loadTrades();
-        alert('Trade added successfully!');
+        showSuccessMessage('Trade added successfully!');
     } catch (error) {
         console.error('Error adding trade:', error);
-        alert('Error adding trade: ' + error.message);
+        showErrorMessage('Error adding trade: ' + error.message);
     } finally {
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;

@@ -143,16 +143,16 @@
                 <p class="text-muted text-sm">Log in to track your performance</p>
             </div>
 
-            <form id="login-form" class="space-y-6">
+            <form id="loginForm" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input type="email" id="login-email" required
+                    <input type="email" id="loginEmail" required
                            class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
                            placeholder="your@email.com" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                    <input type="password" id="login-password" required
+                    <input type="password" id="loginPassword" required
                            class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
                            placeholder="••••••••" />
                 </div>
@@ -191,22 +191,22 @@
                 <p class="text-muted text-sm">Start your trading journey</p>
             </div>
 
-            <form id="signup-form" class="space-y-6">
+            <form id="signupForm" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input type="email" id="signup-email" required
+                    <input type="email" id="signupEmail" required
                            class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
                            placeholder="your@email.com" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                    <input type="password" id="signup-password" required
+                    <input type="password" id="signupPassword" required
                            class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
                            placeholder="••••••••" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
-                    <input type="password" id="signup-confirm-password" required
+                    <input type="password" id="signupConfirmPassword" required
                            class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
                            placeholder="••••••••" />
                 </div>
@@ -240,10 +240,10 @@
                 <p class="text-muted text-sm">Enter your email to receive a reset link</p>
             </div>
 
-            <form id="reset-form" class="space-y-6">
+            <form id="resetForm" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input type="email" id="reset-email" required
+                    <input type="email" id="resetEmail" required
                            class="w-full px-4 py-3 input-dark rounded-lg placeholder-white/40"
                            placeholder="your@email.com" />
                 </div>
@@ -295,27 +295,27 @@
         window.switchToSignup = () => {
             document.getElementById('login-card').classList.add('hidden');
             document.getElementById('signup-card').classList.remove('hidden');
-            document.getElementById('signup-email').focus();
+            document.getElementById('signupEmail').focus();
         };
 
         window.switchToLogin = () => {
             document.getElementById('signup-card').classList.add('hidden');
             document.getElementById('login-card').classList.remove('hidden');
-            document.getElementById('login-email').focus();
+            document.getElementById('loginEmail').focus();
         };
 
         window.openResetModal = () => {
             document.getElementById('reset-modal').classList.remove('hidden');
-            const loginEmail = document.getElementById('login-email').value;
+            const loginEmail = document.getElementById('loginEmail').value;
             if (loginEmail) {
-                document.getElementById('reset-email').value = loginEmail;
+                document.getElementById('resetEmail').value = loginEmail;
             }
-            document.getElementById('reset-email').focus();
+            document.getElementById('resetEmail').focus();
         };
 
         window.closeResetModal = () => {
             document.getElementById('reset-modal').classList.add('hidden');
-            document.getElementById('reset-form').reset();
+            document.getElementById('resetForm').reset();
         };
 
         function showSuccess(message) {
@@ -348,12 +348,12 @@
         }
 
         // Login
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('login-text');
             const spinner = document.getElementById('login-spinner');
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
 
             btn.textContent = 'Signing In...';
             spinner.classList.remove('hidden');
@@ -371,13 +371,13 @@
         });
 
         // Signup
-        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('signup-text');
             const spinner = document.getElementById('signup-spinner');
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            const confirm = document.getElementById('signup-confirm-password').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirm = document.getElementById('signupConfirmPassword').value;
 
             if (password !== confirm) {
                 showError('Passwords do not match.');
@@ -404,11 +404,11 @@
         });
 
         // Reset Password
-        document.getElementById('reset-form').addEventListener('submit', async (e) => {
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('reset-text');
             const spinner = document.getElementById('reset-spinner');
-            const email = document.getElementById('reset-email').value;
+            const email = document.getElementById('resetEmail').value;
 
             btn.textContent = 'Sending...';
             spinner.classList.remove('hidden');

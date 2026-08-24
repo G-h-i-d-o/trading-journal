@@ -5,71 +5,84 @@ import {
     sendPasswordResetEmail
 } from './firebase-config.js';
 
-// Login functionality
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    const loginText = document.getElementById('loginText');
-    const loginSpinner = document.getElementById('loginSpinner');
+function initializeLegacyAuthFormHandlers() {
+    if (window.__tradewizerAuthInitialized) return;
+    window.__tradewizerAuthInitialized = true;
 
-    // Show loading state
-    loginText.textContent = 'Signing in...';
-    loginSpinner.classList.remove('hidden');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
 
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // Success - user will be redirected automatically via onAuthStateChanged
-    } catch (error) {
-        console.error('Login error:', error);
-        showError(getAuthErrorMessage(error));
-        
-        // Reset button state
-        loginText.textContent = 'Sign In';
-        loginSpinner.classList.add('hidden');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('loginEmail')?.value || '';
+            const password = document.getElementById('loginPassword')?.value || '';
+            const loginText = document.getElementById('loginText');
+            const loginSpinner = document.getElementById('loginSpinner');
+
+            if (loginText) loginText.textContent = 'Signing in...';
+            if (loginSpinner) loginSpinner.classList.remove('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error('Login error:', error);
+                if (typeof showError === 'function') {
+                    showError(getAuthErrorMessage(error));
+                }
+                if (loginText) loginText.textContent = 'Sign In';
+                if (loginSpinner) loginSpinner.classList.add('hidden');
+            }
+        });
     }
-});
 
-// Signup functionality
-document.getElementById('signupForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const email = document.getElementById('signupEmail').value;
-    const password = document.getElementById('signupPassword').value;
-    const signupText = document.getElementById('signupText');
-    const signupSpinner = document.getElementById('signupSpinner');
+    if (signupForm) {
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-    // Show loading state
-    signupText.textContent = 'Creating account...';
-    signupSpinner.classList.remove('hidden');
+            const email = document.getElementById('signupEmail')?.value || '';
+            const password = document.getElementById('signupPassword')?.value || '';
+            const signupText = document.getElementById('signupText');
+            const signupSpinner = document.getElementById('signupSpinner');
 
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        // Success - user will be redirected automatically
-    } catch (error) {
-        console.error('Signup error:', error);
-        showError(getAuthErrorMessage(error));
-        
-        // Reset button state
-        signupText.textContent = 'Create Account';
-        signupSpinner.classList.add('hidden');
+            if (signupText) signupText.textContent = 'Creating account...';
+            if (signupSpinner) signupSpinner.classList.remove('hidden');
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error('Signup error:', error);
+                if (typeof showError === 'function') {
+                    showError(getAuthErrorMessage(error));
+                }
+                if (signupText) signupText.textContent = 'Create Account';
+                if (signupSpinner) signupSpinner.classList.add('hidden');
+            }
+        });
     }
-});
+}
+
+initializeLegacyAuthFormHandlers();
 
 // Password Reset Functions
 window.openResetModal = () => {
-    document.getElementById('resetModal').classList.remove('hidden');
-    const loginEmail = document.getElementById('loginEmail').value;
-    if (loginEmail) {
-        document.getElementById('resetEmail').value = loginEmail;
+    const resetModal = document.getElementById('resetModal');
+    const resetEmail = document.getElementById('resetEmail');
+    const loginEmailInput = document.getElementById('loginEmail');
+
+    if (resetModal) resetModal.classList.remove('hidden');
+    if (resetEmail && loginEmailInput && loginEmailInput.value) {
+        resetEmail.value = loginEmailInput.value;
     }
-    document.getElementById('resetEmail').focus();
+    if (resetEmail) resetEmail.focus();
 };
 
 window.closeResetModal = () => {
-    document.getElementById('resetModal').classList.add('hidden');
-    document.getElementById('resetForm').reset();
+    const resetModal = document.getElementById('resetModal');
+    const resetForm = document.getElementById('resetForm');
+    if (resetModal) resetModal.classList.add('hidden');
+    if (resetForm) resetForm.reset();
 };
 
 // Handle password reset
