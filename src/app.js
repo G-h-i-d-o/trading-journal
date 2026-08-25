@@ -34,6 +34,7 @@ import {
 import { validateTransactionInput } from './transaction-validation.js';
 import { validateAffirmationInput } from './affirmation-validation.js';
 import { validateProfileInput, validateObjectivesInput, validateAccountSetupInput } from './profile-validation.js';
+import { normalizeScreenshotUrl } from './screenshot-utils.js';
 
 let currentUser = null;
 let performanceChart = null;
@@ -1931,14 +1932,14 @@ async function addTrade(e) {
         const beforeUrlInput = document.getElementById('beforeScreenshotUrl');
         const beforeFileInput = document.getElementById('beforeScreenshotFile');
         if (beforeUrlInput && beforeUrlInput.style.display !== 'none' && beforeUrlInput.value) {
-            beforeScreenshot = beforeUrlInput.value.trim();
+            beforeScreenshot = normalizeScreenshotUrl(beforeUrlInput.value.trim());
         } else if (beforeFileInput && beforeFileInput.files && beforeFileInput.files[0]) {
             beforeScreenshot = await uploadScreenshot(beforeFileInput.files[0], 'before');
         }
         const afterUrlInput = document.getElementById('afterScreenshotUrl');
         const afterFileInput = document.getElementById('afterScreenshotFile');
         if (afterUrlInput && afterUrlInput.style.display !== 'none' && afterUrlInput.value) {
-            afterScreenshot = afterUrlInput.value.trim();
+            afterScreenshot = normalizeScreenshotUrl(afterUrlInput.value.trim());
         } else if (afterFileInput && afterFileInput.files && afterFileInput.files[0]) {
             afterScreenshot = await uploadScreenshot(afterFileInput.files[0], 'after');
         }
@@ -4448,16 +4449,12 @@ window.toggleScreenshotInput = (type, inputType) => {
 };
 
 window.viewScreenshot = (url) => {
-    let cleanedUrl = url.trim();
-    if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
-        cleanedUrl = 'https://' + cleanedUrl;
-    }
-    try {
-        new URL(cleanedUrl);
-    } catch (e) {
-        alert('Invalid screenshot URL. Please check the URL format.');
+    const cleanedUrl = normalizeScreenshotUrl(url || '');
+    if (!cleanedUrl) {
+        showErrorMessage('Invalid screenshot URL. Please check the URL format.');
         return;
     }
+
     const modal = document.getElementById('screenshotModal');
     const image = document.getElementById('screenshotImage');
     if (modal && image) {

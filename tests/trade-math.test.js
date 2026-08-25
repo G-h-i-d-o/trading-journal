@@ -22,6 +22,7 @@ import {
   validateObjectivesInput,
   validateAccountSetupInput,
 } from '../src/profile-validation.js';
+import { normalizeScreenshotUrl, isRenderableImageUrl } from '../src/screenshot-utils.js';
 
 test('calculateProfitLoss for a long EUR/USD trade is correct', () => {
   const result = calculateProfitLoss(1.1000, 1.1050, 1, 'EUR/USD', 'long');
@@ -166,4 +167,14 @@ test('profile, objective, and account setup validation produce clear errors', ()
 
   const validAccount = validateAccountSetupInput({ balance: 2500, currency: 'USD', riskPerTrade: 1, leverage: 50 });
   assert.equal(validAccount.valid, true);
+});
+
+test('chart screenshot links normalize across chart providers and preserve share pages', () => {
+  const gocharting = normalizeScreenshotUrl('https://gocharting.com/sh/3d8800d5-2686-4a5b-9535-1a0c57910a63');
+  assert.equal(gocharting, 'https://gocharting.com/screenshots/3d8800d5-2686-4a5b-9535-1a0c57910a63.png');
+
+  const tradingViewShare = normalizeScreenshotUrl('https://www.tradingview.com/x/abc123/');
+  assert.equal(tradingViewShare, 'https://www.tradingview.com/x/abc123/');
+  assert.equal(isRenderableImageUrl('https://gocharting.com/screenshots/example.png'), true);
+  assert.equal(isRenderableImageUrl('https://www.tradingview.com/x/abc123/'), false);
 });
