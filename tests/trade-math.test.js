@@ -6,22 +6,22 @@ import {
   calculateRiskMetrics,
   applyAccountBalanceTransaction,
   recalculateAccountBalanceFromTransactions,
-} from './trade-math.js';
+} from '../src/trade-math.js';
 import {
   validateLockerRules,
   enforceLockerRuleOnTrade,
-} from './trade-locker.js';
+} from '../src/trade-locker.js';
 import {
   validateTransactionInput,
-} from './transaction-validation.js';
+} from '../src/transaction-validation.js';
 import {
   validateAffirmationInput,
-} from './affirmation-validation.js';
+} from '../src/affirmation-validation.js';
 import {
   validateProfileInput,
   validateObjectivesInput,
   validateAccountSetupInput,
-} from './profile-validation.js';
+} from '../src/profile-validation.js';
 
 test('calculateProfitLoss for a long EUR/USD trade is correct', () => {
   const result = calculateProfitLoss(1.1000, 1.1050, 1, 'EUR/USD', 'long');

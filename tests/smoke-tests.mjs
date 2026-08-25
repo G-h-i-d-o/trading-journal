@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { normalizeAccount, readCachedAccounts, persistAccountCache } from './account-storage.js';
-import { ensureToastContainer, showToast } from './ui-feedback.js';
+import { normalizeAccount, readCachedAccounts, persistAccountCache } from '../src/account-storage.js';
+import { ensureToastContainer, showToast } from '../src/ui-feedback.js';
 
 const memory = {};
 const storage = {
@@ -36,17 +36,26 @@ assert.equal(persisted[0].balance, 55);
 assert.equal(persisted[0].currency, 'USD');
 
 global.document = {
-  body: { appendChild() {} },
+  body: {
+    appendChild() {}
+  },
+  elements: new Map(),
+  getElementById(id) {
+    return this.elements.get(id) || null;
+  },
   createElement(tag) {
-    return {
+    const element = {
+      id: '',
       tagName: tag,
       className: '',
       textContent: '',
       style: {},
       classList: { add() {}, remove() {} },
       appendChild() {},
-      setAttribute() {}
+      setAttribute() {},
+      remove() {}
     };
+    return element;
   }
 };
 global.window = { setTimeout(fn) { fn(); return 1; } };

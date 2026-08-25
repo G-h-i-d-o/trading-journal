@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test trade-math.test.js && node smoke-tests.mjs"
+    "test": "node --test tests/trade-math.test.js && node tests/smoke-tests.mjs"
   }
 }

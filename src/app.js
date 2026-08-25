@@ -3253,6 +3253,10 @@ function updateAffirmationStats() {
     safeSetText('usedThisWeek', usedThisWeek);
 }
 
+function getAffirmationDisplayDate(affirmation) {
+    return affirmation?.lastUsed || affirmation?.createdAt || new Date().toISOString();
+}
+
 function renderAffirmationsGrid(filteredAffirmations = null) {
     const grid = document.getElementById('affirmationsGrid');
     const emptyState = document.getElementById('emptyAffirmations');
@@ -3297,7 +3301,7 @@ function renderAffirmationsGrid(filteredAffirmations = null) {
                         🗑️ Delete
                     </button>
                 </div>
-                <span class="text-xs text-gray-400">${formatRelativeTime(affirmation.createdAt)}</span>
+                <span class="text-xs text-gray-400">${formatRelativeTime(getAffirmationDisplayDate(affirmation))}</span>
             </div>
         </div>
     `).join('');
@@ -3433,7 +3437,7 @@ window.useAffirmation = async (id) => {
         }
     } catch (error) {
         console.error('Error updating affirmation:', error);
-        alert('Error updating affirmation.');
+        showErrorMessage('Error updating affirmation.');
     }
 };
 
@@ -3442,7 +3446,7 @@ window.copyAffirmation = (id) => {
     if (affirmation) {
         navigator.clipboard.writeText(affirmation.text)
             .then(() => showSuccessMessage('Affirmation copied to clipboard! <i class="fas fa-copy"></i>'))
-            .catch(() => alert('Failed to copy affirmation.'));
+            .catch(() => showErrorMessage('Failed to copy affirmation.'));
     }
 };
 
@@ -3454,11 +3458,12 @@ window.toggleFavorite = async (id) => {
             const affirmationRef = doc(db, 'affirmations', id);
             await updateDoc(affirmationRef, updatedData);
             affirmation.isFavorite = updatedData.isFavorite;
+            updateAffirmationStats();
             renderAffirmationsGrid();
         }
     } catch (error) {
         console.error('Error updating favorite:', error);
-        alert('Error updating favorite.');
+        showErrorMessage('Error updating favorite.');
     }
 };
 
@@ -3515,12 +3520,13 @@ window.useRandomAffirmation = async () => {
             randomAffirmation.usageCount = updatedData.usageCount;
             randomAffirmation.lastUsed = updatedData.lastUsed;
             updateAffirmationStats();
+            renderAffirmationsGrid();
             closeRandomModal();
             showSuccessMessage('Affirmation marked as used! 💪');
         }
     } catch (error) {
         console.error('Error using random affirmation:', error);
-        alert('Error using affirmation.');
+        showErrorMessage('Error using affirmation.');
     }
 };
 
@@ -3533,21 +3539,24 @@ window.markDailyAsUsed = async () => {
     try {
         const dailyAffirmationText = document.getElementById('dailyAffirmation')?.textContent?.replace(/"/g, '').trim() || '';
         const affirmation = allAffirmations.find(a => a.text === dailyAffirmationText);
-        if (affirmation) {
-            const updatedData = {
-                usageCount: affirmation.usageCount + 1,
-                lastUsed: new Date().toISOString()
-            };
-            const affirmationRef = doc(db, 'affirmations', affirmation.id);
-            await updateDoc(affirmationRef, updatedData);
-            affirmation.usageCount = updatedData.usageCount;
-            affirmation.lastUsed = updatedData.lastUsed;
-            updateAffirmationStats();
-            showSuccessMessage('Daily affirmation marked as used! ✅');
+        if (!affirmation) {
+            showErrorMessage('Daily affirmation could not be matched.');
+            return;
         }
+        const updatedData = {
+            usageCount: affirmation.usageCount + 1,
+            lastUsed: new Date().toISOString()
+        };
+        const affirmationRef = doc(db, 'affirmations', affirmation.id);
+        await updateDoc(affirmationRef, updatedData);
+        affirmation.usageCount = updatedData.usageCount;
+        affirmation.lastUsed = updatedData.lastUsed;
+        updateAffirmationStats();
+        renderAffirmationsGrid();
+        showSuccessMessage('Daily affirmation marked as used! ✅');
     } catch (error) {
         console.error('Error marking daily affirmation:', error);
-        alert('Error marking affirmation as used.');
+        showErrorMessage('Error marking affirmation as used.');
     }
 };
 
@@ -3559,13 +3568,25 @@ window.speakAffirmation = () => {
         utterance.pitch = 1;
         speechSynthesis.speak(utterance);
     } else {
-        alert('Text-to-speech is not supported in your browser.');
+        showErrorMessage('Text-to-speech is not supported in your browser.');
     }
 };
 
 window.showMotivationalQuote = () => {
     const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    const textEl = document.getElementById('motivationalQuoteText');
+    const modal = document.getElementById('motivationalQuoteModal');
+    if (textEl && modal) {
+        textEl.textContent = `"${randomQuote}"`;
+        modal.classList.remove('hidden');
+        return;
+    }
     alert(`Motivational Quote:\n\n"${randomQuote}"`);
+};
+
+window.closeMotivationalQuoteModal = () => {
+    const modal = document.getElementById('motivationalQuoteModal');
+    if (modal) modal.classList.add('hidden');
 };
 
 window.exportAffirmations = () => {

@@ -11,8 +11,10 @@ export const DEFAULT_ACCOUNT_OBJECTIVES = {
 
 export function normalizeAccount(account, userId = '', currencyCodes = DEFAULT_ACCOUNT_CURRENCIES) {
     const safeAccount = account || {};
-    const safeBalance = Number.isFinite(Number(safeAccount.balance)) ? Number(safeAccount.balance) : 10000;
-    const safeInitialBalance = Number.isFinite(Number(safeAccount.initialBalance))
+    const hasExplicitBalance = safeAccount.balance !== undefined && safeAccount.balance !== null && String(safeAccount.balance).trim() !== '';
+    const safeBalance = hasExplicitBalance && Number.isFinite(Number(safeAccount.balance)) ? Number(safeAccount.balance) : 10000;
+    const hasExplicitInitialBalance = safeAccount.initialBalance !== undefined && safeAccount.initialBalance !== null && String(safeAccount.initialBalance).trim() !== '';
+    const safeInitialBalance = hasExplicitInitialBalance && Number.isFinite(Number(safeAccount.initialBalance))
         ? Number(safeAccount.initialBalance)
         : safeBalance;
 
