@@ -10,7 +10,30 @@ import {
     readCachedAccounts,
     persistAccountCache
 } from './account-storage.js';
+import {
+    calculateProfitLoss as calculateTradeProfitLoss,
+    applyAccountBalanceTransaction,
+    recalculateAccountBalanceFromTransactions,
+} from './trade-math.js';
 import { showToast } from './ui-feedback.js';
+import { currencySymbols, getCurrencySymbol, formatCurrency, getSelectedCurrency } from './currency-utils.js';
+import { showSuccessMessage, showErrorMessage } from './ui-helpers.js';
+import {
+    validateLockerRules as validateLockerRulesForAccount,
+    enforceLockerRuleOnTrade as enforceLockerRuleOnTradeForAccount,
+} from './trade-locker.js';
+import { updateWelcomeGreeting as updateUserWelcomeGreeting, userDisplayName as exportedUserDisplayName } from './user-profile.js';
+import {
+    switchSettingsTab as switchSettingsTabHelper,
+    showSettingsSection as showSettingsSectionHelper,
+    openSettingsTab as openSettingsTabHelper,
+    updateCurrencyDisplay as updateCurrencyDisplayHelper,
+    updateDepositWithdrawalDisplay as updateDepositWithdrawalDisplayHelper,
+    setupSettingsTab as setupSettingsTabHelper,
+} from './settings-ui.js';
+import { validateTransactionInput } from './transaction-validation.js';
+import { validateAffirmationInput } from './affirmation-validation.js';
+import { validateProfileInput, validateObjectivesInput, validateAccountSetupInput } from './profile-validation.js';
 
 let currentUser = null;
 let performanceChart = null;
@@ -36,18 +59,6 @@ let calendarViewType = 'month';
 // Loading timeout safety (10 seconds)
 let loadingTimeout;
 const MAX_LOADING_TIME = 10000; // 10 seconds
-
-// Currency configuration
-const currencySymbols = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    JPY: '¥',
-    ZAR: 'R',
-    CAD: 'C$',
-    AUD: 'A$',
-    CHF: 'CHF'
-};
 
 const DEFAULT_CONFLUENCE_OPTIONS = [
     'Trend Direction',
@@ -807,40 +818,7 @@ function getPointValue(symbol) {
 // ----------------------------------------------------------------
 
 function calculateProfitLoss(entry, exit, lotSize, symbol, type) {
-    const instrumentType = getInstrumentType(symbol);
-    const pointValue = getPointValue(symbol);
-    let profit;
-    let calculationMethod = '';
-    if (instrumentType === 'forex') {
-        const pipValue = 10 * lotSize;
-        const pipSize = getPipSize(symbol);
-        const pips = type === 'long' ? (exit - entry) / pipSize : (entry - exit) / pipSize;
-        profit = pips * pipValue;
-        calculationMethod = `Pips: ${pips.toFixed(2)} × $${pipValue} = $${profit.toFixed(2)}`;
-    } else if (instrumentType === 'synthetic' || instrumentType === 'indices' || instrumentType === 'commodities') {
-        const points = type === 'long' ? (exit - entry) : (entry - exit);
-        profit = points * pointValue * lotSize;
-        calculationMethod = `Points: ${points.toFixed(4)} × $${pointValue} × ${lotSize} lot = $${profit.toFixed(2)}`;
-        if (!pointValueOverrides[symbol] && instrumentType === 'synthetic') {
-            console.log(`[PnL] Using default point value $${pointValue} for ${symbol}. Verify in Settings > Contract Size Verification.`);
-        }
-    } else if (instrumentType === 'smarttrader') {
-        const payout = 0.80;
-        profit = type === 'long' ? (lotSize * payout) : -lotSize;
-        calculationMethod = `Binary payout: ${lotSize} × ${payout * 100}% = $${profit.toFixed(2)}`;
-    } else if (instrumentType === 'accumulator') {
-        const multiplier = 2;
-        const points = type === 'long' ? (exit - entry) : (entry - exit);
-        profit = points * lotSize * multiplier;
-        calculationMethod = `Accumulator: Points ${points.toFixed(4)} × ${lotSize} × ${multiplier} = $${profit.toFixed(2)}`;
-    } else {
-        const pointValueForSymbol = getPointValue(symbol);
-        const points = type === 'long' ? (exit - entry) : (entry - exit);
-        profit = points * pointValueForSymbol * lotSize;
-        calculationMethod = `Default: Points ${points.toFixed(4)} × $${pointValueForSymbol} × ${lotSize} = $${profit.toFixed(2)}`;
-    }
-    console.log(`[PnL Calc] ${symbol} (${type}): ${calculationMethod}`);
-    return parseFloat(profit.toFixed(2));
+    return calculateTradeProfitLoss(entry, exit, lotSize, symbol, type);
 }
 
 window.updateInstrumentType = () => {
@@ -1610,26 +1588,26 @@ window.deleteAccount = async (accountId) => {
     const account = userAccounts.find(acc => acc.id === accountId);
     if (!account) return;
     if (account.isDefault) {
-        alert('Cannot delete the default main account.');
+        showErrorMessage('Cannot delete the default main account.');
         return;
     }
-    if (confirm(`Are you sure you want to delete "${account.name}"? This will also delete all trades associated with this account.`)) {
-        try {
-            if (!accountId.startsWith('local_')) {
-                await deleteDoc(doc(db, 'accounts', accountId));
-            }
-            userAccounts = userAccounts.filter(acc => acc.id !== accountId);
-            await saveUserAccounts();
-            if (currentAccountId === accountId) {
-                await switchAccount(userAccounts[0].id);
-            }
-            await deleteAccountTrades(accountId);
-            renderAccountsList();
-            showSuccessMessage(`Account "${account.name}" deleted successfully!`);
-        } catch (error) {
-            console.error('Error deleting account:', error);
-            alert('Error deleting account. Please try again.');
+    const confirmed = window.confirm ? window.confirm(`Are you sure you want to delete "${account.name}"? This will also delete all trades associated with this account.`) : true;
+    if (!confirmed) return;
+    try {
+        if (!accountId.startsWith('local_')) {
+            await deleteDoc(doc(db, 'accounts', accountId));
         }
+        userAccounts = userAccounts.filter(acc => acc.id !== accountId);
+        await saveUserAccounts();
+        if (currentAccountId === accountId) {
+            await switchAccount(userAccounts[0].id);
+        }
+        await deleteAccountTrades(accountId);
+        renderAccountsList();
+        showSuccessMessage(`Account "${account.name}" deleted successfully!`);
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        showErrorMessage('Error deleting account. Please try again.');
     }
 };
 
@@ -1653,50 +1631,11 @@ async function deleteAccountTrades(accountId) {
 }
 
 // ========== UTILITY FUNCTIONS ==========
-function getSelectedCurrency() {
-    const el = document.getElementById('accountCurrency');
-    return el ? el.value : 'USD';
-}
-
-function getCurrencySymbol(currencyCode = null) {
-    if (!currencyCode) currencyCode = getSelectedCurrency();
-    return currencySymbols[currencyCode] || '$';
-}
-
-function formatCurrency(amount, currencyCode = null) {
-    if (!currencyCode) currencyCode = getSelectedCurrency();
-    const symbol = getCurrencySymbol(currencyCode);
-    return `${symbol}${amount.toFixed(2)}`;
-}
-
-function showSuccessMessage(message) {
-    showToast({ message, type: 'success' });
-}
-
-function showErrorMessage(message) {
-    showToast({ message, type: 'error' });
-}
-
 // ========== USER DISPLAY NAME & WELCOME GREETING ==========
-let userDisplayName = 'Guest';
+let userDisplayName = exportedUserDisplayName;
 
 function updateWelcomeGreeting(profile) {
-    let name = 'Guest';
-    if (profile) {
-        name = profile.displayName || profile.fullName || currentUser?.email?.split('@')[0] || 'Guest';
-    } else if (currentUser) {
-        name = currentUser.email?.split('@')[0] || 'Guest';
-    }
-
-    userDisplayName = name;
-
-    const displayNameEl = document.getElementById('userDisplayName');
-    const avatarEl = document.getElementById('avatarLetter');
-    const greetingEl = document.getElementById('welcomeGreeting');
-
-    if (displayNameEl) displayNameEl.textContent = name;
-    if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
-    if (greetingEl) greetingEl.innerHTML = `Welcome back, <span class="text-white font-semibold">${name}</span>!`;
+    userDisplayName = updateUserWelcomeGreeting(currentUser, profile);
 }
 
 // ========== AUTHENTICATION ==========
@@ -2586,12 +2525,12 @@ function clearLockerPanelMessage() {
 }
 
 function validateLockerRules(rules, objectives) {
-    const errors = [];
-    if (rules.maxLoss > objectives.maxLossTarget) errors.push('Maximum Loss must be less than or equal to your objective max loss.');
-    if (rules.dailyLoss > objectives.dailyLossTarget) errors.push('Daily Loss Limit must be less than or equal to your objective daily loss.');
-    if (rules.profitTarget > objectives.profitTarget) errors.push('Profit Target must be less than or equal to your objective profit target.');
-    if (rules.maxConsecutiveLosses < 0) errors.push('Max Consecutive Losses must be zero or higher.');
-    return errors;
+    return validateLockerRulesForAccount(rules, objectives);
+}
+
+function enforceLockerRuleOnTrade(trade) {
+    const currentAccount = getCurrentAccount();
+    return enforceLockerRuleOnTradeForAccount(trade, currentAccount);
 }
 
 function setupTradeLockerPanel() {
@@ -2653,23 +2592,6 @@ function setupTradeLockerPanel() {
     updateLockerSummary();
 }
 
-function enforceLockerRuleOnTrade(trade) {
-    const currentAccount = getCurrentAccount();
-    if (!currentAccount || !currentAccount.tradeLocker || !currentAccount.tradeLocker.enabled) return { allowed: true };
-    const locker = currentAccount.tradeLocker;
-    if (!locker.rules) return { allowed: true };
-    const objectives = currentAccount.objectives || { maxLossTarget: 500, dailyLossTarget: 250, profitTarget: 500, tradingDaysTarget: 2 };
-    const validation = validateLockerRules(locker.rules, objectives);
-    if (validation.length > 0) return { allowed: false, message: validation.join('\n') };
-    if (trade.riskAmount > locker.rules.maxLoss) {
-        return { allowed: false, message: `Trade risk amount exceeds locker max loss ($${locker.rules.maxLoss}).` };
-    }
-    if (trade.profit > locker.rules.profitTarget) {
-        return { allowed: false, message: `Trade profit exceeds locker profit target ($${locker.rules.profitTarget}).` };
-    }
-    return { allowed: true };
-}
-
 // ========== USER SETTINGS ==========
 async function loadUserSettings() {
     const riskPerTrade = localStorage.getItem('riskPerTrade') || 1.0;
@@ -2683,93 +2605,35 @@ async function loadUserSettings() {
 }
 
 function updateCurrencyDisplay() {
-    const selectedCurrency = getSelectedCurrency();
-    const currencySymbol = getCurrencySymbol();
-    const accountBalanceLabel = document.querySelector('label[for="accountSize"]');
-    if (accountBalanceLabel) accountBalanceLabel.textContent = `Account Balance (${currencySymbol})`;
-    const balanceStat = document.querySelector('.stat-card:nth-child(4) .text-xs');
-    if (balanceStat) balanceStat.textContent = `Balance (${currencySymbol})`;
+    updateCurrencyDisplayHelper(getSelectedCurrency, getCurrencySymbol);
 }
 
 // ========== SETTINGS TAB MANAGEMENT ==========
 function switchSettingsTab(tabName) {
-    const sectionName = tabName === 'deposits' ? 'funds' : tabName;
-    const allTabs = document.querySelectorAll('.settings-section');
-    allTabs.forEach(tab => {
-        tab.classList.remove('active');
-        tab.classList.add('hidden');
-    });
-    const allBtns = document.querySelectorAll('.settings-nav-item');
-    allBtns.forEach(btn => btn.classList.remove('active'));
-    const tabElement = document.getElementById(`${sectionName}SettingsSection`);
-    if (tabElement) {
-        tabElement.classList.add('active');
-        tabElement.classList.remove('hidden');
-    }
-    allBtns.forEach(btn => {
-        if (btn.dataset.section === sectionName) {
-            btn.classList.add('active');
-        }
-    });
-    if (sectionName === 'funds') {
-        loadTransactions();
-    }
+    switchSettingsTabHelper(tabName, { loadTransactions });
 }
 
 function showSettingsSection(sectionName) {
-    switchSettingsTab(sectionName);
+    showSettingsSectionHelper(sectionName, { loadTransactions });
 }
 
 function setupSettingsTab() {
-    const nowLocal = new Date().toISOString().slice(0, 16);
-    const depositDateInput = document.getElementById('depositDate');
-    const withdrawDateInput = document.getElementById('withdrawDate');
-    const depositForm = document.getElementById('depositForm');
-    const withdrawForm = document.getElementById('withdrawForm');
-    if (depositDateInput) depositDateInput.value = nowLocal;
-    if (withdrawDateInput) withdrawDateInput.value = nowLocal;
-    if (depositForm) {
-        depositForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handleDepositSubmit();
-        });
-    }
-    if (withdrawForm) {
-        withdrawForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handleWithdrawSubmit();
-        });
-    }
-    const currentAccount = getCurrentAccount();
-    if (currentAccount) {
-        updateTransactionSummary(currentAccount);
-        updateAccountSettingsForm(currentAccount);
-        updateDepositWithdrawalDisplay(currentAccount);
-    }
-    console.log('✅ Settings tab setup complete');
+    setupSettingsTabHelper({
+        handleDepositSubmit,
+        handleWithdrawSubmit,
+        getCurrentAccount,
+        updateTransactionSummary,
+        updateAccountSettingsForm,
+        updateDepositWithdrawalDisplay: (account) => updateDepositWithdrawalDisplayHelper(account, getCurrencySymbol),
+    });
 }
 
 function openSettingsTab(tabName) {
-    const settingsTab = document.getElementById('settingsTab');
-    const sectionName = tabName === 'deposits' ? 'funds' : tabName;
-    if (settingsTab) {
-        settingsTab.click();
-    }
-    setTimeout(() => {
-        showSettingsSection(sectionName);
-    }, 100);
+    openSettingsTabHelper(tabName, { loadTransactions });
 }
 
 function updateDepositWithdrawalDisplay(account) {
-    const currencySymbol = getCurrencySymbol(account.currency);
-    const depositSymbol = document.getElementById('depositCurrencySymbol');
-    const withdrawSymbol = document.getElementById('withdrawCurrencySymbol');
-    const availableBalanceEl = document.getElementById('availableBalance');
-    if (depositSymbol) depositSymbol.textContent = currencySymbol;
-    if (withdrawSymbol) withdrawSymbol.textContent = currencySymbol;
-    if (availableBalanceEl) {
-        availableBalanceEl.textContent = `${currencySymbol}${(account.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    }
+    updateDepositWithdrawalDisplayHelper(account, getCurrencySymbol);
 }
 
 function openDepositModal() {
@@ -2800,12 +2664,9 @@ async function handleDepositSubmit() {
     const amount = parseFloat(document.getElementById('depositAmount').value);
     const date = document.getElementById('depositDate').value;
     const notes = document.getElementById('depositDescription').value || '';
-    if (!amount || amount <= 0) {
-        alert('Please enter a valid deposit amount.');
-        return;
-    }
-    if (!date) {
-        alert('Please select a date for the deposit.');
+    const validation = validateTransactionInput({ amount, date, type: 'deposit', currentBalance: getCurrentAccount()?.balance ?? 0 });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
         return;
     }
     await createTransaction('deposit', amount, date, notes);
@@ -2819,16 +2680,9 @@ async function handleWithdrawSubmit() {
     const date = document.getElementById('withdrawDate').value;
     const notes = document.getElementById('withdrawDescription').value || '';
     const currentAccount = getCurrentAccount();
-    if (!amount || amount <= 0) {
-        alert('Please enter a valid withdrawal amount.');
-        return;
-    }
-    if (!date) {
-        alert('Please select a date for the withdrawal.');
-        return;
-    }
-    if (currentAccount && amount > currentAccount.balance) {
-        alert('Withdrawal amount cannot exceed available balance.');
+    const validation = validateTransactionInput({ amount, date, type: 'withdrawal', currentBalance: currentAccount?.balance ?? 0 });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
         return;
     }
     await createTransaction('withdrawal', amount, date, notes);
@@ -2855,7 +2709,7 @@ async function createTransaction(type, amount, date, notes) {
         createdAt: new Date().toISOString(),
     };
     currentAccount.transactions.push(transaction);
-    currentAccount.balance += type === 'deposit' ? amount : -amount;
+    currentAccount.balance = applyAccountBalanceTransaction(currentAccount.balance, type, amount);
     if (currentAccount.initialBalance === undefined) {
         currentAccount.initialBalance = currentAccount.balance - currentAccount.transactions.reduce((sum, tx) => {
             return tx.type === 'deposit' ? sum + tx.amount : sum - tx.amount;
@@ -2913,18 +2767,15 @@ async function addTransaction() {
     const amount = parseFloat(document.getElementById('transactionAmount').value);
     const date = document.getElementById('transactionDate').value;
     const notes = document.getElementById('transactionNotes').value;
-    if (!amount || amount <= 0) {
-        alert('Please enter a valid amount');
-        return;
-    }
-    if (!date) {
-        alert('Please select a date');
+    const currentAccount = getCurrentAccount();
+    const validation = validateTransactionInput({ amount, date, type: transactionType, currentBalance: currentAccount?.balance ?? 0 });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
         return;
     }
     try {
-        const currentAccount = getCurrentAccount();
         if (!currentAccount) {
-            alert('No account selected');
+            showErrorMessage('No account selected.');
             return;
         }
         if (!currentAccount.transactions) {
@@ -2939,35 +2790,30 @@ async function addTransaction() {
             createdAt: new Date().toISOString()
         };
         currentAccount.transactions.push(transaction);
-        if (transactionType === 'deposit') {
-            currentAccount.balance += amount;
-        } else if (transactionType === 'withdrawal') {
-            currentAccount.balance -= amount;
-        }
+        currentAccount.balance = applyAccountBalanceTransaction(currentAccount.balance, transactionType, amount);
         await saveUserAccounts();
         loadTransactions();
         updateAccountSettingsForm(currentAccount);
         updateStatsAndUI();
         document.getElementById('addTransactionForm').reset();
         document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
-        alert(`Transaction added successfully! New balance: ${getCurrencySymbol()}${currentAccount.balance.toLocaleString()}`);
+        showSuccessMessage(`Transaction added successfully! New balance: ${getCurrencySymbol()}${currentAccount.balance.toLocaleString()}`);
         console.log('✅ Transaction added:', transaction);
     } catch (error) {
         console.error('❌ Error adding transaction:', error);
-        alert('Error adding transaction. Please try again.');
+        showErrorMessage('Error adding transaction. Please try again.');
     }
 }
 
 async function deleteTransaction(transactionId) {
-    if (!confirm('Are you sure you want to delete this transaction? This will recalculate your account balance.')) {
-        return;
-    }
+    const confirmed = window.confirm ? window.confirm('Are you sure you want to delete this transaction? This will recalculate your account balance.') : true;
+    if (!confirmed) return;
     try {
         const currentAccount = getCurrentAccount();
         if (!currentAccount) return;
         const transactionIndex = currentAccount.transactions.findIndex(t => t.id === transactionId);
         if (transactionIndex === -1) {
-            alert('Transaction not found');
+            showErrorMessage('Transaction not found.');
             return;
         }
         const transaction = currentAccount.transactions[transactionIndex];
@@ -2977,32 +2823,19 @@ async function deleteTransaction(transactionId) {
         loadTransactions();
         updateAccountSettingsForm(currentAccount);
         updateStatsAndUI();
-        alert('Transaction deleted and balance recalculated.');
+        showSuccessMessage('Transaction deleted and balance recalculated.');
         console.log('✅ Transaction deleted:', transaction);
     } catch (error) {
         console.error('❌ Error deleting transaction:', error);
-        alert('Error deleting transaction. Please try again.');
+        showErrorMessage('Error deleting transaction. Please try again.');
     }
 }
 
 async function recalculateAccountBalance() {
     const currentAccount = getCurrentAccount();
     if (!currentAccount) return;
-    const initialBalance = currentAccount.initialBalance || 10000;
-    let calculatedBalance = initialBalance;
-    if (currentAccount.transactions && Array.isArray(currentAccount.transactions)) {
-        const sortedTransactions = [...currentAccount.transactions].sort((a, b) => 
-            new Date(a.date) - new Date(b.date)
-        );
-        sortedTransactions.forEach(trans => {
-            if (trans.type === 'deposit') {
-                calculatedBalance += trans.amount;
-            } else if (trans.type === 'withdrawal') {
-                calculatedBalance -= trans.amount;
-            }
-        });
-    }
-    currentAccount.balance = Math.max(0, calculatedBalance);
+    const initialBalance = Number(currentAccount.initialBalance ?? 10000);
+    currentAccount.balance = recalculateAccountBalanceFromTransactions(initialBalance, currentAccount.transactions || []);
     console.log('✅ Balance recalculated:', currentAccount.balance);
 }
 
@@ -3545,20 +3378,17 @@ function updateCharCount() {
 
 async function handleAffirmationSubmit(e) {
     e.preventDefault();
-    const text = document.getElementById('affirmationText').value.trim();
+    const text = document.getElementById('affirmationText').value;
     const category = document.getElementById('affirmationCategorySelect').value;
     const isFavorite = document.getElementById('isFavorite').checked;
     const isActive = document.getElementById('isActive').checked;
-    if (!text) {
-        alert('Please enter an affirmation text.');
-        return;
-    }
-    if (text.length > 200) {
-        alert('Affirmation text must be 200 characters or less.');
+    const validation = validateAffirmationInput({ text, category });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
         return;
     }
     const affirmationData = {
-        text, category, isFavorite, isActive,
+        text: text.trim(), category, isFavorite, isActive,
         usageCount: 0, lastUsed: null,
         createdAt: new Date().toISOString(),
         strength: Math.floor(Math.random() * 20) + 80,
@@ -3581,7 +3411,7 @@ async function handleAffirmationSubmit(e) {
         showSuccessMessage(editingAffirmationId ? 'Affirmation updated successfully!' : 'Affirmation created successfully!');
     } catch (error) {
         console.error('Error saving affirmation:', error);
-        alert('Error saving affirmation. Please try again.');
+        showErrorMessage('Error saving affirmation. Please try again.');
     }
 }
 
@@ -3633,17 +3463,17 @@ window.toggleFavorite = async (id) => {
 };
 
 window.deleteAffirmation = async (id) => {
-    if (confirm('Are you sure you want to delete this affirmation?')) {
-        try {
-            await deleteDoc(doc(db, 'affirmations', id));
-            allAffirmations = allAffirmations.filter(a => a.id !== id);
-            updateAffirmationStats();
-            renderAffirmationsGrid();
-            showSuccessMessage('Affirmation deleted successfully!');
-        } catch (error) {
-            console.error('Error deleting affirmation:', error);
-            alert('Error deleting affirmation.');
-        }
+    const confirmed = window.confirm ? window.confirm('Are you sure you want to delete this affirmation?') : true;
+    if (!confirmed) return;
+    try {
+        await deleteDoc(doc(db, 'affirmations', id));
+        allAffirmations = allAffirmations.filter(a => a.id !== id);
+        updateAffirmationStats();
+        renderAffirmationsGrid();
+        showSuccessMessage('Affirmation deleted successfully!');
+    } catch (error) {
+        console.error('Error deleting affirmation:', error);
+        showErrorMessage('Error deleting affirmation.');
     }
 };
 
@@ -4027,17 +3857,18 @@ function convertToCSV(trades) {
 }
 
 window.deleteTrade = async (tradeId) => {
-    if (confirm('Are you sure you want to delete this trade?')) {
-        try {
-            showLoading();
-            await deleteDoc(doc(db, 'trades', tradeId));
-            await loadTrades();
-        } catch (error) {
-            console.error('Error deleting trade:', error);
-            alert('Error deleting trade.');
-        } finally {
-            hideLoading();
-        }
+    const confirmed = window.confirm ? window.confirm('Are you sure you want to delete this trade?') : true;
+    if (!confirmed) return;
+    try {
+        showLoading();
+        await deleteDoc(doc(db, 'trades', tradeId));
+        await loadTrades();
+        showSuccessMessage('Trade deleted successfully.');
+    } catch (error) {
+        console.error('Error deleting trade:', error);
+        showErrorMessage('Error deleting trade.');
+    } finally {
+        hideLoading();
     }
 };
 
@@ -6253,7 +6084,7 @@ async function saveUserProfile(profileData) {
         showSuccessMessage('Profile saved successfully!');
     } catch (error) {
         console.error('Error saving profile:', error);
-        alert('Error saving profile: ' + error.message);
+        showErrorMessage('Error saving profile: ' + error.message);
     }
 }
 
@@ -6274,8 +6105,9 @@ window.savePersonalInfo = async function() {
     const fullName = document.getElementById('fullName')?.value || '';
     const displayName = document.getElementById('displayName')?.value || '';
     const experienceLevel = document.getElementById('experienceLevel')?.value || 'intermediate';
-    if (!fullName.trim()) {
-        alert('Full Name is required.');
+    const validation = validateProfileInput({ fullName });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
         return;
     }
     const profileData = {
@@ -6289,7 +6121,7 @@ window.savePersonalInfo = async function() {
         showSuccessMessage('Personal information updated!');
     } catch (error) {
         console.error('Error saving personal info:', error);
-        alert('Error saving: ' + error.message);
+        showErrorMessage('Error saving: ' + error.message);
     }
 };
 
@@ -6849,15 +6681,16 @@ function updateTradingObjectivesUI() {
 window.saveObjectivesSettings = async function() {
     const currentAccount = getCurrentAccount();
     if (!currentAccount) {
-        alert('No account selected.');
+        showErrorMessage('No account selected.');
         return;
     }
     const maxLoss = parseFloat(document.getElementById('objMaxLoss')?.value);
     const dailyLoss = parseFloat(document.getElementById('objDailyLoss')?.value);
     const profitTarget = parseFloat(document.getElementById('objProfitTarget')?.value);
     const tradingDays = parseInt(document.getElementById('objTradingDays')?.value);
-    if (isNaN(maxLoss) || isNaN(dailyLoss) || isNaN(profitTarget) || isNaN(tradingDays)) {
-        alert('Please fill all fields with valid numbers.');
+    const validation = validateObjectivesInput({ maxLoss, dailyLoss, profitTarget, tradingDays });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
         return;
     }
     currentAccount.objectives = {
@@ -6878,19 +6711,20 @@ window.saveAccountSetup = async function() {
     const currency = document.getElementById('accountCurrency')?.value;
     const riskPerTrade = parseFloat(document.getElementById('riskPerTrade')?.value);
     const leverage = document.getElementById('leverage')?.value;
-    if (!isNaN(balance) && balance > 0) {
-        currentAccount.balance = balance;
-        currentAccount.currency = currency;
-        localStorage.setItem('riskPerTrade', riskPerTrade);
-        localStorage.setItem('leverage', leverage);
-        await saveUserAccounts();
-        updateStats(allTrades);
-        renderCharts(allTrades);
-        updateTradingObjectivesUI();
-        showSuccessMessage('Account setup saved!');
-    } else {
-        alert('Please enter a valid balance.');
+    const validation = validateAccountSetupInput({ balance, currency, riskPerTrade, leverage });
+    if (!validation.valid) {
+        showErrorMessage(validation.message);
+        return;
     }
+    currentAccount.balance = balance;
+    currentAccount.currency = currency;
+    localStorage.setItem('riskPerTrade', riskPerTrade);
+    localStorage.setItem('leverage', leverage);
+    await saveUserAccounts();
+    updateStats(allTrades);
+    renderCharts(allTrades);
+    updateTradingObjectivesUI();
+    showSuccessMessage('Account setup saved!');
 };
 
 function loadObjectivesSettings() {
