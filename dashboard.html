@@ -475,32 +475,32 @@
                         <span style="opacity:0.8"><i class="fas fa-chevron-down"></i></span>
                     </button>
                     <div class="sidebar-submenu" id="desktopSettingsSubmenu">
-                        <button class="sidebar-btn" title="General settings" onclick="openSettingsTab('general')">
+                        <button class="sidebar-btn" title="General settings" data-action="openSettingsTab" data-args="general">
                             <span class="icon"><i class="fas fa-sliders-h"></i></span>
                             <span class="label">General</span>
                         </button>
                         
-                        <button class="sidebar-btn" title="Personal information" onclick="openSettingsTab('personalInfo')">
+                        <button class="sidebar-btn" title="Personal information" data-action="openSettingsTab" data-args="personalInfo">
                             <span class="icon"><i class="fas fa-user-circle"></i></span>
                             <span class="label">Personal Info</span>
                         </button>
 
-                        <button class="sidebar-btn" title="Preferences" onclick="openSettingsTab('preferences')">
+                        <button class="sidebar-btn" title="Preferences" data-action="openSettingsTab" data-args="preferences">
                             <span class="icon"><i class="fas fa-cog"></i></span>
                             <span class="label">Preferences</span>
                         </button>
 
-                        <button class="sidebar-btn" title="Deposits & Withdrawals" onclick="openSettingsTab('deposits')">
+                        <button class="sidebar-btn" title="Deposits & Withdrawals" data-action="openSettingsTab" data-args="deposits">
                             <span class="icon"><i class="fas fa-money-bill-wave"></i></span>
                             <span class="label">Deposits/Withdrawals</span>
                         </button>
 
-                        <button class="sidebar-btn" title="Contract verification" onclick="openSettingsTab('verification')">
+                        <button class="sidebar-btn" title="Contract verification" data-action="openSettingsTab" data-args="verification">
                             <span class="icon"><i class="fas fa-calculator"></i></span>
                             <span class="label">Contract Verification</span>
                         </button>
                         
-                        <button class="sidebar-btn" title="Export trades" onclick="exportTrades()" style="margin-top:6px;">
+                        <button class="sidebar-btn" title="Export trades" data-action="exportTrades" style="margin-top:6px;">
                             <span class="icon"><i class="fas fa-download"></i></span>
                             <span class="label">Export</span>
                         </button>
@@ -525,7 +525,7 @@
                         <!-- Accounts will be loaded here -->
                     </div>
                     <div class="p-3 border-t border-[rgba(255,255,255,0.06)]">
-                        <button onclick="showAddAccountModal()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm flex items-center justify-center font-semibold">
+                        <button data-action="showAddAccountModal" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm flex items-center justify-center font-semibold">
                             <span class="mr-2">+</span> Add New Account
                         </button>
                     </div>
@@ -533,7 +533,7 @@
             </div>
 
             <div class="sidebar-section">
-                <button onclick="logout()" title="Logout" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
+                <button data-action="logout" title="Logout" class="sidebar-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></button>
             </div>
         </aside>
 
@@ -589,10 +589,10 @@
                     <div class="mobile-submenu px-3 py-2" id="mobileAccountsSubmenu">
                         <button onclick="document.getElementById('accountTab').click(); document.getElementById('mobileMenu').classList.add('hidden');" class="block w-full text-left bg-transparent px-3 py-2 rounded text-sm mb-1 text-gray-300 hover:text-white">Open Account</button>
                         <h4 class="text-sm font-semibold mb-2">Trading Accounts</h4>
-                        <div id="mobileAccountsList" class="space-y-1">
+                        <div id="mobileAccountsListTop" class="space-y-1">
                             <!-- Mobile accounts will be loaded here -->
                         </div>
-                        <button onclick="showAddAccountModal()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mt-2 flex items-center justify-center font-semibold">
+                        <button data-action="showAddAccountModal" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mt-2 flex items-center justify-center font-semibold">
                             <span class="mr-2">+</span> Add New Account
                         </button>
                     </div>
@@ -600,12 +600,12 @@
             </div>
 
             <div class="px-2 pb-3 space-y-1">
-                <div class="px-3 py-2">
+                    <div class="px-3 py-2">
                     <h4 class="text-sm font-semibold mb-2">Trading Accounts</h4>
-                    <div id="mobileAccountsList" class="space-y-1">
+                    <div id="mobileAccountsListBottom" class="space-y-1">
                         <!-- Mobile accounts will be loaded here -->
                     </div>
-                    <button onclick="showAddAccountModal()" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mt-2 flex items-center justify-center font-semibold">
+                    <button data-action="showAddAccountModal" class="w-full bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded text-sm mt-2 flex items-center justify-center font-semibold">
                         <span class="mr-2">+</span> Add New Account
                     </button>
                 </div>
@@ -624,7 +624,7 @@
                         </div>
                     </div>
                 </div>
-                <button onclick="logout()" class="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">
+                <button data-action="logout" class="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">
                     Logout
                 </button>
             </div>
@@ -1530,13 +1530,13 @@
                     <h3 class="section-title mb-0">📋 Trade History</h3>
                     <div class="flex items-center space-x-2">
                         <div class="text-sm text-gray-400" id="tradeCount">0 trades</div>
-                        <button onclick="importMetaTraderTrades()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm flex items-center gap-1 font-semibold">
+                        <button data-action="importMetaTraderTrades" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm flex items-center gap-1 font-semibold">
                             <i class="fas fa-file-import"></i> Import MT4/MT5
                         </button>
-                        <button onclick="importTrades()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-semibold">
+                        <button data-action="importTrades" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-semibold">
                             <i class="fas fa-download"></i> Import CSV
                         </button>
-                        <button onclick="exportTrades()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-semibold">
+                        <button data-action="exportTrades" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-semibold">
                             <i class="fas fa-upload"></i> Export CSV
                         </button>
                     </div>
@@ -2154,7 +2154,7 @@
                     <!-- Accounts will be loaded here -->
                 </div>
                 <div class="border-t border-[rgba(255,255,255,0.04)] pt-6">
-                    <button onclick="showAddAccountModal()" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200">
+                    <button data-action="showAddAccountModal" class="bg-[#C9A84C] hover:bg-[#d4b85a] text-[#0a0a0a] px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200">
                         <i class="fas fa-plus-circle"></i> Add New Account
                     </button>
                 </div>
@@ -2335,10 +2335,10 @@
 
                             <!-- Action Buttons -->
                             <div class="flex gap-3 mb-6">
-                                <button onclick="openDepositModal()" class="bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                <button data-action="openDepositModal" class="bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
                                     <i class="fas fa-plus-circle"></i> Add Deposit
                                 </button>
-                                <button onclick="openWithdrawModal()" class="bg-[#E0565B] hover:bg-[#e46b6f] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
+                                <button data-action="openWithdrawModal" class="bg-[#E0565B] hover:bg-[#e46b6f] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
                                     <i class="fas fa-minus-circle"></i> Withdraw
                                 </button>
                                 <button onclick="exportTransactions()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
@@ -2530,7 +2530,7 @@
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-100"><i class="fas fa-plus-circle text-[#26A69A] mr-2"></i>Add Deposit</h3>
-                        <button onclick="closeDepositModal()" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
+                        <button data-action="closeDepositModal" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
                     </div>
                     <form id="depositForm">
                         <div class="space-y-4">
@@ -2547,7 +2547,7 @@
                                 <input type="text" id="depositDescription" placeholder="e.g., Initial deposit, Monthly funding" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div class="flex justify-end gap-3 pt-4">
-                                <button type="button" onclick="closeDepositModal()" class="px-6 py-2 text-gray-400 hover:text-gray-200">Cancel</button>
+                                <button type="button" data-action="closeDepositModal" class="px-6 py-2 text-gray-400 hover:text-gray-200">Cancel</button>
                                 <button type="submit" class="bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-2 rounded-xl font-semibold">Add Deposit</button>
                             </div>
                         </div>
@@ -2562,7 +2562,7 @@
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-100"><i class="fas fa-minus-circle text-[#E0565B] mr-2"></i>Withdraw Funds</h3>
-                        <button onclick="closeWithdrawModal()" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
+                        <button data-action="closeWithdrawModal" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
                     </div>
                     <form id="withdrawForm">
                         <div class="space-y-4">
@@ -2583,7 +2583,7 @@
                                 <input type="text" id="withdrawDescription" placeholder="e.g., Profit withdrawal" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] rounded-xl text-gray-100">
                             </div>
                             <div class="flex justify-end gap-3 pt-4">
-                                <button type="button" onclick="closeWithdrawModal()" class="px-6 py-2 text-gray-400 hover:text-gray-200">Cancel</button>
+                                <button type="button" data-action="closeWithdrawModal" class="px-6 py-2 text-gray-400 hover:text-gray-200">Cancel</button>
                                 <button type="submit" class="bg-[#E0565B] hover:bg-[#e46b6f] text-white px-6 py-2 rounded-xl font-semibold">Withdraw</button>
                             </div>
                         </div>

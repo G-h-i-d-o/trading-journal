@@ -1335,7 +1335,7 @@ function setupAccountsDropdown() {
 
 function renderAccountsList() {
     const accountsList = document.getElementById('accountsList');
-    const mobileAccountsList = document.getElementById('mobileAccountsList');
+    const mobileAccountsList = document.getElementById('mobileAccountsListTop') || document.getElementById('mobileAccountsListBottom') || document.getElementById('mobileAccountsList');
     if (!accountsList && !mobileAccountsList) return;
     const accountsHTML = userAccounts.map(account => `
         <div class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-200 ${account.id === currentAccountId ? 'bg-blue-50 border-blue-200' : ''}" 
@@ -1812,6 +1812,24 @@ function setupEventListeners() {
     setupAffirmationsEventListeners();
     setupAccountBalanceLock();
     setupTradeLockerPanel();
+    // Delegated handler for elements using `data-action` and optional `data-args`
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const args = btn.dataset.args ? btn.dataset.args.split(',') : [];
+        try {
+            const fn = window[action];
+            if (typeof fn === 'function') {
+                fn(...args);
+            } else {
+                console.warn(`No global function found for action: ${action}`);
+            }
+        } catch (err) {
+            console.error('Error handling data-action', action, err);
+        }
+    });
+
     console.log('✅ Event listeners setup complete');
 }
 
@@ -3117,7 +3135,7 @@ function setupMobileMenu() {
         mobileMenu.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') {
                 // Do not auto-close when interacting with the accounts list or toggles
-                if (e.target.closest('#mobileAccountsList') || e.target.closest('#mobileAccountsContainer') || e.target.closest('#mobileSettings')) {
+                if (e.target.closest('#mobileAccountsListTop') || e.target.closest('#mobileAccountsListBottom') || e.target.closest('#mobileAccountsList') || e.target.closest('#mobileAccountsContainer') || e.target.closest('#mobileSettings')) {
                     return;
                 }
                 mobileMenu.classList.add('hidden');
@@ -6781,4 +6799,49 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Trading Journal with Deriv Instruments, MT4/5 Import, and All Improvements initialized');
     hideLoading();
     initVerificationTool();
+    // Initialize UI navigation handlers
+    try { setupTabNavigation(); } catch (e) { console.warn('setupTabNavigation init failed', e); }
 });
+
+// Setup tab navigation and sidebar/mobile button handlers to avoid inline onclicks
+function setupTabNavigation() {
+    function showTabById(tabId) {
+        // set active button
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById(tabId);
+        if (btn) btn.classList.add('active');
+
+        // hide all contents and show the target
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const contentId = tabId.replace(/Tab$/, 'Content');
+        const content = document.getElementById(contentId);
+        if (content) content.classList.add('active');
+    }
+
+    // Wire top tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = btn.id;
+            showTabById(id);
+        });
+    });
+
+    // Wire sidebar and mobile nav buttons that use data-tab attributes
+    document.querySelectorAll('.sidebar-btn, .mobile-nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = btn.getAttribute('data-tab');
+            if (!target) return;
+            let tabId = `${target}Tab`;
+            if (!document.getElementById(tabId)) {
+                const alt = target.charAt(0).toUpperCase() + target.slice(1) + 'Tab';
+                if (document.getElementById(alt)) tabId = alt;
+            }
+            const tabBtn = document.getElementById(tabId);
+            if (tabBtn) tabBtn.click();
+        });
+    });
+
+    // Expose helper
+    window.showTabById = showTabById;
+}
