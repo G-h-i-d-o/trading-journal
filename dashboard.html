@@ -6,7 +6,8 @@
     <title>TradeWizer Journal - Dashboard</title>
     <meta name="theme-color" content="#0a0a0a">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.0.3/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./styles/stylesheetDashboard.css">
     <style>
@@ -1948,6 +1949,10 @@
                             <i class="fas fa-lock w-5 text-gray-400"></i>
                             <span>Trade Locker</span>
                         </button>
+                        <button id="toolsBacktestingBtn" onclick="switchToolsPanel('backtesting')" class="tools-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
+                            <i class="fas fa-chart-area w-5 text-gray-400"></i>
+                            <span>Backtesting</span>
+                        </button>
                     </aside>
                     <div class="flex-1 p-6 bg-[#0a0a0a]">
                         <div id="economicCalendarPanel" class="tools-panel active">
@@ -1973,6 +1978,62 @@
                             </div>
                             <div class="border border-[rgba(255,255,255,0.04)] rounded-2xl overflow-hidden">
                                 <div id="position-size-calculator-895896"><script type="text/javascript" src="https://www.cashbackforex.com/Content/remote/remote-widgets.js"></script><script type="text/javascript"> RemoteCalc({"Url":"https://www.cashbackforex.com", "TopPaneStyle":"YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCMzNDM1NDAgMCUsICMyNDI4MzEgMTAwJSk7IGNvbG9yOiB3aGl0ZTsgYm9yZGVyLWJvdHRvbTogbm9uZTs=","BottomPaneStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgYm9yZGVyOiBzb2xpZCAwcHggIzJhMmUzOTsgY29sb3I6ICM5MTk0YTE=","ButtonStyle":"YmFja2dyb3VuZDogIzM0MzU0MDsgY29sb3I6IHdoaXRlOyBib3JkZXItcmFkaXVzOiAyMHB4Ow==","TitleStyle":"dGV4dC1hbGlnbjogbGVmdDsgZm9udC1zaXplOiA0MHB4OyBmb250LXdlaWdodDogNTAwOw==","TextboxStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgY29sb3I6ICM5MTk0YTE7IGJvcmRlcjogc29saWQgMHB4ICM5MTk0YTE=" ,"ContainerWidth":"665","HighlightColor":"rgba(0,0,0,1.0)","IsDisplayTitle":true,"IsShowChartLinks":false,"IsShowEmbedButton":false,"CompactType":"large","Calculator":"position-size-calculator","ContainerId":"position-size-calculator-895896"});</script></div>
+                            </div>
+                        </div>
+                        <div id="backtestingPanel" class="tools-panel">
+                            <div class="mb-4">
+                                <h3 class="section-title"><i class="fas fa-chart-area"></i> Backtesting</h3>
+                                <p class="text-sm text-gray-400">Run a simple historical strategy simulation with no look-ahead bias and review its trade performance.</p>
+                            </div>
+                            <div class="grid gap-6 lg:grid-cols-2">
+                                <div class="p-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808]">
+                                    <h4 class="text-lg font-semibold text-gray-200 mb-4">Backtest Setup</h4>
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Instrument</label>
+                                    <select id="backtestSymbol" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100">
+                                        <option value="EURUSD">EUR/USD</option>
+                                        <option value="USDJPY">USD/JPY</option>
+                                        <option value="XAUUSD">XAU/USD</option>
+                                    </select>
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Starting Capital</label>
+                                    <input id="backtestCapital" type="number" min="0" value="10000" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                                    <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Risk Per Trade</label>
+                                    <input id="backtestRisk" type="number" min="0" step="0.01" value="0.1" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                                    <button id="runBacktestBtn" type="button" class="mt-6 w-full px-4 py-3 rounded-xl bg-[#C9A84C] text-[#0a0a0a] font-semibold hover:bg-[#d4b85a] transition-all">Run Backtest</button>
+                                </div>
+                                <div class="p-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808]">
+                                    <h4 class="text-lg font-semibold text-gray-200 mb-4">Results</h4>
+                                    <div class="space-y-3 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-400">Net P&amp;L</span><span id="backtestNetPnL" class="text-white font-semibold">$0.00</span></div>
+                                        <div class="flex justify-between"><span class="text-gray-400">Total Return</span><span id="backtestReturn" class="text-white font-semibold">0.00%</span></div>
+                                        <div class="flex justify-between"><span class="text-gray-400">Trades</span><span id="backtestTrades" class="text-white font-semibold">0</span></div>
+                                        <div class="flex justify-between"><span class="text-gray-400">Win Rate</span><span id="backtestWinRate" class="text-white font-semibold">0%</span></div>
+                                        <div class="flex justify-between"><span class="text-gray-400">End Capital</span><span id="backtestEndCapital" class="text-white font-semibold">$0.00</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="backtestSummary" class="mt-6 p-4 rounded-xl border border-[rgba(255,255,255,0.04)] bg-[#080808] text-sm text-gray-300"></div>
+                            <div class="mt-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808] overflow-hidden">
+                                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.04)] px-4 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <button id="replayStepBackBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-200 hover:bg-[rgba(255,255,255,0.08)]">⏮</button>
+                                        <button id="replayPlayPauseBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[#C9A84C] text-[#0a0a0a] font-semibold">Play</button>
+                                        <button id="replayStepForwardBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-200 hover:bg-[rgba(255,255,255,0.08)]">⏭</button>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-sm text-gray-300">
+                                        <label for="replaySpeed" class="text-xs uppercase tracking-wide text-gray-400">Speed</label>
+                                        <select id="replaySpeed" class="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg px-2 py-1.5 text-gray-200">
+                                            <option value="0.5">0.5x</option>
+                                            <option value="1" selected>1x</option>
+                                            <option value="2">2x</option>
+                                            <option value="5">5x</option>
+                                            <option value="10">10x</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <div id="backtestChartCanvas" class="w-full h-[340px] rounded-xl bg-[#0d0d0d] border border-[rgba(255,255,255,0.04)]"></div>
+                                </div>
+                                <div id="replayStatus" class="px-4 pb-4 text-sm text-gray-400">Ready to simulate historical price action.</div>
                             </div>
                         </div>
                         <div id="tradeLockerPanel" class="tools-panel">
@@ -2334,7 +2395,7 @@
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex gap-3 mb-6">
+                            <div class="flex flex-wrap gap-3 mb-6">
                                 <button data-action="openDepositModal" class="bg-[#26A69A] hover:bg-[#2bb8aa] text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all">
                                     <i class="fas fa-plus-circle"></i> Add Deposit
                                 </button>
@@ -2348,8 +2409,16 @@
 
                             <!-- Transaction History -->
                             <div class="bg-[#0a0a0a] rounded-xl border border-[rgba(255,255,255,0.04)] overflow-hidden">
-                                <div class="px-6 py-4 bg-[#0a0a0a] border-b border-[rgba(255,255,255,0.04)]">
+                                <div class="px-6 py-4 bg-[#0a0a0a] border-b border-[rgba(255,255,255,0.04)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <h4 class="font-semibold text-gray-200"><i class="fas fa-history mr-2"></i>Transaction History</h4>
+                                    <div class="flex items-center gap-2">
+                                        <label for="transactionFilter" class="text-xs font-semibold uppercase tracking-wide text-gray-400">Filter</label>
+                                        <select id="transactionFilter" class="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-[#C9A84C]">
+                                            <option value="all">All</option>
+                                            <option value="deposit">Deposits only</option>
+                                            <option value="withdrawal">Withdrawals only</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div id="transactionHistory" class="divide-y divide-[rgba(255,255,255,0.04)]">
                                     <div class="text-center text-gray-400 py-8">
@@ -2357,6 +2426,7 @@
                                         <p>No transactions yet</p>
                                     </div>
                                 </div>
+                                <div id="transactionPagination" class="px-6 py-4 border-t border-[rgba(255,255,255,0.04)]"></div>
                             </div>
                         </div>
 
@@ -2530,7 +2600,7 @@
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-100"><i class="fas fa-plus-circle text-[#26A69A] mr-2"></i>Add Deposit</h3>
-                        <button data-action="closeDepositModal" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
+                        <button type="button" data-action="closeDepositModal" class="text-gray-400 hover:text-gray-200 text-2xl" aria-label="Close deposit modal">&times;</button>
                     </div>
                     <form id="depositForm">
                         <div class="space-y-4">
@@ -2562,7 +2632,7 @@
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-100"><i class="fas fa-minus-circle text-[#E0565B] mr-2"></i>Withdraw Funds</h3>
-                        <button data-action="closeWithdrawModal" class="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
+                        <button type="button" data-action="closeWithdrawModal" class="text-gray-400 hover:text-gray-200 text-2xl" aria-label="Close withdrawal modal">&times;</button>
                     </div>
                     <form id="withdrawForm">
                         <div class="space-y-4">

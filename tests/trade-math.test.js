@@ -23,6 +23,14 @@ import {
   validateAccountSetupInput,
 } from '../src/profile-validation.js';
 import { normalizeScreenshotUrl, isRenderableImageUrl } from '../src/screenshot-utils.js';
+import {
+  filterTransactions,
+  paginateTransactions,
+} from '../src/transaction-history.js';
+import {
+  generateSyntheticCandles,
+  runBacktest,
+} from '../src/backtesting-engine.js';
 
 test('calculateProfitLoss for a long EUR/USD trade is correct', () => {
   const result = calculateProfitLoss(1.1000, 1.1050, 1, 'EUR/USD', 'long');
@@ -167,6 +175,55 @@ test('profile, objective, and account setup validation produce clear errors', ()
 
   const validAccount = validateAccountSetupInput({ balance: 2500, currency: 'USD', riskPerTrade: 1, leverage: 50 });
   assert.equal(validAccount.valid, true);
+});
+
+test('transaction filtering and pagination keep lists concise and predictable', () => {
+  const transactions = [
+    { id: '1', type: 'deposit', amount: 100 },
+    { id: '2', type: 'withdrawal', amount: 50 },
+    { id: '3', type: 'deposit', amount: 75 },
+    { id: '4', type: 'withdrawal', amount: 30 },
+    { id: '5', type: 'deposit', amount: 20 },
+    { id: '6', type: 'deposit', amount: 10 },
+  ];
+
+  const filteredDeposits = filterTransactions(transactions, 'deposit');
+  assert.deepEqual(filteredDeposits.map((tx) => tx.id), ['1', '3', '5', '6']);
+
+  const pageOne = paginateTransactions(transactions, 1, 5);
+  assert.equal(pageOne.items.length, 5);
+  assert.equal(pageOne.totalPages, 2);
+  assert.deepEqual(pageOne.items.map((tx) => tx.id), ['1', '2', '3', '4', '5']);
+
+  const pageTwo = paginateTransactions(transactions, 2, 5);
+  assert.deepEqual(pageTwo.items.map((tx) => tx.id), ['6']);
+});
+
+test('backtesting engine enforces a no-lookahead trading model and returns deterministic results', () => {
+  const candles = generateSyntheticCandles({
+    symbol: 'EURUSD',
+    startDate: '2024-01-01T00:00:00Z',
+    totalBars: 60,
+    drift: 0.0005,
+    volatility: 0.0012,
+  });
+
+  const result = runBacktest({
+    candles,
+    initialCapital: 10000,
+    riskPerTrade: 0.1,
+    strategy: 'sma-crossover',
+  });
+
+  assert.ok(Array.isArray(result.trades));
+  assert.ok(result.summary.totalTrades >= 0);
+  assert.ok(Number.isFinite(result.summary.netPnL));
+  assert.ok(result.equityCurve.length >= 1);
+
+  result.trades.forEach((trade) => {
+    assert.ok(trade.entryIndex < trade.exitIndex, 'trade must not use future candles to exit before entering');
+    assert.ok(trade.entryPrice > 0 && trade.exitPrice > 0, 'trade pricing must be valid');
+  });
 });
 
 test('chart screenshot links normalize across chart providers and preserve share pages', () => {

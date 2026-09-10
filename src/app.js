@@ -32,6 +32,8 @@ import {
     setupSettingsTab as setupSettingsTabHelper,
 } from './settings-ui.js';
 import { validateTransactionInput } from './transaction-validation.js';
+import { filterTransactions, paginateTransactions } from './transaction-history.js';
+import { runBacktest, generateSyntheticCandles } from './backtesting-engine.js';
 import { validateAffirmationInput } from './affirmation-validation.js';
 import { validateProfileInput, validateObjectivesInput, validateAccountSetupInput } from './profile-validation.js';
 import { normalizeScreenshotUrl } from './screenshot-utils.js';
@@ -48,6 +50,10 @@ const tradesPerPage = 10;
 let allTrades = [];
 let allAffirmations = [];
 let editingAffirmationId = null;
+let replayState = null;
+let replayTimer = null;
+let backtestChart = null;
+let backtestSeries = null;
 
 // Account Management System
 let currentAccountId = null;
@@ -1806,6 +1812,17 @@ function setupEventListeners() {
             updateLotSizeDisplay();
         });
     }
+    const backtestBtn = document.getElementById('runBacktestBtn');
+    if (backtestBtn) {
+        backtestBtn.addEventListener('click', runBacktestingFromTools);
+    }
+    setupReplayControls();
+    const transactionFilter = document.getElementById('transactionFilter');
+    if (transactionFilter) {
+        transactionFilter.addEventListener('change', () => {
+            loadTransactions(1, transactionFilter.value);
+        });
+    }
     updatePricePipsModeUI();
     updateRiskCalculation();
     setupSidebarCollapse();
@@ -1814,6 +1831,14 @@ function setupEventListeners() {
     setupTradeLockerPanel();
     // Delegated handler for elements using `data-action` and optional `data-args`
     document.addEventListener('click', (e) => {
+        const paginationBtn = e.target.closest('[data-transaction-page]');
+        if (paginationBtn) {
+            const page = Number(paginationBtn.dataset.transactionPage);
+            const filter = paginationBtn.dataset.transactionFilter || 'all';
+            loadTransactions(page, filter);
+            return;
+        }
+
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
         const action = btn.dataset.action;
@@ -2659,24 +2684,36 @@ function openDepositModal() {
     const modal = document.getElementById('depositModal');
     const currentAccount = getCurrentAccount();
     if (currentAccount) updateDepositWithdrawalDisplay(currentAccount);
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
 }
 
 function closeDepositModal() {
     const modal = document.getElementById('depositModal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+    }
 }
 
 function openWithdrawModal() {
     const modal = document.getElementById('withdrawModal');
     const currentAccount = getCurrentAccount();
     if (currentAccount) updateDepositWithdrawalDisplay(currentAccount);
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
 }
 
 function closeWithdrawModal() {
     const modal = document.getElementById('withdrawModal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+    }
 }
 
 async function handleDepositSubmit() {
@@ -2858,25 +2895,73 @@ async function recalculateAccountBalance() {
     console.log('✅ Balance recalculated:', currentAccount.balance);
 }
 
-function loadTransactions() {
+function getFilteredTransactionPage(account, page = 1, filter = 'all') {
+    const transactions = filterTransactions(account?.transactions || [], filter);
+    const perPage = 5;
+    const pagination = paginateTransactions(transactions, page, perPage);
+    return { transactions: pagination.items, pagination, allTransactions: transactions };
+}
+
+function renderTransactionPagination(page, totalPages, filter) {
+    const container = document.getElementById('transactionPagination');
+    if (!container) return;
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const buttons = [];
+    for (let index = 1; index <= totalPages; index += 1) {
+        const activeClass = index === page ? 'bg-[#C9A84C] text-[#0a0a0a]' : 'bg-[rgba(255,255,255,0.04)] text-gray-300 hover:bg-[rgba(255,255,255,0.08)]';
+        buttons.push(`
+            <button type="button" data-transaction-page="${index}" data-transaction-filter="${filter}" class="px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${activeClass}">
+                ${index}
+            </button>
+        `);
+    }
+
+    container.innerHTML = `
+        <div class="flex items-center justify-between gap-3 text-sm text-gray-400">
+            <button type="button" data-transaction-page="${Math.max(1, page - 1)}" data-transaction-filter="${filter}" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-300 hover:bg-[rgba(255,255,255,0.08)] ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${page === 1 ? 'disabled' : ''}>
+                Previous
+            </button>
+            <div class="flex items-center gap-2">
+                ${buttons.join('')}
+            </div>
+            <button type="button" data-transaction-page="${Math.min(totalPages, page + 1)}" data-transaction-filter="${filter}" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-300 hover:bg-[rgba(255,255,255,0.08)] ${page === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${page === totalPages ? 'disabled' : ''}>
+                Next
+            </button>
+        </div>
+    `;
+}
+
+function loadTransactions(page = 1, filter = 'all') {
     const currentAccount = getCurrentAccount();
     if (!currentAccount) return;
     const historyContainer = document.getElementById('transactionHistory');
+    const filterSelect = document.getElementById('transactionFilter');
+    const activeFilter = filterSelect ? filterSelect.value : filter;
+    if (filterSelect) {
+        filterSelect.value = activeFilter;
+    }
     if (!historyContainer) return;
     const currencySymbol = getCurrencySymbol(currentAccount.currency);
     updateTransactionSummary(currentAccount);
-    const transactions = currentAccount.transactions || [];
-    if (transactions.length === 0) {
+    const filteredTransactions = filterTransactions(currentAccount.transactions || [], activeFilter);
+    const { items: pageItems, pagination } = getFilteredTransactionPage(currentAccount, page, activeFilter);
+    if (filteredTransactions.length === 0) {
         historyContainer.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
-                <p>No transactions yet. Add your first deposit or withdrawal above.</p>
+                <p>No transactions match this filter.</p>
             </div>
         `;
+        renderTransactionPagination(page, 1, activeFilter);
         return;
     }
-    const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
-    const ascendingTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedTransactions = [...filteredTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const ascendingTransactions = [...filteredTransactions].sort((a, b) => new Date(a.date) - new Date(b.date));
     let runningBalance = currentAccount.initialBalance;
     if (runningBalance === undefined) {
         const netTransactions = ascendingTransactions.reduce((sum, trans) => {
@@ -2893,7 +2978,7 @@ function loadTransactions() {
         }
         balanceMap[trans.id] = runningBalance;
     });
-    historyContainer.innerHTML = sortedTransactions.map(trans => {
+    historyContainer.innerHTML = pageItems.map(trans => {
         const transDate = new Date(trans.date).toLocaleString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -2930,7 +3015,8 @@ function loadTransactions() {
             </div>
         `;
     }).join('');
-    console.log('✅ Transactions loaded:', transactions.length);
+    renderTransactionPagination(pagination.page, pagination.totalPages, activeFilter);
+    console.log('✅ Transactions loaded:', filteredTransactions.length, 'filtered,', pageItems.length, 'visible on page', pagination.page);
 }
 
 function updateTransactionSummary(account) {
@@ -3096,7 +3182,236 @@ function switchToolsPanel(panelName) {
     if (panelName === 'tradeLocker') {
         loadLockerSettings();
     }
+    if (panelName === 'backtesting') {
+        const summary = document.getElementById('backtestSummary');
+        if (summary) {
+            summary.textContent = 'Ready to simulate a no-lookahead historical strategy test.';
+        }
+        if (!replayState && document.getElementById('backtestChartCanvas')) {
+            renderReplayChart();
+        }
+    }
 }
+
+function renderReplayChart() {
+    const container = document.getElementById('backtestChartCanvas');
+    const status = document.getElementById('replayStatus');
+    if (!container || typeof window === 'undefined' || !window.LightweightCharts) {
+        return;
+    }
+
+    const candles = replayState?.candles || [];
+    if (!candles.length) {
+        return;
+    }
+
+    const chartData = candles.map((candle) => ({
+        time: Math.floor(new Date(candle.time).getTime() / 1000),
+        open: Number(candle.open),
+        high: Number(candle.high),
+        low: Number(candle.low),
+        close: Number(candle.close),
+        symbol: candle.symbol,
+    }));
+
+    const currentIndex = replayState?.currentIndex ?? chartData.length - 1;
+    const visibleData = chartData.slice(Math.max(0, currentIndex - 24), currentIndex + 1);
+    const currentCandle = chartData[currentIndex] || chartData[chartData.length - 1];
+
+    if (status) {
+        status.textContent = `${currentCandle.symbol} • ${new Date(currentCandle.time * 1000).toLocaleString()} • ${Number(currentCandle.close).toFixed(5)}`;
+    }
+
+    if (!backtestChart) {
+        backtestChart = window.LightweightCharts.createChart(container, {
+            width: container.clientWidth || 920,
+            height: container.clientHeight || 340,
+            layout: {
+                background: { color: '#0d0d0d' },
+                textColor: '#d1d5db',
+                fontFamily: 'Inter, sans-serif',
+            },
+            grid: {
+                vertLines: { color: 'rgba(255,255,255,0.05)' },
+                horzLines: { color: 'rgba(255,255,255,0.05)' },
+            },
+            rightPriceScale: {
+                borderColor: 'rgba(255,255,255,0.08)',
+                textColor: '#9ca3af',
+            },
+            timeScale: {
+                borderColor: 'rgba(255,255,255,0.08)',
+                timeVisible: true,
+                secondsVisible: false,
+                fixLeftEdge: false,
+            },
+            crosshair: {
+                vertLine: { color: 'rgba(201,168,76,0.6)' },
+                horzLine: { color: 'rgba(201,168,76,0.5)' },
+            },
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+                horzTouchDrag: true,
+                vertTouchDrag: false,
+            },
+            handleScale: {
+                axisPressedMouseMove: true,
+                mouseWheel: true,
+                pinch: true,
+            },
+        });
+
+        backtestSeries = backtestChart.addSeries(window.LightweightCharts.CandlestickSeries, {
+            upColor: '#22c55e',
+            downColor: '#ef4444',
+            borderVisible: false,
+            wickUpColor: '#22c55e',
+            wickDownColor: '#ef4444',
+            priceLineColor: '#C9A84C',
+        });
+    }
+
+    if (backtestSeries) {
+        backtestSeries.setData(visibleData);
+        const startIndex = Math.max(0, currentIndex - 24);
+        const visibleRange = { from: Math.max(0, chartData[startIndex]?.time || 0), to: chartData[currentIndex]?.time || chartData[chartData.length - 1]?.time };
+        backtestChart.timeScale().setVisibleRange({ from: visibleRange.from, to: visibleRange.to });
+    }
+}
+
+function setupReplayControls() {
+    const playPauseBtn = document.getElementById('replayPlayPauseBtn');
+    const stepBackBtn = document.getElementById('replayStepBackBtn');
+    const stepForwardBtn = document.getElementById('replayStepForwardBtn');
+    const speedSelect = document.getElementById('replaySpeed');
+
+    if (playPauseBtn) {
+        playPauseBtn.addEventListener('click', () => {
+            if (!replayState || replayState.candles.length === 0) {
+                return;
+            }
+            replayState.playing = !replayState.playing;
+            playPauseBtn.textContent = replayState.playing ? 'Pause' : 'Play';
+            if (replayState.playing) {
+                const speed = Number(speedSelect?.value || 1);
+                clearInterval(replayTimer);
+                replayTimer = setInterval(() => {
+                    if (!replayState || !replayState.playing) {
+                        return;
+                    }
+                    replayState.currentIndex = Math.min(replayState.candles.length - 1, replayState.currentIndex + 1);
+                    renderReplayChart();
+                    if (replayState.currentIndex >= replayState.candles.length - 1) {
+                        replayState.playing = false;
+                        if (playPauseBtn) playPauseBtn.textContent = 'Play';
+                        clearInterval(replayTimer);
+                    }
+                }, Math.max(80, 1000 / speed));
+            } else {
+                clearInterval(replayTimer);
+            }
+        });
+    }
+
+    if (stepBackBtn) {
+        stepBackBtn.addEventListener('click', () => {
+            if (!replayState || replayState.candles.length === 0) return;
+            replayState.currentIndex = Math.max(0, replayState.currentIndex - 1);
+            replayState.playing = false;
+            if (playPauseBtn) playPauseBtn.textContent = 'Play';
+            clearInterval(replayTimer);
+            renderReplayChart();
+        });
+    }
+
+    if (stepForwardBtn) {
+        stepForwardBtn.addEventListener('click', () => {
+            if (!replayState || replayState.candles.length === 0) return;
+            replayState.currentIndex = Math.min(replayState.candles.length - 1, replayState.currentIndex + 1);
+            replayState.playing = false;
+            if (playPauseBtn) playPauseBtn.textContent = 'Play';
+            clearInterval(replayTimer);
+            renderReplayChart();
+        });
+    }
+
+    if (speedSelect) {
+        speedSelect.addEventListener('change', () => {
+            if (replayState && replayState.playing) {
+                playPauseBtn?.click();
+                playPauseBtn?.click();
+            }
+        });
+    }
+}
+
+function runBacktestingFromTools() {
+    const capital = Number(document.getElementById('backtestCapital')?.value || 10000);
+    const risk = Number(document.getElementById('backtestRisk')?.value || 0.1);
+    const symbol = document.getElementById('backtestSymbol')?.value || 'EURUSD';
+
+    const candles = generateSyntheticCandles({
+        symbol,
+        startDate: '2024-01-01T00:00:00Z',
+        totalBars: 80,
+        drift: 0.0004,
+        volatility: 0.001,
+    });
+
+    const result = runBacktest({
+        candles,
+        initialCapital: capital,
+        riskPerTrade: risk,
+        strategy: 'sma-crossover',
+    });
+
+    const netPnL = result.summary.netPnL || 0;
+    const totalReturn = result.summary.totalReturn || 0;
+    const winRate = result.trades.length ? (result.trades.filter((trade) => trade.netPnL > 0).length / result.trades.length) * 100 : 0;
+
+    const currency = '$';
+    const formatCurrency = (value) => `${currency}${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const netPnLEl = document.getElementById('backtestNetPnL');
+    const returnEl = document.getElementById('backtestReturn');
+    const tradesEl = document.getElementById('backtestTrades');
+    const winRateEl = document.getElementById('backtestWinRate');
+    const endCapitalEl = document.getElementById('backtestEndCapital');
+    const summaryEl = document.getElementById('backtestSummary');
+
+    replayState = {
+        candles,
+        currentIndex: 0,
+        playing: false,
+        speed: Number(document.getElementById('replaySpeed')?.value || 1),
+        initialCapital: capital,
+        riskPerTrade: risk,
+        strategy: 'sma-crossover',
+    };
+
+    if (netPnLEl) netPnLEl.textContent = formatCurrency(netPnL);
+    if (returnEl) returnEl.textContent = `${totalReturn.toFixed(2)}%`;
+    if (tradesEl) tradesEl.textContent = String(result.summary.totalTrades || 0);
+    if (winRateEl) winRateEl.textContent = `${winRate.toFixed(1)}%`;
+    if (endCapitalEl) endCapitalEl.textContent = formatCurrency(result.summary.endCapital || capital);
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+            <div class="font-semibold text-gray-200 mb-2">Backtest Summary</div>
+            <div class="space-y-2 text-gray-300">
+                <div>Symbol: <span class="text-white">${result.symbol}</span></div>
+                <div>Open positions remain constrained by historical data only; no future candle access is used.</div>
+                <div>Trades executed: <span class="text-white">${result.summary.totalTrades || 0}</span></div>
+                <div>Ending capital: <span class="text-white">${formatCurrency(result.summary.endCapital || capital)}</span></div>
+            </div>
+        `;
+    }
+
+    renderReplayChart();
+    showSuccessMessage('Backtest completed successfully.');
+}
+
+window.runBacktestingFromTools = runBacktestingFromTools;
 
 window.switchToolsPanel = switchToolsPanel;
 
@@ -4077,7 +4392,8 @@ function parseMetaTraderCSV(csvText) {
             if (!ticket) continue;
             const mappedSymbol = mapMTSymbol(item);
             const tradeType = type.includes('buy') ? 'long' : 'short';
-            let finalProfit = parseFloat(profit) || 0;
+            const mtProfit = parseFloat(profit) || 0;
+            let finalProfit = mtProfit;
             if (mtImportSettings.useMTProfit) {
                 if (mtImportSettings.includeCommission) finalProfit += parseFloat(commission) || 0;
                 if (mtImportSettings.includeSwap) finalProfit += parseFloat(swap) || 0;
@@ -4099,7 +4415,7 @@ function parseMetaTraderCSV(csvText) {
                 takeProfit: parseFloat(tp) || null,
                 lotSize: parseFloat(size) || 0.01,
                 closePrice: parseFloat(closePrice) || 0,
-                baseProfit: finalProfit,
+                baseProfit: mtProfit,
                 profit: finalProfit,
                 commission: parseFloat(commission) || 0,
                 swap: parseFloat(swap) || 0,
@@ -4345,6 +4661,7 @@ window.confirmMTImport = async () => {
                     stopLoss: trade.stopLoss,
                     takeProfit: trade.takeProfit,
                     lotSize: trade.lotSize,
+                    exitPrice: trade.closePrice,
                     mood: trade.mood,
                     beforeScreenshot: trade.beforeScreenshot,
                     afterScreenshot: trade.afterScreenshot,
@@ -4693,6 +5010,8 @@ function calculateConfluenceMetrics(trades) {
 function renderConfluenceChart(trades = []) {
     const ctx = document.getElementById('confluenceChart');
     if (!ctx) return;
+    const ChartConstructor = getChartConstructor();
+    if (!ChartConstructor) return;
     if (confluenceChart) confluenceChart.destroy();
     const scoreBuckets = [
         { label: '0-20%', max: 20 },
@@ -4708,7 +5027,7 @@ function renderConfluenceChart(trades = []) {
         const bucketIndex = scoreBuckets.findIndex(bucket => score <= bucket.max);
         if (bucketIndex >= 0) bucketCounts[bucketIndex]++;
     });
-    confluenceChart = new Chart(ctx, {
+    confluenceChart = new ChartConstructor(ctx, {
         type: 'bar',
         data: {
             labels: scoreBuckets.map(bucket => bucket.label),
@@ -4851,6 +5170,14 @@ function getTradingMonths(trades) {
 }
 
 // ========== CHART FUNCTIONS ==========
+function getChartConstructor() {
+    if (typeof window !== 'undefined' && typeof window.Chart === 'function') {
+        return window.Chart;
+    }
+    console.warn('[CHARTS] Chart.js is unavailable; skipping analytics chart rendering.');
+    return null;
+}
+
 function getBalanceProgressFilterOptions() {
     return [
         { value: 'all', label: 'All trades' },
@@ -4912,12 +5239,14 @@ function renderCharts(trades = []) {
 function renderPerformanceChart(trades) {
     const ctx = document.getElementById('performanceChart');
     if (!ctx) return;
+    const ChartConstructor = getChartConstructor();
+    if (!ChartConstructor) return;
     if (performanceChart) performanceChart.destroy();
     const currencySymbol = getCurrencySymbol();
     const filteredTrades = getFilteredBalanceProgressTrades(trades);
 
     if (filteredTrades.length === 0 && trades.length === 0) {
-        performanceChart = new Chart(ctx, {
+        performanceChart = new ChartConstructor(ctx, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Balance', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
@@ -4940,7 +5269,7 @@ function renderPerformanceChart(trades) {
         labels.push(dateLabel);
     });
 
-    performanceChart = new Chart(ctx, {
+    performanceChart = new ChartConstructor(ctx, {
         type: 'line',
         data: {
             labels: labels,
@@ -5005,9 +5334,11 @@ function renderPerformanceChart(trades) {
 function renderWinLossChart(trades) {
     const ctx = document.getElementById('winLossChart');
     if (!ctx) return;
+    const ChartConstructor = getChartConstructor();
+    if (!ChartConstructor) return;
     if (winLossChart) winLossChart.destroy();
     if (trades.length === 0) {
-        winLossChart = new Chart(ctx, {
+        winLossChart = new ChartConstructor(ctx, {
             type: 'doughnut',
             data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#9ca3af'] }] },
             options: { responsive: true, maintainAspectRatio: false }
@@ -5017,7 +5348,7 @@ function renderWinLossChart(trades) {
     const wins = trades.filter(t => t.profit > 0).length;
     const losses = trades.filter(t => t.profit < 0).length;
     const breakeven = trades.filter(t => t.profit === 0).length;
-    winLossChart = new Chart(ctx, {
+    winLossChart = new ChartConstructor(ctx, {
         type: 'doughnut',
         data: {
             labels: [`Wins (${wins})`, `Losses (${losses})`, `Breakeven (${breakeven})`],
@@ -5042,9 +5373,11 @@ function renderWinLossChart(trades) {
 function renderMarketTypeChart(trades) {
     const ctx = document.getElementById('marketTypeChart');
     if (!ctx) return;
+    const ChartConstructor = getChartConstructor();
+    if (!ChartConstructor) return;
     if (marketTypeChart) marketTypeChart.destroy();
     if (trades.length === 0) {
-        marketTypeChart = new Chart(ctx, {
+        marketTypeChart = new ChartConstructor(ctx, {
             type: 'pie',
             data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#9ca3af'] }] },
             options: { responsive: true, maintainAspectRatio: false }
@@ -5069,7 +5402,7 @@ function renderMarketTypeChart(trades) {
     if (typeCounts.smarttrader > 0) { labels.push(`SmartTrader (${typeCounts.smarttrader})`); data.push(typeCounts.smarttrader); colors.push('#06b6d4'); }
     if (typeCounts.accumulator > 0) { labels.push(`Accumulator (${typeCounts.accumulator})`); data.push(typeCounts.accumulator); colors.push('#ef4444'); }
     if (labels.length === 0) { labels.push('No Trades'); data.push(1); colors.push('#9ca3af'); }
-    marketTypeChart = new Chart(ctx, {
+    marketTypeChart = new ChartConstructor(ctx, {
         type: 'pie',
         data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 2, borderColor: '#ffffff' }] },
         options: {
