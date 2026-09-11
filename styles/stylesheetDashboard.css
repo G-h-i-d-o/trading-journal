@@ -928,6 +928,26 @@ body.sidebar-collapsed #sidebar .brand img {
     color: #D4AF37;
 }
 
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-theme-toggle .theme-icon-dark[hidden],
+.sidebar-theme-toggle .theme-icon-light[hidden] {
+    display: none;
+}
+
+.sidebar-theme-toggle {
+    color: #d1d5db;
+}
+
+.sidebar-theme-toggle:hover {
+    background: rgba(201, 168, 76, 0.12) !important;
+    color: #D4AF37 !important;
+}
+
 /* ----- Content Wrapper ----- */
 .content-wrapper {
     margin-left: 0;
@@ -1477,6 +1497,204 @@ body.sidebar-collapsed #sidebar .brand img {
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .fixed.inset-0 .text-gray-800 { color: #fafafa !important; }
+
+/* Light theme is scoped to the root attribute so the existing dark default is unchanged. */
+html[data-theme="light"] {
+    --light-canvas: #eef3f7;
+    --light-surface: #ffffff;
+    --light-surface-muted: #f7fafc;
+    --light-border: #d9e2ea;
+    --light-border-strong: #c6d3df;
+    --light-ink: #203047;
+    --light-muted: #65758b;
+    --light-accent: #b78327;
+    --light-accent-soft: rgba(183, 131, 39, 0.12);
+    --light-teal: #16877d;
+}
+
+html[data-theme="light"] body {
+    background: linear-gradient(135deg, #eef3f7 0%, #f8fafc 52%, #edf5f2 100%);
+    color: var(--light-ink);
+}
+
+html[data-theme="light"] .content-wrapper {
+    background: transparent;
+}
+
+html[data-theme="light"] .bg-gray-900,
+html[data-theme="light"] .bg-gray-800,
+html[data-theme="light"] .bg-\[\#0a0a0a\],
+html[data-theme="light"] .bg-\[\#121212\] {
+    background-color: var(--light-surface) !important;
+}
+
+html[data-theme="light"] .text-gray-100,
+html[data-theme="light"] .text-gray-200,
+html[data-theme="light"] .text-gray-300,
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-gray-800 {
+    color: var(--light-ink) !important;
+}
+
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-gray-500,
+html[data-theme="light"] .text-gray-600 {
+    color: var(--light-muted) !important;
+}
+
+html[data-theme="light"] .border-gray-700,
+html[data-theme="light"] .border-gray-600,
+html[data-theme="light"] .border-gray-200 {
+    border-color: var(--light-border) !important;
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .metric-card,
+html[data-theme="light"] .emotion-card,
+html[data-theme="light"] .objective-card,
+html[data-theme="light"] .status-banner,
+html[data-theme="light"] .trader-profile-card,
+html[data-theme="light"] .account-card,
+html[data-theme="light"] .affirmation-card {
+    background: var(--light-surface);
+    color: var(--light-ink);
+    border-color: var(--light-border);
+    box-shadow: 0 8px 24px rgba(52, 72, 91, 0.08);
+}
+
+html[data-theme="light"] .card:hover,
+html[data-theme="light"] .stat-card:hover,
+html[data-theme="light"] .objective-card:hover,
+html[data-theme="light"] .account-card:hover {
+    border-color: var(--light-border-strong);
+    box-shadow: 0 12px 30px rgba(52, 72, 91, 0.12);
+}
+
+html[data-theme="light"] .section-title,
+html[data-theme="light"] .stat-value,
+html[data-theme="light"] .objective-card .card-header h4 {
+    color: var(--light-ink);
+}
+
+html[data-theme="light"] .section-title,
+html[data-theme="light"] .settings-vertical-nav > div:first-child {
+    border-color: var(--light-border);
+}
+
+html[data-theme="light"] .section-title i,
+html[data-theme="light"] .settings-nav-item.active,
+html[data-theme="light"] .settings-nav-item.active i,
+html[data-theme="light"] .objective-card .metric-row .value.gold {
+    color: var(--light-accent) !important;
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+    background-color: var(--light-surface) !important;
+    color: var(--light-ink) !important;
+    border-color: var(--light-border-strong) !important;
+    box-shadow: 0 2px 5px rgba(52, 72, 91, 0.04);
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] textarea:focus {
+    border-color: var(--light-accent) !important;
+    box-shadow: 0 0 0 3px var(--light-accent-soft);
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+    color: #91a0b1;
+}
+
+html[data-theme="light"] select option {
+    background: var(--light-surface);
+    color: var(--light-ink);
+}
+
+html[data-theme="light"] select option:checked {
+    background: #ead9ad;
+    color: var(--light-ink);
+}
+
+html[data-theme="light"] label,
+html[data-theme="light"] .form-group label {
+    color: #40536b;
+}
+
+html[data-theme="light"] #sidebar {
+    background: #f8fbfd;
+    color: var(--light-ink);
+    border-right-color: var(--light-border);
+    box-shadow: 2px 0 24px rgba(52, 72, 91, 0.08);
+}
+
+html[data-theme="light"] .sidebar-footer {
+    border-top-color: var(--light-border);
+}
+
+html[data-theme="light"] .sidebar-theme-toggle {
+    color: #40536b;
+}
+
+html[data-theme="light"] .sidebar-theme-toggle:hover {
+    background: var(--light-accent-soft) !important;
+    color: #946a18 !important;
+}
+
+html[data-theme="light"] #sidebar .brand,
+html[data-theme="light"] #sidebar .sidebar-btn,
+html[data-theme="light"] .sidebar-settings .sidebar-section-title {
+    color: #40536b;
+}
+
+html[data-theme="light"] #sidebar .sidebar-btn:hover,
+html[data-theme="light"] .settings-nav-item:hover {
+    background: #eaf1f5;
+    color: var(--light-ink);
+}
+
+html[data-theme="light"] #sidebar .sidebar-btn.active,
+html[data-theme="light"] #sidebar .sidebar-btn.active:hover,
+html[data-theme="light"] .settings-nav-item.active {
+    background: var(--light-accent-soft);
+    border-color: rgba(183, 131, 39, 0.25);
+    color: #946a18;
+}
+
+html[data-theme="light"] #sidebar .sidebar-btn.active .icon,
+html[data-theme="light"] .settings-nav-item.active i {
+    color: var(--light-accent) !important;
+}
+
+html[data-theme="light"] .settings-vertical-nav,
+html[data-theme="light"] .tools-vertical-nav {
+    background: #f8fbfd;
+    border-color: var(--light-border);
+}
+
+html[data-theme="light"] .fixed.inset-0 {
+    background: rgba(32, 48, 71, 0.38) !important;
+}
+
+html[data-theme="light"] .fixed.inset-0 .bg-white,
+html[data-theme="light"] .fixed.inset-0 .bg-gray-900 {
+    background: var(--light-surface) !important;
+    color: var(--light-ink) !important;
+    border-color: var(--light-border) !important;
+    box-shadow: 0 20px 60px rgba(32, 48, 71, 0.18);
+}
+
+html[data-theme="light"] .fixed.inset-0 .text-gray-800,
+html[data-theme="light"] .fixed.inset-0 .text-gray-700,
+html[data-theme="light"] .fixed.inset-0 .text-gray-600,
+html[data-theme="light"] .fixed.inset-0 .text-gray-500 {
+    color: var(--light-ink) !important;
+}
 .fixed.inset-0 .text-gray-700 { color: #d1d5db !important; }
 .fixed.inset-0 .text-gray-600 { color: #9ca3af !important; }
 .fixed.inset-0 .text-gray-500 { color: #6b7280 !important; }
@@ -1743,4 +1961,459 @@ body.sidebar-collapsed #sidebar .brand img {
 }
 .affirmation-card .delete-btn:hover {
     background: rgba(224, 86, 91, 0.2) !important;
+}
+
+/* Final light-theme contrast pass. These rules stay last so component-specific
+   dark-theme fixes above cannot override readable light-theme surfaces. */
+html[data-theme="light"] body,
+html[data-theme="light"] .content-wrapper {
+    color: var(--light-ink);
+}
+
+html[data-theme="light"] .text-gray-100,
+html[data-theme="light"] .text-gray-200,
+html[data-theme="light"] .text-gray-300,
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-gray-500,
+html[data-theme="light"] .text-gray-600,
+html[data-theme="light"] .text-gray-700,
+html[data-theme="light"] .text-gray-800 {
+    color: var(--light-ink) !important;
+}
+
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-gray-500,
+html[data-theme="light"] .text-gray-600,
+html[data-theme="light"] .pip-display,
+html[data-theme="light"] small {
+    color: var(--light-muted) !important;
+}
+
+html[data-theme="light"] .bg-\[\#0a0a0a\],
+html[data-theme="light"] .bg-\[\#121212\],
+html[data-theme="light"] .bg-\[\#0d0d0d\],
+html[data-theme="light"] .bg-\[\#080808\],
+html[data-theme="light"] .bg-gray-900,
+html[data-theme="light"] .bg-gray-800,
+html[data-theme="light"] .bg-gray-50,
+html[data-theme="light"] .bg-gray-100,
+html[data-theme="light"] .welcome-search-bar,
+html[data-theme="light"] #searchResultsDropdown,
+html[data-theme="light"] .tools-panel,
+html[data-theme="light"] .account-vertical-nav {
+    background: var(--light-surface) !important;
+    color: var(--light-ink) !important;
+    border-color: var(--light-border) !important;
+}
+
+html[data-theme="light"] .trade-item {
+    background: var(--light-surface-muted) !important;
+    border-color: var(--light-border) !important;
+    color: var(--light-ink) !important;
+    box-shadow: 0 3px 12px rgba(52, 72, 91, 0.06);
+}
+
+html[data-theme="light"] .trade-item .text-gray-600,
+html[data-theme="light"] .trade-item .text-gray-500,
+html[data-theme="light"] .trade-item .text-gray-700 {
+    color: var(--light-muted) !important;
+}
+
+html[data-theme="light"] .trade-item .bg-gray-50 {
+    background: #edf3f7 !important;
+}
+
+html[data-theme="light"] .trade-item .border-gray-200,
+html[data-theme="light"] .border-gray-200,
+html[data-theme="light"] .border-gray-700,
+html[data-theme="light"] .border-gray-600 {
+    border-color: var(--light-border) !important;
+}
+
+html[data-theme="light"] .affirmation-card {
+    background: var(--light-surface) !important;
+    color: var(--light-ink) !important;
+    border-color: var(--light-border) !important;
+    box-shadow: 0 8px 24px rgba(52, 72, 91, 0.08) !important;
+}
+
+html[data-theme="light"] .affirmation-card .text-gray-800,
+html[data-theme="light"] .affirmation-card .text-gray-700 {
+    color: var(--light-ink) !important;
+}
+
+html[data-theme="light"] .affirmation-card .text-gray-500,
+html[data-theme="light"] .affirmation-card .text-gray-600 {
+    color: var(--light-muted) !important;
+}
+
+html[data-theme="light"] .affirmation-card .border-gray-100,
+html[data-theme="light"] .affirmation-card .border-t {
+    border-color: var(--light-border) !important;
+}
+
+html[data-theme="light"] .affirmation-card .bg-gray-50,
+html[data-theme="light"] .affirmation-card .bg-blue-50,
+html[data-theme="light"] .affirmation-card .bg-red-50 {
+    background: var(--light-surface-muted) !important;
+}
+
+html[data-theme="light"] #accountSize,
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+    background: var(--light-surface) !important;
+    color: var(--light-ink) !important;
+    border-color: var(--light-border-strong) !important;
+}
+
+html[data-theme="light"] #accountSize:read-only {
+    background: #edf3f7 !important;
+    color: var(--light-muted) !important;
+}
+
+html[data-theme="light"] .fixed.inset-0 .text-gray-700,
+html[data-theme="light"] .fixed.inset-0 .text-gray-600,
+html[data-theme="light"] .fixed.inset-0 .text-gray-500 {
+    color: var(--light-muted) !important;
+}
+
+html[data-theme="light"] .fixed.inset-0 .bg-gray-50,
+html[data-theme="light"] .fixed.inset-0 .bg-gray-100 {
+    background: var(--light-surface-muted) !important;
+}
+
+html[data-theme="light"] #mobileMenu {
+    background: rgba(248, 251, 253, 0.98) !important;
+    color: var(--light-ink);
+    border-color: var(--light-border);
+}
+
+html[data-theme="light"] #mobileMenu .mobile-nav-btn,
+html[data-theme="light"] #mobileMenu .block,
+html[data-theme="light"] #mobileSettingsToggle {
+    color: #40536b !important;
+}
+
+html[data-theme="light"] #mobileMenu .mobile-nav-btn:hover,
+html[data-theme="light"] #mobileMenu .block:hover {
+    background: #eaf1f5 !important;
+    color: var(--light-ink) !important;
+}
+
+html[data-theme="light"] #sidebar i,
+html[data-theme="light"] .settings-vertical-nav i,
+html[data-theme="light"] .account-vertical-nav i,
+html[data-theme="light"] .tools-vertical-nav i {
+    color: #4e6881;
+    opacity: 1;
+}
+
+html[data-theme="light"] #sidebar .sidebar-btn.active i,
+html[data-theme="light"] .settings-nav-item.active i,
+html[data-theme="light"] .tools-nav-item.active i {
+    color: var(--light-accent) !important;
+}
+
+html[data-theme="light"] .section-title i,
+html[data-theme="light"] h1 i,
+html[data-theme="light"] h2 i,
+html[data-theme="light"] h3 i,
+html[data-theme="light"] h4 i {
+    text-shadow: 0 1px 1px rgba(52, 72, 91, 0.12);
+}
+
+html[data-theme="light"] .tab-button.active,
+html[data-theme="light"] .tools-nav-item.active,
+html[data-theme="light"] .category-filter.active {
+    background: var(--light-accent) !important;
+    border-color: var(--light-accent) !important;
+    color: #ffffff !important;
+}
+
+/* Keep ordinary light-theme copy dark enough for comfortable reading. */
+html[data-theme="light"] .text-white,
+html[data-theme="light"] [class*="text-white"] {
+    color: #172033 !important;
+}
+
+html[data-theme="light"] .text-gray-300,
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-gray-500,
+html[data-theme="light"] .text-gray-600,
+html[data-theme="light"] .text-gray-700 {
+    color: #334155 !important;
+}
+
+html[data-theme="light"] p,
+html[data-theme="light"] span,
+html[data-theme="light"] div,
+html[data-theme="light"] li,
+html[data-theme="light"] td,
+html[data-theme="light"] th,
+html[data-theme="light"] label,
+html[data-theme="light"] small,
+html[data-theme="light"] strong,
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] h5,
+html[data-theme="light"] h6 {
+    text-shadow: none;
+}
+
+html[data-theme="light"] .affirmation-stat-card .text-white,
+html[data-theme="light"] .bg-red-600 .text-white,
+html[data-theme="light"] .bg-green-600 .text-white,
+html[data-theme="light"] .bg-red-600.text-white,
+html[data-theme="light"] .bg-green-600.text-white,
+html[data-theme="light"] .bg-\[\#26A69A\] .text-white,
+html[data-theme="light"] .bg-\[\#26A69A\].text-white,
+html[data-theme="light"] .bg-\[\#E0565B\].text-white,
+html[data-theme="light"] .category-filter .text-white,
+html[data-theme="light"] .category-filter.text-white,
+html[data-theme="light"] .tab-button.active,
+html[data-theme="light"] .tools-nav-item.active {
+    color: #ffffff !important;
+}
+
+html[data-theme="light"] .profit,
+html[data-theme="light"] .stat-value.profit {
+    color: #087f73 !important;
+}
+
+html[data-theme="light"] .loss,
+html[data-theme="light"] .stat-value.loss {
+    color: #c13f48 !important;
+}
+
+html[data-theme="light"] .text-gray-400 i,
+html[data-theme="light"] .text-gray-500 i,
+html[data-theme="light"] .text-gray-600 i,
+html[data-theme="light"] .text-gray-700 i {
+    color: #334155 !important;
+    opacity: 1;
+}
+
+/* Dashboard-only readability layer for inline and utility styles that were
+   authored for the dark theme. */
+html[data-theme="light"] #dashboardContent {
+    color: #172033;
+}
+
+html[data-theme="light"] #dashboardContent .objectives-title h2,
+html[data-theme="light"] #dashboardContent .objectives-title p,
+html[data-theme="light"] #dashboardContent .trader-profile-card,
+html[data-theme="light"] #dashboardContent .trader-stat-item,
+html[data-theme="light"] #dashboardContent .trader-stat-item .stat-value,
+html[data-theme="light"] #dashboardContent .status-banner,
+html[data-theme="light"] #dashboardContent .status-banner .banner-title,
+html[data-theme="light"] #dashboardContent .status-banner .banner-sub,
+html[data-theme="light"] #dashboardContent .objective-card,
+html[data-theme="light"] #dashboardContent .objective-card h4,
+html[data-theme="light"] #dashboardContent .objective-card .metric-row,
+html[data-theme="light"] #dashboardContent .objective-card .metric-row .label,
+html[data-theme="light"] #dashboardContent .objective-card .metric-row .value,
+html[data-theme="light"] #dashboardContent .objective-card .card-body,
+html[data-theme="light"] #dashboardContent .metric-card,
+html[data-theme="light"] #dashboardContent .metric-label,
+html[data-theme="light"] #dashboardContent .metric-value,
+html[data-theme="light"] #dashboardContent .psych-metric,
+html[data-theme="light"] #dashboardContent .psych-value,
+html[data-theme="light"] #dashboardContent .psych-label,
+html[data-theme="light"] #dashboardContent .emotion-card,
+html[data-theme="light"] #dashboardContent .emotion-label,
+html[data-theme="light"] #dashboardContent .emotion-value,
+html[data-theme="light"] #dashboardContent .emotion-percent,
+html[data-theme="light"] #dashboardContent .emotion-insights,
+html[data-theme="light"] #dashboardContent .insight-title,
+html[data-theme="light"] #dashboardContent .insight-text,
+html[data-theme="light"] #dashboardContent .session-clock-meta,
+html[data-theme="light"] #dashboardContent .session-clock-label,
+html[data-theme="light"] #dashboardContent .session-clock-name,
+html[data-theme="light"] #dashboardContent .session-clock-metric,
+html[data-theme="light"] #dashboardContent .session-clock-note {
+    color: #172033 !important;
+}
+
+html[data-theme="light"] #dashboardContent .objectives-title p,
+html[data-theme="light"] #dashboardContent .trader-stat-item,
+html[data-theme="light"] #dashboardContent .status-banner .banner-sub,
+html[data-theme="light"] #dashboardContent .objective-card .metric-row .label,
+html[data-theme="light"] #dashboardContent .metric-label,
+html[data-theme="light"] #dashboardContent .psych-label,
+html[data-theme="light"] #dashboardContent .emotion-label,
+html[data-theme="light"] #dashboardContent .emotion-percent,
+html[data-theme="light"] #dashboardContent .session-clock-label,
+html[data-theme="light"] #dashboardContent .session-clock-note,
+html[data-theme="light"] #dashboardContent .text-gray-300,
+html[data-theme="light"] #dashboardContent .text-gray-400,
+html[data-theme="light"] #dashboardContent .text-gray-500,
+html[data-theme="light"] #dashboardContent .text-gray-600,
+html[data-theme="light"] #dashboardContent .text-gray-700 {
+    color: #334155 !important;
+}
+
+html[data-theme="light"] #dashboardContent .card,
+html[data-theme="light"] #dashboardContent .stat-card,
+html[data-theme="light"] #dashboardContent .metric-card,
+html[data-theme="light"] #dashboardContent .psych-metric,
+html[data-theme="light"] #dashboardContent .emotion-card,
+html[data-theme="light"] #dashboardContent .emotion-insights,
+html[data-theme="light"] #dashboardContent .session-clock-card,
+html[data-theme="light"] #dashboardContent .trader-profile-card,
+html[data-theme="light"] #dashboardContent .objective-card,
+html[data-theme="light"] #dashboardContent .status-banner,
+html[data-theme="light"] #dashboardContent .bg-\[\#0a0a0a\],
+html[data-theme="light"] #dashboardContent .bg-\[rgba\(201\,168\,76\,0\.04\)\] {
+    background: #ffffff !important;
+    border-color: var(--light-border) !important;
+    color: #172033 !important;
+    box-shadow: 0 8px 24px rgba(52, 72, 91, 0.08);
+}
+
+html[data-theme="light"] #dashboardContent .status-banner,
+html[data-theme="light"] #dashboardContent .trader-profile-card {
+    background: #f8fbfd !important;
+}
+
+html[data-theme="light"] #dashboardContent .session-clock-inner {
+    background: #eaf1f5;
+    color: #172033 !important;
+}
+
+html[data-theme="light"] #dashboardContent .session-clock-inner::before {
+    background: #172033;
+}
+
+html[data-theme="light"] #dashboardContent .emotion-label,
+html[data-theme="light"] #dashboardContent .emotion-percent {
+    opacity: 1;
+}
+
+html[data-theme="light"] #dashboardContent [style*="color:#fafafa"],
+html[data-theme="light"] #dashboardContent [style*="color: #fafafa"],
+html[data-theme="light"] #dashboardContent [style*="color:#ffffff"],
+html[data-theme="light"] #dashboardContent [style*="color: #ffffff"],
+html[data-theme="light"] #dashboardContent [style*="color:white"],
+html[data-theme="light"] #dashboardContent [style*="color: white"] {
+    color: #172033 !important;
+}
+
+/* Accounts: the card data uses fixed dark-theme colors outside utility classes. */
+html[data-theme="light"] #accountsGrid .account-card,
+html[data-theme="light"] #accountsMenu,
+html[data-theme="light"] #accountsMenu > div,
+html[data-theme="light"] #mobileAccountsListTop .account-card,
+html[data-theme="light"] #mobileAccountsListBottom .account-card,
+html[data-theme="light"] #mobileAccountsList .account-card {
+    background: #ffffff !important;
+    color: #172033 !important;
+    border-color: var(--light-border) !important;
+    box-shadow: 0 8px 24px rgba(52, 72, 91, 0.08);
+}
+
+html[data-theme="light"] #accountsGrid .account-card:hover,
+html[data-theme="light"] #mobileAccountsListTop .account-card:hover,
+html[data-theme="light"] #mobileAccountsListBottom .account-card:hover,
+html[data-theme="light"] #mobileAccountsList .account-card:hover {
+    border-color: var(--light-border-strong) !important;
+    box-shadow: 0 12px 30px rgba(52, 72, 91, 0.14);
+}
+
+html[data-theme="light"] #accountsGrid .account-card.active,
+html[data-theme="light"] #mobileAccountsListTop .account-card.active,
+html[data-theme="light"] #mobileAccountsListBottom .account-card.active,
+html[data-theme="light"] #mobileAccountsList .account-card.active {
+    background: rgba(183, 131, 39, 0.08) !important;
+    border-color: rgba(183, 131, 39, 0.45) !important;
+}
+
+html[data-theme="light"] .account-name,
+html[data-theme="light"] .account-detail-value {
+    color: #172033 !important;
+}
+
+html[data-theme="light"] .account-detail-label,
+html[data-theme="light"] .account-empty {
+    color: #334155 !important;
+}
+
+html[data-theme="light"] .account-detail-row {
+    border-bottom-color: var(--light-border) !important;
+}
+
+html[data-theme="light"] .account-currency {
+    background: #eaf1f5 !important;
+    color: #334155 !important;
+}
+
+html[data-theme="light"] .account-badge {
+    background: #eaf1f5 !important;
+    color: #334155 !important;
+}
+
+html[data-theme="light"] .account-card.active .account-badge {
+    background: var(--light-accent) !important;
+    color: #172033 !important;
+}
+
+html[data-theme="light"] .account-empty i {
+    color: #64748b !important;
+}
+
+html[data-theme="light"] #accountsMenu .text-gray-800,
+html[data-theme="light"] #accountsMenu .text-gray-600,
+html[data-theme="light"] #mobileAccountsListTop .text-gray-800,
+html[data-theme="light"] #mobileAccountsListTop .text-gray-600,
+html[data-theme="light"] #mobileAccountsListBottom .text-gray-800,
+html[data-theme="light"] #mobileAccountsListBottom .text-gray-600,
+html[data-theme="light"] #mobileAccountsList .text-gray-800,
+html[data-theme="light"] #mobileAccountsList .text-gray-600 {
+    color: #172033 !important;
+}
+
+html[data-theme="light"] #accountsMenu .border-gray-100,
+html[data-theme="light"] #mobileAccountsListTop .border-gray-100,
+html[data-theme="light"] #mobileAccountsListBottom .border-gray-100,
+html[data-theme="light"] #mobileAccountsList .border-gray-100 {
+    border-color: var(--light-border) !important;
+}
+
+html[data-theme="light"] #dashboardContent .status-banner .banner-icon,
+html[data-theme="light"] #dashboardContent .section-title i,
+html[data-theme="light"] #dashboardContent .objectives-title h2 i,
+html[data-theme="light"] #dashboardContent .objective-card h4 i,
+html[data-theme="light"] #dashboardContent .metric-card .metric-value.profit,
+html[data-theme="light"] #dashboardContent .stat-value.profit,
+html[data-theme="light"] #dashboardContent .profit {
+    color: #087f73 !important;
+}
+
+html[data-theme="light"] #dashboardContent .metric-card .metric-value.loss,
+html[data-theme="light"] #dashboardContent .stat-value.loss,
+html[data-theme="light"] #dashboardContent .loss {
+    color: #c13f48 !important;
+}
+
+html[data-theme="light"] #dashboardContent .view-details-btn {
+    color: #8a6216 !important;
+    border-color: rgba(183, 131, 39, 0.4) !important;
+    background: rgba(183, 131, 39, 0.08) !important;
+}
+
+html[data-theme="light"] #dashboardContent .view-details-btn:hover {
+    background: rgba(183, 131, 39, 0.16) !important;
+}
+
+html[data-theme="light"] #dashboardContent .text-white,
+html[data-theme="light"] #dashboardContent [class*="text-white"],
+html[data-theme="light"] #dashboardContent [style*="color:#fafafa"],
+html[data-theme="light"] #dashboardContent [style*="color: #fafafa"],
+html[data-theme="light"] #dashboardContent [style*="color:#ffffff"],
+html[data-theme="light"] #dashboardContent [style*="color: #ffffff"],
+html[data-theme="light"] #dashboardContent [style*="color:white"],
+html[data-theme="light"] #dashboardContent [style*="color: white"] {
+    color: #172033 !important;
 }

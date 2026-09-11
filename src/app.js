@@ -30,6 +30,8 @@ import {
     updateCurrencyDisplay as updateCurrencyDisplayHelper,
     updateDepositWithdrawalDisplay as updateDepositWithdrawalDisplayHelper,
     setupSettingsTab as setupSettingsTabHelper,
+    setupThemeSelect,
+    toggleTheme,
 } from './settings-ui.js';
 import { validateTransactionInput } from './transaction-validation.js';
 import { filterTransactions, paginateTransactions } from './transaction-history.js';
@@ -2662,6 +2664,7 @@ function showSettingsSection(sectionName) {
 }
 
 function setupSettingsTab() {
+    setupThemeSelect();
     setupSettingsTabHelper({
         handleDepositSubmit,
         handleWithdrawSubmit,
@@ -2810,6 +2813,7 @@ function exportTransactions() {
 window.showSettingsSection = showSettingsSection;
 window.openSettingsTab = openSettingsTab;
 window.switchSettingsTab = switchSettingsTab;
+window.toggleTheme = toggleTheme;
 window.openDepositModal = openDepositModal;
 window.closeDepositModal = closeDepositModal;
 window.openWithdrawModal = openWithdrawModal;
@@ -3029,7 +3033,7 @@ function updateTransactionSummary(account) {
         if (trans.type === 'deposit') {
             totalDeposits += trans.amount;
         } else if (trans.type === 'withdrawal') {
-            totalWithdrawals -= trans.amount;
+            totalWithdrawals += trans.amount;
         }
     });
     const currentBalanceEl = document.getElementById('fundsCurrentBalance');

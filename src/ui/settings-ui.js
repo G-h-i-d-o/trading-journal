@@ -30,6 +30,69 @@ export function showSettingsSection(sectionName, context = {}) {
     switchSettingsTab(sectionName, context);
 }
 
+const THEME_STORAGE_KEY = 'appTheme';
+
+function getEffectiveTheme(theme) {
+    if (theme === 'system') {
+        return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    return theme === 'light' ? 'light' : 'dark';
+}
+
+export function applyTheme(theme = 'dark') {
+    const selectedTheme = ['light', 'dark', 'system'].includes(theme) ? theme : 'dark';
+    const effectiveTheme = getEffectiveTheme(selectedTheme);
+    document.documentElement.dataset.theme = effectiveTheme;
+    document.documentElement.dataset.themePreference = selectedTheme;
+    localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);
+    updateThemeShortcut(effectiveTheme);
+    return selectedTheme;
+}
+
+function updateThemeShortcut(effectiveTheme = document.documentElement.dataset.theme) {
+    const themeToggle = document.getElementById('sidebarThemeToggle');
+    if (!themeToggle) return;
+    const isLight = effectiveTheme === 'light';
+    const lightIcon = themeToggle.querySelector('.theme-icon-light');
+    const darkIcon = themeToggle.querySelector('.theme-icon-dark');
+    if (lightIcon) lightIcon.hidden = isLight;
+    if (darkIcon) darkIcon.hidden = !isLight;
+    const nextTheme = isLight ? 'dark' : 'light';
+    themeToggle.title = `Switch to ${nextTheme} mode`;
+    themeToggle.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
+    const label = themeToggle.querySelector('.label');
+    if (label) label.textContent = `${isLight ? 'Dark' : 'Light'} mode`;
+}
+
+export function toggleTheme() {
+    const currentTheme = document.documentElement.dataset.theme;
+    return applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+}
+
+export function setupThemeSelect() {
+    const themeSelect = document.getElementById('themeSelect');
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+
+    applyTheme(savedTheme);
+    updateThemeShortcut(document.documentElement.dataset.theme);
+    if (!themeSelect) return;
+
+    themeSelect.value = ['light', 'dark', 'system'].includes(savedTheme) ? savedTheme : 'dark';
+    themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
+
+    const handleSystemThemeChange = () => {
+        if (document.documentElement.dataset.themePreference === 'system') {
+            applyTheme('system');
+        }
+    };
+    if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (typeof mediaQuery.addListener === 'function') {
+        mediaQuery.addListener(handleSystemThemeChange);
+    }
+}
+
 export function openSettingsTab(tabName, context = {}) {
     const settingsTab = document.getElementById('settingsTab');
     const sectionName = tabName === 'deposits' ? 'funds' : tabName;
