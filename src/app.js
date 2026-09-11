@@ -35,7 +35,18 @@ import {
 } from './settings-ui.js';
 import { validateTransactionInput } from './transaction-validation.js';
 import { filterTransactions, paginateTransactions } from './transaction-history.js';
-import { runBacktest, generateSyntheticCandles } from './backtesting-engine.js';
+import {
+    openReplayPosition,
+    closeReplayPosition,
+    calculateReplaySummary,
+    calculateMovingAverage,
+    buildReplayMarkers,
+} from './backtesting-engine.js';
+import { loadHistoricalCandles } from './backtest-data.js';
+import {
+    readBacktestSessions,
+    writeBacktestSessions,
+} from './backtest-session.js';
 import { validateAffirmationInput } from './affirmation-validation.js';
 import { validateProfileInput, validateObjectivesInput, validateAccountSetupInput } from './profile-validation.js';
 import { normalizeScreenshotUrl } from './screenshot-utils.js';
@@ -56,6 +67,15 @@ let replayState = null;
 let replayTimer = null;
 let backtestChart = null;
 let backtestSeries = null;
+let backtestFastMaSeries = null;
+let backtestSlowMaSeries = null;
+let backtestCursorPriceLine = null;
+let backtestResizeObserver = null;
+let backtestSessions = [];
+
+function getBacktestSessionUserId() {
+    return currentUser?.uid || 'anonymous';
+}
 
 // Account Management System
 let currentAccountId = null;
@@ -428,6 +448,7 @@ const searchableFeatures = [
     { label: 'Affirmations', keywords: ['affirmations', 'motivation', 'mindset', 'quotes', 'positive'], tab: 'affirmations', icon: '💪' },
     { label: 'Calendar', keywords: ['calendar', 'date', 'schedule', 'month', 'week', 'year'], tab: 'calendar', icon: '📅' },
     { label: 'Tools', keywords: ['tools', 'economic calendar', 'position size', 'calculator', 'forex'], tab: 'tools', icon: '🛠️' },
+    { label: 'Backtesting', keywords: ['backtesting', 'backtest', 'strategy test', 'historical simulation'], tab: 'backtest', icon: '📈' },
     { label: 'Account', keywords: ['account', 'profile', 'balance', 'currency', 'trading account'], tab: 'account', icon: '👤' },
     { label: 'Settings', keywords: ['settings', 'preferences', 'configuration', 'theme', 'setup'], tab: 'settings', icon: '⚙️' },
 ];
@@ -1816,9 +1837,15 @@ function setupEventListeners() {
     }
     const backtestBtn = document.getElementById('runBacktestBtn');
     if (backtestBtn) {
-        backtestBtn.addEventListener('click', runBacktestingFromTools);
+        backtestBtn.addEventListener('click', () => {
+            runBacktestingFromTools().catch((error) => {
+                console.error('Backtesting data load failed:', error);
+                showErrorMessage(error.message || 'Unable to load historical data.');
+            });
+        });
     }
     setupReplayControls();
+    setupBacktestWorkspace();
     const transactionFilter = document.getElementById('transactionFilter');
     if (transactionFilter) {
         transactionFilter.addEventListener('change', () => {
@@ -3058,6 +3085,7 @@ function setupTabs() {
     const affirmationsTab = document.getElementById('affirmationsTab');
     const calendarTab = document.getElementById('calendarTab');
     const toolsTab = document.getElementById('toolsTab');
+    const backtestTab = document.getElementById('backtestTab');
     const accountTab = document.getElementById('accountTab');
     const settingsTab = document.getElementById('settingsTab');
     const dashboardContent = document.getElementById('dashboardContent');
@@ -3066,22 +3094,23 @@ function setupTabs() {
     const affirmationsContent = document.getElementById('affirmationsContent');
     const calendarContent = document.getElementById('calendarContent');
     const toolsContent = document.getElementById('toolsContent');
+    const backtestContent = document.getElementById('backtestContent');
     const accountContent = document.getElementById('accountContent');
     const settingsContent = document.getElementById('settingsContent');
-    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, accountContent, settingsContent].forEach(content => {
+    [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, backtestContent, accountContent, settingsContent].forEach(content => {
         if (content) {
             content.classList.remove('active');
             content.style.display = 'none';
         }
     });
     function switchToTab(tabName) {
-        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, accountContent, settingsContent].forEach(content => {
+        [dashboardContent, addTradeContent, tradesContent, affirmationsContent, calendarContent, toolsContent, backtestContent, accountContent, settingsContent].forEach(content => {
             if (content) {
                 content.classList.remove('active');
                 content.style.display = 'none';
             }
         });
-        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, toolsTab, accountTab, settingsTab].forEach(tab => {
+        [dashboardTab, addTradeTab, tradesTab, affirmationsTab, calendarTab, toolsTab, backtestTab, accountTab, settingsTab].forEach(tab => {
             if (tab) tab.classList.remove('active');
         });
         document.querySelectorAll('#sidebar .sidebar-btn').forEach(btn => btn.classList.remove('active'));
@@ -3130,6 +3159,20 @@ function setupTabs() {
                 }
                 if (toolsTab) toolsTab.classList.add('active');
                 break;
+            case 'backtest':
+                if (backtestContent) {
+                    backtestContent.classList.add('active');
+                    backtestContent.style.display = 'block';
+                    const summary = document.getElementById('backtestSummary');
+                    if (summary && !replayState) {
+                        summary.textContent = 'Ready to simulate a no-lookahead historical strategy test.';
+                    }
+                    if (!replayState && document.getElementById('backtestChartCanvas')) {
+                        renderReplayChart();
+                    }
+                }
+                if (backtestTab) backtestTab.classList.add('active');
+                break;
             case 'account':
                 if (accountContent) {
                     accountContent.classList.add('active');
@@ -3168,6 +3211,7 @@ function setupTabs() {
     if (affirmationsTab) affirmationsTab.addEventListener('click', () => switchToTab('affirmations'));
     if (calendarTab) calendarTab.addEventListener('click', () => switchToTab('calendar'));
     if (toolsTab) toolsTab.addEventListener('click', () => switchToTab('tools'));
+    if (backtestTab) backtestTab.addEventListener('click', () => switchToTab('backtest'));
     if (accountTab) accountTab.addEventListener('click', () => switchToTab('account'));
     if (settingsTab) settingsTab.addEventListener('click', () => switchToTab('settings'));
     switchToTab('dashboard');
@@ -3185,15 +3229,6 @@ function switchToolsPanel(panelName) {
     if (activeButton) activeButton.classList.add('active');
     if (panelName === 'tradeLocker') {
         loadLockerSettings();
-    }
-    if (panelName === 'backtesting') {
-        const summary = document.getElementById('backtestSummary');
-        if (summary) {
-            summary.textContent = 'Ready to simulate a no-lookahead historical strategy test.';
-        }
-        if (!replayState && document.getElementById('backtestChartCanvas')) {
-            renderReplayChart();
-        }
     }
 }
 
@@ -3221,30 +3256,37 @@ function renderReplayChart() {
     const currentIndex = replayState?.currentIndex ?? chartData.length - 1;
     const visibleData = chartData.slice(Math.max(0, currentIndex - 24), currentIndex + 1);
     const currentCandle = chartData[currentIndex] || chartData[chartData.length - 1];
+    const isLightTheme = document.documentElement.dataset.theme === 'light';
+    const indicator = document.getElementById('backtestIndicator')?.value || 'none';
+    const showTradeMarkers = document.getElementById('backtestShowTradeMarkers')?.checked !== false;
 
     if (status) {
         status.textContent = `${currentCandle.symbol} • ${new Date(currentCandle.time * 1000).toLocaleString()} • ${Number(currentCandle.close).toFixed(5)}`;
     }
+    const marketSymbol = document.getElementById('backtestMarketSymbol');
+    const marketPrice = document.getElementById('backtestMarketPrice');
+    if (marketSymbol) marketSymbol.textContent = currentCandle.symbol;
+    if (marketPrice) marketPrice.textContent = Number(currentCandle.close).toFixed(5);
 
     if (!backtestChart) {
         backtestChart = window.LightweightCharts.createChart(container, {
             width: container.clientWidth || 920,
             height: container.clientHeight || 340,
             layout: {
-                background: { color: '#0d0d0d' },
-                textColor: '#d1d5db',
+                background: { color: isLightTheme ? '#ffffff' : '#0d0d0d' },
+                textColor: isLightTheme ? '#334155' : '#d1d5db',
                 fontFamily: 'Inter, sans-serif',
             },
             grid: {
-                vertLines: { color: 'rgba(255,255,255,0.05)' },
-                horzLines: { color: 'rgba(255,255,255,0.05)' },
+                vertLines: { color: isLightTheme ? '#e2e8f0' : 'rgba(255,255,255,0.05)' },
+                horzLines: { color: isLightTheme ? '#e2e8f0' : 'rgba(255,255,255,0.05)' },
             },
             rightPriceScale: {
-                borderColor: 'rgba(255,255,255,0.08)',
-                textColor: '#9ca3af',
+                borderColor: isLightTheme ? '#cbd5e1' : 'rgba(255,255,255,0.08)',
+                textColor: isLightTheme ? '#475569' : '#9ca3af',
             },
             timeScale: {
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: isLightTheme ? '#cbd5e1' : 'rgba(255,255,255,0.08)',
                 timeVisible: true,
                 secondsVisible: false,
                 fixLeftEdge: false,
@@ -3274,14 +3316,311 @@ function renderReplayChart() {
             wickDownColor: '#ef4444',
             priceLineColor: '#C9A84C',
         });
+        if (typeof window.LightweightCharts.LineSeries !== 'undefined') {
+            backtestFastMaSeries = backtestChart.addSeries(window.LightweightCharts.LineSeries, {
+                color: '#06b6d4',
+                lineWidth: 2,
+                title: 'SMA 5',
+                visible: false,
+            });
+            backtestSlowMaSeries = backtestChart.addSeries(window.LightweightCharts.LineSeries, {
+                color: '#f59e0b',
+                lineWidth: 2,
+                title: 'SMA 10',
+                visible: false,
+            });
+        }
+        if (typeof ResizeObserver === 'function') {
+            backtestResizeObserver = new ResizeObserver(() => {
+                if (backtestChart && container.clientWidth > 0 && container.clientHeight > 0) {
+                    backtestChart.resize(container.clientWidth, container.clientHeight);
+                }
+            });
+            backtestResizeObserver.observe(container);
+        }
     }
 
     if (backtestSeries) {
         backtestSeries.setData(visibleData);
+        if (backtestFastMaSeries && backtestSlowMaSeries) {
+            const fastData = calculateMovingAverage(visibleData, 5);
+            const slowData = calculateMovingAverage(visibleData, 10);
+            const showFast = indicator === 'sma5' || indicator === 'sma5-10';
+            const showSlow = indicator === 'sma10' || indicator === 'sma5-10';
+            backtestFastMaSeries.setData(showFast ? fastData : []);
+            backtestSlowMaSeries.setData(showSlow ? slowData : []);
+        }
+        if (typeof backtestSeries.setMarkers === 'function') {
+            backtestSeries.setMarkers(showTradeMarkers ? buildReplayMarkers({
+                trades: replayState?.trades || [],
+                position: replayState?.position,
+                candles,
+            }) : []);
+        }
+        if (backtestCursorPriceLine) {
+            backtestSeries.removePriceLine(backtestCursorPriceLine);
+            backtestCursorPriceLine = null;
+        }
+        if (currentCandle && typeof backtestSeries.createPriceLine === 'function') {
+            backtestCursorPriceLine = backtestSeries.createPriceLine({
+                price: currentCandle.close,
+                color: '#C9A84C',
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: 'Replay',
+            });
+        }
         const startIndex = Math.max(0, currentIndex - 24);
         const visibleRange = { from: Math.max(0, chartData[startIndex]?.time || 0), to: chartData[currentIndex]?.time || chartData[chartData.length - 1]?.time };
         backtestChart.timeScale().setVisibleRange({ from: visibleRange.from, to: visibleRange.to });
     }
+}
+
+function getBacktestInstrumentSettings(symbol) {
+    const presets = {
+        EURUSD: { drift: 0.0004, volatility: 0.001, decimals: 5 },
+        USDJPY: { drift: 0.0003, volatility: 0.0014, decimals: 3 },
+        XAUUSD: { drift: 0.0002, volatility: 0.0024, decimals: 2 },
+        US30: { drift: 0.00025, volatility: 0.0018, decimals: 2 },
+        NAS100: { drift: 0.0003, volatility: 0.0016, decimals: 2 },
+    };
+    return presets[symbol] || presets.EURUSD;
+}
+
+function getBacktestFormValues() {
+    const symbol = document.getElementById('backtestSymbol')?.value || 'EURUSD';
+    const bars = Math.min(500, Math.max(30, Number(document.getElementById('backtestBars')?.value || 120)));
+    return {
+        symbol,
+        timeframe: document.getElementById('backtestTimeframe')?.value || '1H',
+        bars,
+        provider: document.getElementById('backtestDataSource')?.value || 'synthetic',
+        startDate: document.getElementById('backtestStartDate')?.value || '2024-01-01T00:00',
+        endDate: document.getElementById('backtestEndDate')?.value || '',
+        capital: Math.max(0, Number(document.getElementById('backtestCapital')?.value || 10000)),
+        risk: Math.max(0, Number(document.getElementById('backtestRisk')?.value || 0.1)),
+    };
+}
+
+function updateBacktestPositionUI() {
+    const position = replayState?.position;
+    const status = document.getElementById('backtestPositionStatus');
+    const closeButton = document.getElementById('backtestCloseBtn');
+    if (!status) return;
+    if (!position) {
+        status.textContent = 'Flat';
+        status.className = 'backtest-position-status';
+        if (closeButton) closeButton.disabled = true;
+        updateBacktestSummaryUI();
+        return;
+    }
+    const candle = replayState.candles[replayState.currentIndex];
+    const direction = position.side === 'long' ? 'Long' : 'Short';
+    const summary = calculateReplaySummary({
+        initialCapital: replayState.initialCapital,
+        trades: replayState.trades,
+        position,
+        candle,
+        execution: replayState.execution,
+    });
+    const pnl = summary.openPositionPnl;
+    status.textContent = `${direction} ${position.quantity} @ ${position.entryPrice.toFixed(5)} | ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
+    status.className = `backtest-position-status ${position.side}`;
+    if (closeButton) closeButton.disabled = false;
+    updateBacktestSummaryUI(summary);
+}
+
+function updateBacktestSummaryUI(summary = null) {
+    if (!replayState) return;
+    const currentCandle = replayState.candles[replayState.currentIndex];
+    const metrics = summary || calculateReplaySummary({
+        initialCapital: replayState.initialCapital,
+        trades: replayState.trades,
+        position: replayState.position,
+        candle: currentCandle,
+        execution: replayState.execution,
+    });
+    replayState.summary = metrics;
+    replayState.equity = metrics.endCapital;
+    const formatCurrency = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const values = {
+        backtestNetPnL: formatCurrency(metrics.netPnL),
+        backtestReturn: `${Number(metrics.totalReturn || 0).toFixed(2)}%`,
+        backtestTrades: String(metrics.totalTrades),
+        backtestWinRate: `${Number(metrics.winRate || 0).toFixed(1)}%`,
+        backtestEndCapital: formatCurrency(metrics.endCapital),
+    };
+    Object.entries(values).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+    const summaryElement = document.getElementById('backtestSummary');
+    if (summaryElement) {
+        summaryElement.innerHTML = `
+            <div class="font-semibold text-gray-200 mb-2">Replay Summary</div>
+            <div class="space-y-2 text-gray-300">
+                <div>Symbol: <span class="text-white">${replayState.symbol}</span></div>
+                <div>Realized P&amp;L: <span class="text-white">${formatCurrency(metrics.netPnL - metrics.openPositionPnl)}</span></div>
+                <div>Open P&amp;L: <span class="text-white">${formatCurrency(metrics.openPositionPnl)}</span></div>
+                <div>Closed trades: <span class="text-white">${metrics.totalTrades}</span></div>
+                <div>Ending equity: <span class="text-white">${formatCurrency(metrics.endCapital)}</span></div>
+            </div>
+        `;
+    }
+}
+
+function renderBacktestTradeLog() {
+    const log = document.getElementById('backtestTradeLog');
+    const count = document.getElementById('backtestTradeCount');
+    const trades = replayState?.trades || [];
+    if (count) count.textContent = `${trades.length} trade${trades.length === 1 ? '' : 's'}`;
+    if (!log) return;
+    if (!trades.length) {
+        log.innerHTML = '<p class="backtest-empty-state">No simulated trades yet. Use Buy or Sell while the replay is paused.</p>';
+        return;
+    }
+    log.innerHTML = trades.slice().reverse().map((trade) => `
+        <div class="backtest-trade-row">
+            <span class="backtest-trade-side ${trade.side}">${trade.side.toUpperCase()}</span>
+            <span>${trade.quantity} @ ${trade.entryPrice.toFixed(5)}</span>
+            <span>Exit ${trade.exitPrice.toFixed(5)}</span>
+            <strong class="${trade.netPnL >= 0 ? 'profit' : 'loss'}">${trade.netPnL >= 0 ? '+' : ''}${trade.netPnL.toFixed(2)}</strong>
+        </div>
+    `).join('');
+}
+
+function openBacktestPosition(side) {
+    if (!replayState?.candles?.length || replayState.position) return;
+    const candle = replayState.candles[replayState.currentIndex];
+    const currentSummary = calculateReplaySummary({
+        initialCapital: replayState.initialCapital,
+        trades: replayState.trades,
+        candle,
+        execution: replayState.execution,
+    });
+    replayState.position = openReplayPosition({
+        candle,
+        side,
+        equity: currentSummary.endCapital,
+        riskPerTrade: replayState.riskPerTrade,
+        execution: replayState.execution,
+    });
+    if (replayState.position) replayState.position.entryIndex = replayState.currentIndex;
+    updateBacktestPositionUI();
+    renderBacktestTradeLog();
+}
+
+function closeBacktestPosition() {
+    if (!replayState?.position) return;
+    const candle = replayState.candles[replayState.currentIndex];
+    const position = replayState.position;
+    const completedTrade = closeReplayPosition({
+        position,
+        candle,
+        exitIndex: replayState.currentIndex,
+        execution: replayState.execution,
+    });
+    if (completedTrade) replayState.trades.push(completedTrade);
+    replayState.position = null;
+    updateBacktestPositionUI();
+    renderBacktestTradeLog();
+    updateBacktestSummaryUI();
+}
+
+function loadBacktestSessions() {
+    backtestSessions = readBacktestSessions(localStorage, getBacktestSessionUserId());
+    const select = document.getElementById('backtestSessionSelect');
+    if (!select) return;
+    select.replaceChildren();
+    const newOption = document.createElement('option');
+    newOption.value = '';
+    newOption.textContent = 'New session';
+    select.appendChild(newOption);
+    backtestSessions.forEach((session) => {
+        const option = document.createElement('option');
+        option.value = session.id;
+        option.textContent = session.name;
+        select.appendChild(option);
+    });
+}
+
+function saveBacktestSession() {
+    if (!replayState) return;
+    const name = document.getElementById('backtestSessionName')?.value.trim() || `${replayState.symbol} replay`;
+    const existingId = document.getElementById('backtestSessionSelect')?.value;
+    const session = { id: existingId || Date.now().toString(), name, state: replayState, form: getBacktestFormValues(), updatedAt: new Date().toISOString() };
+    backtestSessions = backtestSessions.filter((item) => item.id !== session.id);
+    backtestSessions.push(session);
+    if (!writeBacktestSessions(backtestSessions, localStorage, getBacktestSessionUserId())) {
+        const status = document.getElementById('backtestSessionStatus');
+        if (status) status.textContent = 'Unable to save session: storage is full or unavailable.';
+        return;
+    }
+    loadBacktestSessions();
+    const select = document.getElementById('backtestSessionSelect');
+    if (select) select.value = session.id;
+    const status = document.getElementById('backtestSessionStatus');
+    if (status) status.textContent = `Saved ${name}`;
+}
+
+function startNewBacktestSession() {
+    replayState = null;
+    clearInterval(replayTimer);
+    backtestResizeObserver?.disconnect();
+    backtestResizeObserver = null;
+    if (backtestChart) {
+        backtestChart.remove();
+        backtestChart = null;
+        backtestSeries = null;
+        backtestFastMaSeries = null;
+        backtestSlowMaSeries = null;
+        backtestCursorPriceLine = null;
+    }
+    document.getElementById('backtestSessionSelect').value = '';
+    document.getElementById('backtestSessionName').value = '';
+    document.getElementById('backtestSummary').textContent = 'Ready to simulate a no-lookahead historical strategy test.';
+    updateBacktestPositionUI();
+    renderBacktestTradeLog();
+    updateBacktestSummaryUI();
+}
+
+function loadBacktestSession(id) {
+    const session = backtestSessions.find((item) => item.id === id);
+    if (!session) return startNewBacktestSession();
+    const form = session.form || {};
+    for (const [field, value] of [['backtestSymbol', form.symbol], ['backtestTimeframe', form.timeframe], ['backtestDataSource', form.provider], ['backtestStartDate', form.startDate], ['backtestEndDate', form.endDate], ['backtestBars', form.bars], ['backtestCapital', form.capital], ['backtestRisk', form.risk]]) {
+        const element = document.getElementById(field);
+        if (element && value !== undefined) element.value = value;
+    }
+    replayState = session.state;
+    document.getElementById('backtestSessionName').value = session.name;
+    renderReplayChart();
+    updateBacktestPositionUI();
+    renderBacktestTradeLog();
+    updateBacktestSummaryUI();
+    const status = document.getElementById('backtestSessionStatus');
+    if (status) status.textContent = `Loaded ${session.name}`;
+}
+
+function setupBacktestWorkspace() {
+    loadBacktestSessions();
+    document.getElementById('backtestBuyBtn')?.addEventListener('click', () => openBacktestPosition('long'));
+    document.getElementById('backtestSellBtn')?.addEventListener('click', () => openBacktestPosition('short'));
+    document.getElementById('backtestCloseBtn')?.addEventListener('click', closeBacktestPosition);
+    document.getElementById('newBacktestSessionBtn')?.addEventListener('click', startNewBacktestSession);
+    document.getElementById('saveBacktestSessionBtn')?.addEventListener('click', saveBacktestSession);
+    document.getElementById('backtestSessionSelect')?.addEventListener('change', (event) => loadBacktestSession(event.target.value));
+    document.getElementById('backtestIndicator')?.addEventListener('change', () => renderReplayChart());
+    document.getElementById('backtestShowTradeMarkers')?.addEventListener('change', () => renderReplayChart());
+    document.getElementById('deleteBacktestSessionBtn')?.addEventListener('click', () => {
+        const id = document.getElementById('backtestSessionSelect')?.value;
+        if (!id) return;
+        backtestSessions = backtestSessions.filter((session) => session.id !== id);
+        writeBacktestSessions(backtestSessions, localStorage, getBacktestSessionUserId());
+        loadBacktestSessions();
+        startNewBacktestSession();
+    });
 }
 
 function setupReplayControls() {
@@ -3306,6 +3645,7 @@ function setupReplayControls() {
                     }
                     replayState.currentIndex = Math.min(replayState.candles.length - 1, replayState.currentIndex + 1);
                     renderReplayChart();
+                    updateBacktestPositionUI();
                     if (replayState.currentIndex >= replayState.candles.length - 1) {
                         replayState.playing = false;
                         if (playPauseBtn) playPauseBtn.textContent = 'Play';
@@ -3326,6 +3666,7 @@ function setupReplayControls() {
             if (playPauseBtn) playPauseBtn.textContent = 'Play';
             clearInterval(replayTimer);
             renderReplayChart();
+            updateBacktestPositionUI();
         });
     }
 
@@ -3337,6 +3678,7 @@ function setupReplayControls() {
             if (playPauseBtn) playPauseBtn.textContent = 'Play';
             clearInterval(replayTimer);
             renderReplayChart();
+            updateBacktestPositionUI();
         });
     }
 
@@ -3350,39 +3692,20 @@ function setupReplayControls() {
     }
 }
 
-function runBacktestingFromTools() {
-    const capital = Number(document.getElementById('backtestCapital')?.value || 10000);
-    const risk = Number(document.getElementById('backtestRisk')?.value || 0.1);
-    const symbol = document.getElementById('backtestSymbol')?.value || 'EURUSD';
+async function runBacktestingFromTools() {
+    const { capital, risk, symbol, bars, timeframe, provider, startDate, endDate } = getBacktestFormValues();
+    const instrument = getBacktestInstrumentSettings(symbol);
 
-    const candles = generateSyntheticCandles({
+    const candles = await loadHistoricalCandles({
+        provider,
         symbol,
-        startDate: '2024-01-01T00:00:00Z',
-        totalBars: 80,
-        drift: 0.0004,
-        volatility: 0.001,
+        timeframe,
+        startDate: new Date(startDate).toISOString(),
+        endDate: endDate ? new Date(endDate).toISOString() : undefined,
+        totalBars: bars,
+        drift: instrument.drift,
+        volatility: instrument.volatility,
     });
-
-    const result = runBacktest({
-        candles,
-        initialCapital: capital,
-        riskPerTrade: risk,
-        strategy: 'sma-crossover',
-    });
-
-    const netPnL = result.summary.netPnL || 0;
-    const totalReturn = result.summary.totalReturn || 0;
-    const winRate = result.trades.length ? (result.trades.filter((trade) => trade.netPnL > 0).length / result.trades.length) * 100 : 0;
-
-    const currency = '$';
-    const formatCurrency = (value) => `${currency}${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    const netPnLEl = document.getElementById('backtestNetPnL');
-    const returnEl = document.getElementById('backtestReturn');
-    const tradesEl = document.getElementById('backtestTrades');
-    const winRateEl = document.getElementById('backtestWinRate');
-    const endCapitalEl = document.getElementById('backtestEndCapital');
-    const summaryEl = document.getElementById('backtestSummary');
 
     replayState = {
         candles,
@@ -3392,27 +3715,23 @@ function runBacktestingFromTools() {
         initialCapital: capital,
         riskPerTrade: risk,
         strategy: 'sma-crossover',
+        symbol,
+        timeframe,
+        provider,
+        startDate,
+        endDate,
+        execution: {},
+        position: null,
+        trades: [],
     };
 
-    if (netPnLEl) netPnLEl.textContent = formatCurrency(netPnL);
-    if (returnEl) returnEl.textContent = `${totalReturn.toFixed(2)}%`;
-    if (tradesEl) tradesEl.textContent = String(result.summary.totalTrades || 0);
-    if (winRateEl) winRateEl.textContent = `${winRate.toFixed(1)}%`;
-    if (endCapitalEl) endCapitalEl.textContent = formatCurrency(result.summary.endCapital || capital);
-    if (summaryEl) {
-        summaryEl.innerHTML = `
-            <div class="font-semibold text-gray-200 mb-2">Backtest Summary</div>
-            <div class="space-y-2 text-gray-300">
-                <div>Symbol: <span class="text-white">${result.symbol}</span></div>
-                <div>Open positions remain constrained by historical data only; no future candle access is used.</div>
-                <div>Trades executed: <span class="text-white">${result.summary.totalTrades || 0}</span></div>
-                <div>Ending capital: <span class="text-white">${formatCurrency(result.summary.endCapital || capital)}</span></div>
-            </div>
-        `;
-    }
-
+    const sessionStatus = document.getElementById('backtestSessionStatus');
+    if (sessionStatus) sessionStatus.textContent = `${symbol} ${timeframe} replay loaded`;
+    updateBacktestPositionUI();
+    renderBacktestTradeLog();
+    updateBacktestSummaryUI();
     renderReplayChart();
-    showSuccessMessage('Backtest completed successfully.');
+    showSuccessMessage('Historical replay loaded successfully.');
 }
 
 window.runBacktestingFromTools = runBacktestingFromTools;
@@ -6654,6 +6973,7 @@ function renderSearchResults(results) {
                     affirmations: 'affirmationsTab',
                     calendar: 'calendarTab',
                     tools: 'toolsTab',
+                    backtest: 'backtestTab',
                     account: 'accountTab',
                     settings: 'settingsTab'
                 };

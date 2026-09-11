@@ -2407,6 +2407,310 @@ html[data-theme="light"] #dashboardContent .view-details-btn:hover {
     background: rgba(183, 131, 39, 0.16) !important;
 }
 
+/* Backtesting workspace */
+.backtest-session-toolbar,
+.backtest-trading-toolbar,
+.backtest-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.backtest-session-toolbar {
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 12px;
+    background: rgba(201, 168, 76, 0.06);
+}
+
+.backtest-session-fields,
+.backtest-order-actions,
+.backtest-market-readout,
+.backtest-chart-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.backtest-chart-tools label {
+    margin: 0;
+    color: #9ca3af;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.backtest-chart-tools select {
+    width: auto;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+}
+
+.backtest-marker-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+}
+
+.backtest-marker-toggle input {
+    width: auto;
+    accent-color: #C9A84C;
+}
+
+.backtest-session-fields label {
+    margin: 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.backtest-session-fields select,
+.backtest-session-fields input {
+    width: auto;
+    min-width: 130px;
+    padding: 8px 10px;
+    font-size: 0.875rem;
+}
+
+.backtest-session-fields input {
+    min-width: 150px;
+}
+
+.backtest-secondary-btn,
+.backtest-danger-btn,
+.backtest-buy-btn,
+.backtest-sell-btn {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.backtest-secondary-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #d1d5db;
+}
+
+.backtest-secondary-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.backtest-danger-btn {
+    background: rgba(224, 86, 91, 0.12);
+    border-color: rgba(224, 86, 91, 0.25);
+    color: #f08a8f;
+}
+
+.backtest-buy-btn {
+    background: rgba(38, 166, 154, 0.18);
+    border-color: rgba(38, 166, 154, 0.35);
+    color: #54d0c0;
+}
+
+.backtest-sell-btn {
+    background: rgba(224, 86, 91, 0.18);
+    border-color: rgba(224, 86, 91, 0.35);
+    color: #f08a8f;
+}
+
+.backtest-buy-btn:hover:not(:disabled),
+.backtest-sell-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.backtest-secondary-btn:disabled,
+.backtest-buy-btn:disabled,
+.backtest-sell-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.backtest-session-status,
+.backtest-position-status {
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+
+.backtest-market-readout {
+    min-width: 180px;
+}
+
+.backtest-market-readout span {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.backtest-market-readout strong {
+    color: #fafafa;
+    font-variant-numeric: tabular-nums;
+}
+
+.backtest-position-status.long {
+    color: #54d0c0;
+}
+
+.backtest-position-status.short {
+    color: #f08a8f;
+}
+
+.backtest-chart-shell {
+    min-width: 0;
+}
+
+#backtestChartCanvas {
+    min-height: 340px;
+    height: min(55vh, 620px);
+    resize: vertical;
+    overflow: hidden;
+    cursor: crosshair;
+}
+
+.backtest-trade-log-panel {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    background: #0a0a0a;
+}
+
+.backtest-panel-heading h4 {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 0.95rem;
+}
+
+.backtest-panel-heading h4 i {
+    color: #C9A84C;
+    margin-right: 6px;
+}
+
+.backtest-panel-heading span,
+.backtest-empty-state {
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+
+.backtest-trade-log {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.backtest-trade-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #d1d5db;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.backtest-trade-side {
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.backtest-trade-side.long,
+.backtest-trade-row .profit {
+    color: #54d0c0;
+}
+
+.backtest-trade-side.short,
+.backtest-trade-row .loss {
+    color: #f08a8f;
+}
+
+html[data-theme="light"] .backtest-session-toolbar,
+html[data-theme="light"] .backtest-trade-log-panel {
+    background: #f8fbfd;
+    border-color: var(--light-border);
+}
+
+html[data-theme="light"] .backtest-secondary-btn {
+    background: #eaf1f5;
+    border-color: var(--light-border-strong);
+    color: #334155;
+}
+
+html[data-theme="light"] .backtest-danger-btn {
+    background: #fff0f1;
+    border-color: #f3b5b9;
+    color: #b4232c;
+}
+
+html[data-theme="light"] .backtest-buy-btn {
+    background: #dff6f1;
+    border-color: #9edfd5;
+    color: #087f73;
+}
+
+html[data-theme="light"] .backtest-sell-btn {
+    background: #fff0f1;
+    border-color: #f3b5b9;
+    color: #b4232c;
+}
+
+html[data-theme="light"] .backtest-session-status,
+html[data-theme="light"] .backtest-position-status,
+html[data-theme="light"] .backtest-market-readout span,
+html[data-theme="light"] .backtest-chart-tools label,
+html[data-theme="light"] .backtest-panel-heading span,
+html[data-theme="light"] .backtest-empty-state {
+    color: #475569;
+}
+
+html[data-theme="light"] .backtest-market-readout strong,
+html[data-theme="light"] .backtest-panel-heading h4,
+html[data-theme="light"] .backtest-trade-row {
+    color: #172033;
+}
+
+html[data-theme="light"] .backtest-trade-row {
+    background: #ffffff;
+    border: 1px solid var(--light-border);
+}
+
+html[data-theme="light"] .backtest-position-status.long,
+html[data-theme="light"] .backtest-trade-side.long,
+html[data-theme="light"] .backtest-trade-row .profit {
+    color: #087f73;
+}
+
+html[data-theme="light"] .backtest-position-status.short,
+html[data-theme="light"] .backtest-trade-side.short,
+html[data-theme="light"] .backtest-trade-row .loss {
+    color: #b4232c;
+}
+
+@media (max-width: 640px) {
+    .backtest-trade-row {
+        grid-template-columns: 64px 1fr auto;
+    }
+
+    .backtest-trade-row span:nth-child(3) {
+        grid-column: 2 / -1;
+    }
+}
+
 html[data-theme="light"] #dashboardContent .text-white,
 html[data-theme="light"] #dashboardContent [class*="text-white"],
 html[data-theme="light"] #dashboardContent [style*="color:#fafafa"],

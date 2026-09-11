@@ -465,6 +465,10 @@
                     <span class="icon"><i class="fas fa-tools"></i></span>
                     <span class="label">Tools</span>
                 </button>
+                <button class="sidebar-btn" data-tab="backtest" title="Backtesting" onclick="document.getElementById('backtestTab').click();">
+                    <span class="icon"><i class="fas fa-chart-area"></i></span>
+                    <span class="label">Backtesting</span>
+                </button>
                 
                 <button class="sidebar-btn" data-tab="account" title="Account" onclick="document.getElementById('accountTab').click();">
                     <span class="icon"><i class="fas fa-credit-card"></i></span>
@@ -586,6 +590,10 @@
                     <span class="icon"><i class="fas fa-tools"></i></span>
                     <span class="label">Tools</span>
                 </button>
+                <button class="mobile-nav-btn" onclick="document.getElementById('backtestTab').click(); document.getElementById('mobileMenu').classList.add('hidden');">
+                    <span class="icon"><i class="fas fa-chart-area"></i></span>
+                    <span class="label">Backtesting</span>
+                </button>
                 <button id="mobileAccountToggle" class="mobile-nav-btn" aria-expanded="false">
                     <span class="icon"><i class="fas fa-credit-card"></i></span>
                     <span class="label">Account <span style="float:right; opacity:0.85;"><i class="fas fa-chevron-down"></i></span></span>
@@ -694,6 +702,9 @@
             </button>
             <button id="toolsTab" class="tab-button" data-icon="tools">
                 <i class="fas fa-tools"></i> Tools
+            </button>
+            <button id="backtestTab" class="tab-button" data-icon="chart-area">
+                <i class="fas fa-chart-area"></i> Backtesting
             </button>
             <button id="accountTab" class="tab-button" data-icon="credit-card">
                 <i class="fas fa-credit-card"></i> Account
@@ -1953,10 +1964,6 @@
                             <i class="fas fa-lock w-5 text-gray-400"></i>
                             <span>Trade Locker</span>
                         </button>
-                        <button id="toolsBacktestingBtn" onclick="switchToolsPanel('backtesting')" class="tools-nav-item w-full text-left px-4 py-3 rounded-lg mb-1 flex items-center gap-3 transition-all duration-200">
-                            <i class="fas fa-chart-area w-5 text-gray-400"></i>
-                            <span>Backtesting</span>
-                        </button>
                     </aside>
                     <div class="flex-1 p-6 bg-[#0a0a0a]">
                         <div id="economicCalendarPanel" class="tools-panel active">
@@ -1982,62 +1989,6 @@
                             </div>
                             <div class="border border-[rgba(255,255,255,0.04)] rounded-2xl overflow-hidden">
                                 <div id="position-size-calculator-895896"><script type="text/javascript" src="https://www.cashbackforex.com/Content/remote/remote-widgets.js"></script><script type="text/javascript"> RemoteCalc({"Url":"https://www.cashbackforex.com", "TopPaneStyle":"YmFja2dyb3VuZDogbGluZWFyLWdyYWRpZW50KCMzNDM1NDAgMCUsICMyNDI4MzEgMTAwJSk7IGNvbG9yOiB3aGl0ZTsgYm9yZGVyLWJvdHRvbTogbm9uZTs=","BottomPaneStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgYm9yZGVyOiBzb2xpZCAwcHggIzJhMmUzOTsgY29sb3I6ICM5MTk0YTE=","ButtonStyle":"YmFja2dyb3VuZDogIzM0MzU0MDsgY29sb3I6IHdoaXRlOyBib3JkZXItcmFkaXVzOiAyMHB4Ow==","TitleStyle":"dGV4dC1hbGlnbjogbGVmdDsgZm9udC1zaXplOiA0MHB4OyBmb250LXdlaWdodDogNTAwOw==","TextboxStyle":"YmFja2dyb3VuZDogIzE1MTgxZDsgY29sb3I6ICM5MTk0YTE7IGJvcmRlcjogc29saWQgMHB4ICM5MTk0YTE=" ,"ContainerWidth":"665","HighlightColor":"rgba(0,0,0,1.0)","IsDisplayTitle":true,"IsShowChartLinks":false,"IsShowEmbedButton":false,"CompactType":"large","Calculator":"position-size-calculator","ContainerId":"position-size-calculator-895896"});</script></div>
-                            </div>
-                        </div>
-                        <div id="backtestingPanel" class="tools-panel">
-                            <div class="mb-4">
-                                <h3 class="section-title"><i class="fas fa-chart-area"></i> Backtesting</h3>
-                                <p class="text-sm text-gray-400">Run a simple historical strategy simulation with no look-ahead bias and review its trade performance.</p>
-                            </div>
-                            <div class="grid gap-6 lg:grid-cols-2">
-                                <div class="p-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808]">
-                                    <h4 class="text-lg font-semibold text-gray-200 mb-4">Backtest Setup</h4>
-                                    <label class="block text-sm font-semibold text-gray-300 mb-2">Instrument</label>
-                                    <select id="backtestSymbol" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100">
-                                        <option value="EURUSD">EUR/USD</option>
-                                        <option value="USDJPY">USD/JPY</option>
-                                        <option value="XAUUSD">XAU/USD</option>
-                                    </select>
-                                    <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Starting Capital</label>
-                                    <input id="backtestCapital" type="number" min="0" value="10000" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
-                                    <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Risk Per Trade</label>
-                                    <input id="backtestRisk" type="number" min="0" step="0.01" value="0.1" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
-                                    <button id="runBacktestBtn" type="button" class="mt-6 w-full px-4 py-3 rounded-xl bg-[#C9A84C] text-[#0a0a0a] font-semibold hover:bg-[#d4b85a] transition-all">Run Backtest</button>
-                                </div>
-                                <div class="p-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808]">
-                                    <h4 class="text-lg font-semibold text-gray-200 mb-4">Results</h4>
-                                    <div class="space-y-3 text-sm">
-                                        <div class="flex justify-between"><span class="text-gray-400">Net P&amp;L</span><span id="backtestNetPnL" class="text-white font-semibold">$0.00</span></div>
-                                        <div class="flex justify-between"><span class="text-gray-400">Total Return</span><span id="backtestReturn" class="text-white font-semibold">0.00%</span></div>
-                                        <div class="flex justify-between"><span class="text-gray-400">Trades</span><span id="backtestTrades" class="text-white font-semibold">0</span></div>
-                                        <div class="flex justify-between"><span class="text-gray-400">Win Rate</span><span id="backtestWinRate" class="text-white font-semibold">0%</span></div>
-                                        <div class="flex justify-between"><span class="text-gray-400">End Capital</span><span id="backtestEndCapital" class="text-white font-semibold">$0.00</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="backtestSummary" class="mt-6 p-4 rounded-xl border border-[rgba(255,255,255,0.04)] bg-[#080808] text-sm text-gray-300"></div>
-                            <div class="mt-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808] overflow-hidden">
-                                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.04)] px-4 py-3">
-                                    <div class="flex items-center gap-2">
-                                        <button id="replayStepBackBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-200 hover:bg-[rgba(255,255,255,0.08)]">⏮</button>
-                                        <button id="replayPlayPauseBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[#C9A84C] text-[#0a0a0a] font-semibold">Play</button>
-                                        <button id="replayStepForwardBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-200 hover:bg-[rgba(255,255,255,0.08)]">⏭</button>
-                                    </div>
-                                    <div class="flex items-center gap-2 text-sm text-gray-300">
-                                        <label for="replaySpeed" class="text-xs uppercase tracking-wide text-gray-400">Speed</label>
-                                        <select id="replaySpeed" class="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg px-2 py-1.5 text-gray-200">
-                                            <option value="0.5">0.5x</option>
-                                            <option value="1" selected>1x</option>
-                                            <option value="2">2x</option>
-                                            <option value="5">5x</option>
-                                            <option value="10">10x</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="p-4">
-                                    <div id="backtestChartCanvas" class="w-full h-[340px] rounded-xl bg-[#0d0d0d] border border-[rgba(255,255,255,0.04)]"></div>
-                                </div>
-                                <div id="replayStatus" class="px-4 pb-4 text-sm text-gray-400">Ready to simulate historical price action.</div>
                             </div>
                         </div>
                         <div id="tradeLockerPanel" class="tools-panel">
@@ -2104,6 +2055,128 @@
             </div>
         </div>
         <!-- ========== END TOOLS TAB ========== -->
+
+        <!-- ========== BACKTESTING TAB ========== -->
+        <div id="backtestContent" class="tab-content">
+            <div class="card">
+                <div class="backtest-page-header mb-4">
+                    <h3 class="section-title"><i class="fas fa-chart-area"></i> Backtesting</h3>
+                    <p class="text-sm text-gray-400">Build a replay session, inspect the market one candle at a time, and record simulated trades.</p>
+                </div>
+                <div class="backtest-session-toolbar">
+                    <div class="backtest-session-fields">
+                        <label for="backtestSessionSelect">Session</label>
+                        <select id="backtestSessionSelect">
+                            <option value="">New session</option>
+                        </select>
+                        <input id="backtestSessionName" type="text" maxlength="50" placeholder="Session name">
+                        <button id="newBacktestSessionBtn" type="button" class="backtest-secondary-btn"><i class="fas fa-file-circle-plus"></i> New</button>
+                        <button id="saveBacktestSessionBtn" type="button" class="backtest-secondary-btn"><i class="fas fa-floppy-disk"></i> Save</button>
+                        <button id="deleteBacktestSessionBtn" type="button" class="backtest-danger-btn" title="Delete selected session"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <span id="backtestSessionStatus" class="backtest-session-status" aria-live="polite">No session loaded</span>
+                </div>
+                <div class="grid gap-6 lg:grid-cols-2">
+                    <div class="p-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808]">
+                        <h4 class="text-lg font-semibold text-gray-200 mb-4">Backtest Setup</h4>
+                        <label class="block text-sm font-semibold text-gray-300 mb-2">Instrument</label>
+                        <select id="backtestSymbol" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100">
+                            <option value="EURUSD">EUR/USD</option>
+                            <option value="USDJPY">USD/JPY</option>
+                            <option value="XAUUSD">XAU/USD</option>
+                            <option value="US30">US30</option>
+                            <option value="NAS100">NAS100</option>
+                        </select>
+                        <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Replay Timeframe</label>
+                        <select id="backtestTimeframe" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100">
+                            <option value="1H">1 hour</option>
+                            <option value="4H">4 hours</option>
+                            <option value="1D">1 day</option>
+                        </select>
+                        <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4" for="backtestDataSource">Data Source</label>
+                        <select id="backtestDataSource" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100">
+                            <option value="synthetic">Synthetic historical fallback</option>
+                            <option value="custom">Connected data provider</option>
+                        </select>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-300 mb-2" for="backtestStartDate">Start Date</label>
+                                <input id="backtestStartDate" type="datetime-local" value="2024-01-01T00:00" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-300 mb-2" for="backtestEndDate">End Date</label>
+                                <input id="backtestEndDate" type="datetime-local" value="" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                            </div>
+                        </div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Replay Candles</label>
+                        <input id="backtestBars" type="number" min="30" max="500" step="10" value="120" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                        <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Starting Capital</label>
+                        <input id="backtestCapital" type="number" min="0" value="10000" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                        <label class="block text-sm font-semibold text-gray-300 mb-2 mt-4">Risk Per Trade</label>
+                        <input id="backtestRisk" type="number" min="0" step="0.01" value="0.1" class="w-full px-4 py-3 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#0d0d0d] text-gray-100" />
+                        <button id="runBacktestBtn" type="button" class="mt-6 w-full px-4 py-3 rounded-xl bg-[#C9A84C] text-[#0a0a0a] font-semibold hover:bg-[#d4b85a] transition-all"><i class="fas fa-play mr-2"></i>Load Replay</button>
+                    </div>
+                    <div class="p-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808]">
+                        <h4 class="text-lg font-semibold text-gray-200 mb-4">Results</h4>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-400">Net P&amp;L</span><span id="backtestNetPnL" class="text-white font-semibold">$0.00</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Total Return</span><span id="backtestReturn" class="text-white font-semibold">0.00%</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Trades</span><span id="backtestTrades" class="text-white font-semibold">0</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Win Rate</span><span id="backtestWinRate" class="text-white font-semibold">0%</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">End Capital</span><span id="backtestEndCapital" class="text-white font-semibold">$0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="backtestSummary" class="mt-6 p-4 rounded-xl border border-[rgba(255,255,255,0.04)] bg-[#080808] text-sm text-gray-300"></div>
+                <div class="mt-6 border border-[rgba(255,255,255,0.04)] rounded-2xl bg-[#080808] overflow-hidden backtest-chart-shell">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.04)] px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <button id="replayStepBackBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-200 hover:bg-[rgba(255,255,255,0.08)]">⏮</button>
+                            <button id="replayPlayPauseBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[#C9A84C] text-[#0a0a0a] font-semibold">Play</button>
+                            <button id="replayStepForwardBtn" type="button" class="px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.04)] text-gray-200 hover:bg-[rgba(255,255,255,0.08)]">⏭</button>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm text-gray-300">
+                            <label for="replaySpeed" class="text-xs uppercase tracking-wide text-gray-400">Speed</label>
+                            <select id="replaySpeed" class="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-lg px-2 py-1.5 text-gray-200">
+                                <option value="0.5">0.5x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="2">2x</option>
+                                <option value="5">5x</option>
+                                <option value="10">10x</option>
+                            </select>
+                        </div>
+                        <div class="backtest-chart-tools">
+                            <label for="backtestIndicator">Indicator</label>
+                            <select id="backtestIndicator">
+                                <option value="none">No moving average</option>
+                                <option value="sma5">SMA 5</option>
+                                <option value="sma10">SMA 10</option>
+                                <option value="sma5-10">SMA 5 + 10</option>
+                            </select>
+                            <label class="backtest-marker-toggle"><input id="backtestShowTradeMarkers" type="checkbox" checked> Trade markers</label>
+                        </div>
+                    </div>
+                    <div class="backtest-trading-toolbar">
+                        <div class="backtest-market-readout"><span id="backtestMarketSymbol">No market loaded</span><strong id="backtestMarketPrice">--</strong></div>
+                        <div class="backtest-order-actions">
+                            <button id="backtestBuyBtn" type="button" class="backtest-buy-btn"><i class="fas fa-arrow-trend-up"></i> Buy / Long</button>
+                            <button id="backtestSellBtn" type="button" class="backtest-sell-btn"><i class="fas fa-arrow-trend-down"></i> Sell / Short</button>
+                            <button id="backtestCloseBtn" type="button" class="backtest-secondary-btn" disabled><i class="fas fa-circle-stop"></i> Close Position</button>
+                        </div>
+                        <div id="backtestPositionStatus" class="backtest-position-status">Flat</div>
+                    </div>
+                    <div class="p-4">
+                        <div id="backtestChartCanvas" class="w-full h-[340px] rounded-xl bg-[#0d0d0d] border border-[rgba(255,255,255,0.04)]"></div>
+                    </div>
+                    <div id="replayStatus" class="px-4 pb-4 text-sm text-gray-400">Ready to simulate historical price action.</div>
+                </div>
+                <div class="backtest-trade-log-panel">
+                    <div class="backtest-panel-heading"><h4><i class="fas fa-list-check"></i> Simulated Trades</h4><span id="backtestTradeCount">0 trades</span></div>
+                    <div id="backtestTradeLog" class="backtest-trade-log"><p class="backtest-empty-state">Load a replay to begin.</p></div>
+                </div>
+            </div>
+        </div>
+        <!-- ========== END BACKTESTING TAB ========== -->
 
         <!-- ========== ACCOUNT TAB (REDESIGNED) ========== -->
         <div id="accountContent" class="tab-content">

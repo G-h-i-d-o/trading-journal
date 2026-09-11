@@ -30,7 +30,23 @@ import {
 import {
   generateSyntheticCandles,
   runBacktest,
+  openReplayPosition,
+  closeReplayPosition,
+  calculateReplaySummary,
+  calculateMovingAverage,
+  buildReplayMarkers,
 } from '../src/backtesting-engine.js';
+import {
+  aggregateHistoricalCandles,
+  loadHistoricalCandles,
+  validateHistoricalCandles,
+} from '../src/backtest-data.js';
+import {
+  getBacktestSessionStorageKey,
+  normalizeBacktestSession,
+  readBacktestSessions,
+  writeBacktestSessions,
+} from '../src/backtest-session.js';
 
 test('calculateProfitLoss for a long EUR/USD trade is correct', () => {
   const result = calculateProfitLoss(1.1000, 1.1050, 1, 'EUR/USD', 'long');
@@ -224,6 +240,190 @@ test('backtesting engine enforces a no-lookahead trading model and returns deter
     assert.ok(trade.entryIndex < trade.exitIndex, 'trade must not use future candles to exit before entering');
     assert.ok(trade.entryPrice > 0 && trade.exitPrice > 0, 'trade pricing must be valid');
   });
+});
+
+test('backtesting execution costs reduce results deterministically', () => {
+  const candles = generateSyntheticCandles({
+    symbol: 'EURUSD',
+    totalBars: 120,
+    drift: 0.0008,
+    volatility: 0.0015,
+  });
+  const noCostResult = runBacktest({
+    candles,
+    initialCapital: 10000,
+    riskPerTrade: 1,
+    execution: { spreadBps: 0, slippageBps: 0, commissionPerUnit: 0 },
+  });
+  const costResult = runBacktest({
+    candles,
+    initialCapital: 10000,
+    riskPerTrade: 1,
+    execution: { spreadBps: 20, slippageBps: 10, commissionPerUnit: 0.01 },
+  });
+
+  assert.equal(costResult.trades.length, noCostResult.trades.length);
+  assert.ok(costResult.summary.netPnL <= noCostResult.summary.netPnL);
+  assert.ok(costResult.trades.every((trade) => trade.commission >= 0));
+});
+
+test('backtesting engine supports short trades and marks open positions to market', () => {
+  const candles = [];
+  for (let index = 0; index < 30; index += 1) {
+    const close = index < 15 ? 100 + index : 115 - ((index - 15) * 0.5);
+    candles.push({
+      symbol: 'US30',
+      time: new Date(Date.UTC(2024, 0, 1, index)).toISOString(),
+      open: close,
+      high: close + 1,
+      low: close - 1,
+      close,
+      volume: 1000,
+    });
+  }
+  const result = runBacktest({
+    candles,
+    initialCapital: 10000,
+    riskPerTrade: 1,
+    execution: { spreadBps: 0, slippageBps: 0 },
+  });
+
+  assert.ok(result.equityCurve.every((point) => Number.isFinite(point.equity)));
+  assert.ok(result.summary.openPositionPnl !== undefined);
+  assert.equal(result.openPosition?.side, 'short');
+  assert.equal(result.openPosition?.exitIndex, undefined);
+});
+
+test('historical data layer validates, filters, and aggregates timeframe candles', async () => {
+  const candles = await loadHistoricalCandles({
+    symbol: 'EURUSD',
+    timeframe: '4H',
+    startDate: '2024-01-01T00:00:00Z',
+    totalBars: 12,
+  });
+  assert.equal(candles.length, 12);
+  assert.ok(candles.every((candle) => candle.symbol === 'EURUSD'));
+
+  const normalized = validateHistoricalCandles([
+    { symbol: 'US30', time: '2024-01-01T00:00:00Z', open: 100, high: 105, low: 98, close: 103, volume: 10 },
+    { symbol: 'US30', time: '2024-01-01T01:00:00Z', open: 103, high: 108, low: 101, close: 106, volume: 12 },
+  ]);
+  const aggregated = aggregateHistoricalCandles(normalized, '4H');
+  assert.equal(aggregated.length, 1);
+  assert.deepEqual(aggregated[0], {
+    symbol: 'US30',
+    time: '2024-01-01T00:00:00.000Z',
+    open: 100,
+    high: 108,
+    low: 98,
+    close: 106,
+    volume: 22,
+  });
+});
+
+test('historical data layer rejects invalid OHLCV data', () => {
+  assert.throws(() => validateHistoricalCandles([
+    { symbol: 'EURUSD', time: '2024-01-01T00:00:00Z', open: 1.1, high: 1.05, low: 1.0, close: 1.02, volume: 1 },
+  ]), /invalid ohlc relationship/i);
+});
+
+test('manual replay trades share execution accounting with backtest trades', () => {
+  const candles = generateSyntheticCandles({ symbol: 'EURUSD', totalBars: 2 });
+  const position = openReplayPosition({
+    candle: candles[0],
+    side: 'long',
+    equity: 10000,
+    riskPerTrade: 1,
+    execution: { spreadBps: 0, slippageBps: 0, commissionPerUnit: 0 },
+  });
+  assert.ok(position);
+  position.entryIndex = 0;
+  const trade = closeReplayPosition({
+    position,
+    candle: candles[1],
+    exitIndex: 1,
+    execution: { spreadBps: 0, slippageBps: 0, commissionPerUnit: 0 },
+  });
+  assert.equal(trade.exitIndex, 1);
+  assert.equal(trade.entryPrice, candles[0].close);
+  assert.equal(trade.exitPrice, candles[1].close);
+  const summary = calculateReplaySummary({ initialCapital: 10000, trades: [trade], candle: candles[1] });
+  assert.equal(summary.totalTrades, 1);
+  assert.equal(summary.netPnL, trade.netPnL);
+  assert.equal(summary.endCapital, 10000 + trade.netPnL);
+});
+
+test('backtest sessions are versioned, user-scoped, and sanitized', () => {
+  const memory = new Map();
+  const storage = {
+    getItem(key) { return memory.get(key) ?? null; },
+    setItem(key, value) { memory.set(key, String(value)); },
+  };
+  const session = normalizeBacktestSession({
+    id: 'session-1',
+    name: '<img src=x onerror=alert(1)>',
+    state: {
+      candles: [{ symbol: 'EURUSD', time: '2024-01-01T00:00:00Z', open: 1, high: 2, low: 0.5, close: 1.5, volume: 10 }],
+      currentIndex: 0,
+      initialCapital: 10000,
+      trades: [],
+    },
+    form: { symbol: 'EURUSD', timeframe: '1H', bars: 30 },
+  });
+  assert.equal(session.name, '<img src=x onerror=alert(1)>');
+  assert.equal(writeBacktestSessions([session], storage, 'user-a'), true);
+  assert.equal(readBacktestSessions(storage, 'user-a').length, 1);
+  assert.equal(readBacktestSessions(storage, 'user-b').length, 0);
+  const envelope = JSON.parse(memory.get(getBacktestSessionStorageKey('user-a')));
+  assert.equal(envelope.version, 1);
+  assert.equal(envelope.sessions[0].name, session.name);
+});
+
+test('backtest session storage ignores malformed records and handles corrupt JSON', () => {
+  const memory = new Map();
+  const storage = {
+    getItem(key) { return memory.get(key) ?? null; },
+    setItem(key, value) { memory.set(key, String(value)); },
+  };
+  memory.set(getBacktestSessionStorageKey('user-a'), JSON.stringify({ version: 1, sessions: [{ id: 'bad', name: 'bad' }] }));
+  assert.deepEqual(readBacktestSessions(storage, 'user-a'), []);
+  memory.set(getBacktestSessionStorageKey('user-a'), '{not-json');
+  assert.deepEqual(readBacktestSessions(storage, 'user-a'), []);
+});
+
+test('legacy backtest sessions migrate to the user-scoped key', () => {
+  const memory = new Map();
+  const storage = {
+    getItem(key) { return memory.get(key) ?? null; },
+    setItem(key, value) { memory.set(key, String(value)); },
+    removeItem(key) { memory.delete(key); },
+  };
+  const legacySession = {
+    id: 'legacy-1',
+    name: 'Legacy replay',
+    state: { candles: [{ symbol: 'EURUSD', time: '2024-01-01T00:00:00Z', open: 1, high: 2, low: 0.5, close: 1.5, volume: 1 }] },
+  };
+  memory.set('backtestSessions', JSON.stringify([legacySession]));
+  assert.equal(readBacktestSessions(storage, 'user-a').length, 1);
+  assert.equal(memory.has('backtestSessions'), false);
+  assert.equal(memory.has(getBacktestSessionStorageKey('user-a')), true);
+});
+
+test('chart helpers build moving averages and replay order markers', () => {
+  const candles = generateSyntheticCandles({ symbol: 'EURUSD', totalBars: 6 });
+  const movingAverage = calculateMovingAverage(candles, 3);
+  assert.equal(movingAverage.length, 4);
+  assert.equal(movingAverage[0].time, Math.floor(new Date(candles[2].time).getTime() / 1000));
+
+  const markers = buildReplayMarkers({
+    candles,
+    trades: [{ side: 'long', entryIndex: 1, exitIndex: 4, netPnL: 12.5 }],
+    position: { side: 'short', entryIndex: 5 },
+  });
+  assert.equal(markers.length, 3);
+  assert.equal(markers[0].text, 'Long entry');
+  assert.equal(markers[1].text, 'Exit +12.50');
+  assert.equal(markers[2].text, 'Open short');
 });
 
 test('chart screenshot links normalize across chart providers and preserve share pages', () => {
