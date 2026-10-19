@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH FIXED MT4/5 IMPORT AND UI TEXT COLORS
+// app.js - COMPLETE WORKING VERSION WITH FIXED MT4/5 IMPORT, UI TEXT COLORS, AND MISSING PIPS FUNCTION
 import { 
     auth, db, storage, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc,
@@ -661,6 +661,63 @@ function mapMTSymbol(mtSymbol) {
     return cleanSymbol;
 }
 
+// ========== ROBUST NUMBER PARSER FOR MT4/MT5 IMPORT ==========
+function robustParseNumber(val) {
+    if (val === null || val === undefined) return 0;
+    let str = String(val).trim();
+    if (!str) return 0;
+
+    // Handle unicode minus variants (mathematical minus, en-dash, em-dash, horizontal bar)
+    str = str.replace(/[\u2212\u2013\u2014\u2015\u2043\uFE63\uFF0D]/g, '-');
+
+    // Handle accounting-style parentheses for negatives: (44.68) -> -44.68
+    let isNegative = false;
+    if (/^\(\s*[\d.,\s]+\s*\)$/.test(str)) {
+        isNegative = true;
+        str = str.replace(/[()]/g, '').trim();
+    }
+
+    // Handle trailing minus: 44.68- -> -44.68
+    if (/^-?\d[\d.,\s]*-$/.test(str)) {
+        isNegative = true;
+        str = str.slice(0, -1).trim();
+    }
+
+    // Strip currency symbols and any character that is not a digit, sign, dot or comma
+    str = str.replace(/[^\d.,\-+]/g, '');
+
+    if (!str) return 0;
+
+    if (str.startsWith('-')) {
+        isNegative = true;
+    }
+
+    // Remove all +/- signs for value parsing
+    str = str.replace(/^[+-]/, '').replace(/[+-]/g, '');
+
+    if (!str) return 0;
+
+    // Detect decimal separator (whichever comes last is the decimal)
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+
+    let normalized;
+    if (lastDot > lastComma) {
+        // US style: 1,234.56 -> 1234.56
+        normalized = str.replace(/,/g, '');
+    } else if (lastComma > lastDot) {
+        // EU style: 1.234,56 -> 1234.56
+        normalized = str.replace(/\./g, '').replace(',', '.');
+    } else {
+        normalized = str;
+    }
+
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed)) return 0;
+
+    return isNegative ? -Math.abs(parsed) : parsed;
+}
+
 // ========== INSTRUMENT TYPE FUNCTIONS ==========
 function getInstrumentType(symbol) {
     const volatilityIndices = [
@@ -749,6 +806,68 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
         return { risk: Math.abs(slPoints), reward: Math.abs(tpPoints) };
     }
 }
+
+function getPricePipsMode() {
+    return document.getElementById('pricePipsMode')?.value || 'price';
+}
+
+function getPricePrecision(symbol) {
+    if (!symbol) return 4;
+    if (symbol.includes('JPY')) return 3;
+    const instrumentType = getInstrumentType(symbol);
+    return instrumentType === 'forex' ? 5 : 4;
+}
+
+function getStopLossTakeProfitFromInput(entry, slInput, tpInput, symbol, type, mode) {
+    const instrumentType = getInstrumentType(symbol);
+    const pipSize = instrumentType === 'forex' ? getPipSize(symbol) : 1;
+    let stopLoss = null;
+    let takeProfit = null;
+    let slDistance = null;
+    let tpDistance = null;
+
+    if (mode === 'pips') {
+        if (slInput != null && !Number.isNaN(slInput)) {
+            slDistance = Math.abs(slInput);
+            stopLoss = type === 'long' ? entry - slDistance * pipSize : entry + slDistance * pipSize;
+        }
+        if (tpInput != null && !Number.isNaN(tpInput)) {
+            tpDistance = Math.abs(tpInput);
+            takeProfit = type === 'long' ? entry + tpDistance * pipSize : entry - tpDistance * pipSize;
+        }
+    } else {
+        if (slInput != null && !Number.isNaN(slInput)) {
+            stopLoss = slInput;
+            slDistance = type === 'long' ? (entry - stopLoss) / pipSize : (stopLoss - entry) / pipSize;
+        }
+        if (tpInput != null && !Number.isNaN(tpInput)) {
+            takeProfit = tpInput;
+            tpDistance = type === 'long' ? (takeProfit - entry) / pipSize : (entry - takeProfit) / pipSize;
+        }
+    }
+
+    return { stopLoss, takeProfit, slDistance, tpDistance };
+}
+
+// ADDED MISSING FUNCTION: Update Pips Mode UI
+function updatePricePipsModeUI() {
+    const mode = getPricePipsMode();
+    const stopLossInput = document.getElementById('stopLoss');
+    const takeProfitInput = document.getElementById('takeProfit');
+    const hint = document.getElementById('pricePipsHint');
+    if (!stopLossInput || !takeProfitInput || !hint) return;
+
+    if (mode === 'pips') {
+        stopLossInput.placeholder = 'Enter SL distance in pips/points';
+        takeProfitInput.placeholder = 'Enter TP distance in pips/points';
+        hint.textContent = 'Enter SL/TP distance from entry in pips or points. Entry price remains exact.';
+    } else {
+        stopLossInput.placeholder = 'Enter SL price level';
+        takeProfitInput.placeholder = 'Enter TP price level';
+        hint.textContent = 'Use exact price levels, or enter stop loss and take profit as pip/point distances from entry.';
+    }
+}
+// ----------------------------------------------------------------
 
 let pointValueOverrides = {};
 
@@ -4566,20 +4685,24 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// FIXED: Robust MetaTrader CSV Parser
 function parseMetaTraderCSV(csvText) {
     const rawLines = csvText.split('\n');
     const lines = rawLines.map(line => line.replace(/\r$/, '').trim()).filter(line => line.length > 0);
     if (lines.length < 2) return [];
 
-    // 1. Find the header line
+    // Strip BOM if present on the first line
+    if (lines[0].charCodeAt(0) === 0xFEFF) {
+        lines[0] = lines[0].slice(1);
+    }
+
+    // Find the header line
     let headerLineIndex = -1;
     let delimiter = ',';
     for (let i = 0; i < Math.min(lines.length, 20); i++) {
         const line = lines[i];
         const lower = line.toLowerCase();
-        // Check for universally present MT4/MT5 header keywords
-        if (lower.includes('time') && lower.includes('type') && lower.includes('profit') && (lower.includes('price') || lower.includes('open'))) {
+        if (lower.includes('time') && lower.includes('type') && lower.includes('profit') &&
+            (lower.includes('price') || lower.includes('open'))) {
             headerLineIndex = i;
             delimiter = detectDelimiter(line);
             break;
@@ -4587,16 +4710,14 @@ function parseMetaTraderCSV(csvText) {
     }
 
     if (headerLineIndex === -1) {
-        // Fallback: use the first line and guess delimiter
         headerLineIndex = 0;
         delimiter = detectDelimiter(lines[0]);
     }
 
-    const headerLine = lines[headerLineIndex];
+    const headerLine = lines[headerLineIndex].replace(/^\uFEFF/, '');
     const rawHeaders = parseCSVLineWithDelimiter(headerLine, delimiter);
     const headers = rawHeaders.map(h => normalizeHeader(h));
 
-    // Build a map of header name -> indices to handle duplicate column names (like 'Price' in MT5)
     const headerMap = new Map();
     headers.forEach((h, index) => {
         if (!headerMap.has(h)) headerMap.set(h, []);
@@ -4609,16 +4730,32 @@ function parseMetaTraderCSV(csvText) {
             if (headerMap.has(normalizedName)) {
                 const indexes = headerMap.get(normalizedName);
                 if (second && indexes.length > 1) {
-                    return indexes[1]; // Return second occurrence (e.g., Close Price)
+                    return indexes[1];
                 }
-                return indexes[0]; // Return first occurrence
+                return indexes[0];
+            }
+        }
+        return -1;
+    };
+
+    // Fallback keyword search across all headers
+    const findHeaderByKeyword = (keywords) => {
+        for (const [header, indexes] of headerMap.entries()) {
+            for (const kw of keywords) {
+                if (header.includes(kw)) {
+                    return indexes[0];
+                }
             }
         }
         return -1;
     };
 
     const getValue = (values, possibleNames, second = false) => {
-        const index = findHeaderIndex(possibleNames, second);
+        let index = findHeaderIndex(possibleNames, second);
+        if (index === -1 && !second) {
+            // Try keyword fallback for robustness
+            index = findHeaderByKeyword(possibleNames.map(p => p.toLowerCase()));
+        }
         if (index !== -1 && index < values.length && values[index] !== undefined) {
             return values[index].replace(/^"|"$/g, '').trim();
         }
@@ -4626,25 +4763,22 @@ function parseMetaTraderCSV(csvText) {
     };
 
     const trades = [];
-    // Iterate through data rows
     for (let i = headerLineIndex + 1; i < lines.length; i++) {
         const line = lines[i];
-        // Stop conditions (e.g., "Balance: ..." or empty line or report footer)
-        if (line.toLowerCase().startsWith('balance') || line.toLowerCase().startsWith('credit') || line.toLowerCase().includes('closed p/l') || line.toLowerCase().includes('working orders')) {
+        if (line.toLowerCase().startsWith('balance') || line.toLowerCase().startsWith('credit') ||
+            line.toLowerCase().includes('closed p/l') || line.toLowerCase().includes('working orders')) {
             break;
         }
 
         const values = parseCSVLineWithDelimiter(line, delimiter);
-        if (values.length < headers.length / 2) continue; // Skip malformed rows
+        if (values.length < headers.length / 2) continue;
 
         try {
-            // Extract raw values
             const ticket = getValue(values, ['Position', 'Ticket', 'Order']);
             const typeStr = getValue(values, ['Type', 'Action']).toLowerCase();
-            
-            // Skip non-trade rows (e.g., balance updates where type is 'balance' or 'credit')
+
             if (typeStr === 'balance' || typeStr === 'credit' || typeStr === '') continue;
-            if (!ticket || ticket === '0') continue; // MT5 uses 0 for balance rows
+            if (!ticket || ticket === '0') continue;
 
             const openTime = getValue(values, ['Open Time', 'Time']);
             const size = getValue(values, ['Size', 'Volume', 'Lots']);
@@ -4652,44 +4786,38 @@ function parseMetaTraderCSV(csvText) {
             const openPrice = getValue(values, ['Open Price', 'Price']);
             const sl = getValue(values, ['S/L', 'SL', 'Stop Loss', 'StopLoss']);
             const tp = getValue(values, ['T/P', 'TP', 'Take Profit', 'TakeProfit']);
-            // For close time and close price, we look for the SECOND occurrence of 'Time' and 'Price' (MT5 format)
-            // or the explicit 'Close Time' / 'Close Price' if they exist.
             const closeTime = getValue(values, ['Close Time', 'CloseTime', 'Time'], true);
             const closePrice = getValue(values, ['Close Price', 'ClosePrice', 'Price'], true);
             const commission = getValue(values, ['Commission', 'Commis']);
             const swap = getValue(values, ['Swap', 'Storage']);
-            const profit = getValue(values, ['Profit', 'P/L']);
+            const profit = getValue(values, ['Profit', 'P/L', 'P&L', 'Net Profit']);
             const comment = getValue(values, ['Comment', 'Note']);
 
-            // Must have a close time and a valid symbol to be considered a closed trade
             if (!closeTime || !item) continue;
 
             const mappedSymbol = mapMTSymbol(item);
             const tradeType = typeStr.includes('buy') ? 'long' : 'short';
-            
-            // Parse numeric values safely
-            const parseNum = (val) => {
-                if (!val) return 0;
-                let clean = val.replace(/\s/g, '');
-                if (clean.includes(',') && clean.includes('.')) {
-                    clean = clean.replace(/,/g, '');
-                } else if (clean.includes(',')) {
-                    const parts = clean.split(',');
-                    if (parts[1] && parts[1].length === 3) clean = clean.replace(/,/g, '');
-                    else clean = clean.replace(',', '.');
-                }
-                return parseFloat(clean) || 0;
-            };
 
-            const entryPriceVal = parseNum(openPrice);
-            const slVal = parseNum(sl);
-            const tpVal = parseNum(tp);
-            const closePriceVal = parseNum(closePrice);
-            const sizeVal = parseNum(size);
-            const mtProfit = parseNum(profit);
-            const commVal = parseNum(commission);
-            const swapVal = parseNum(swap);
+            const entryPriceVal = robustParseNumber(openPrice);
+            const slVal = robustParseNumber(sl);
+            const tpVal = robustParseNumber(tp);
+            const closePriceVal = robustParseNumber(closePrice);
+            const sizeVal = robustParseNumber(size);
+            const mtProfit = robustParseNumber(profit);
+            const commVal = robustParseNumber(commission);
+            const swapVal = robustParseNumber(swap);
 
+            // Diagnostic logging so you can see the actual parsed values in the console
+            console.log('[MT IMPORT] Row:', {
+                ticket, symbol: mappedSymbol, type: tradeType,
+                rawProfit: profit, parsedProfit: mtProfit,
+                rawCommission: commission, parsedCommission: commVal,
+                rawSwap: swap, parsedSwap: swapVal,
+                entryPrice: entryPriceVal, closePrice: closePriceVal,
+                size: sizeVal
+            });
+
+            // Compute final profit
             let finalProfit = mtProfit;
             if (mtImportSettings.useMTProfit) {
                 if (mtImportSettings.includeCommission) finalProfit += commVal;
@@ -4697,6 +4825,22 @@ function parseMetaTraderCSV(csvText) {
             } else {
                 if (closePriceVal > 0 && entryPriceVal > 0) {
                     finalProfit = calculateProfitLoss(entryPriceVal, closePriceVal, sizeVal, mappedSymbol, tradeType);
+                }
+            }
+
+            // Safety-net: if the raw profit string had digits but parsed to 0, and prices are valid,
+            // fall back to calculated profit (prevents silent zeroing of losses with exotic formats)
+            const rawProfitStr = String(profit || '').trim();
+            const rawWasEmptyOrZero = !rawProfitStr || /^[+-]?0*(?:[.,]0*)?$/.test(rawProfitStr);
+            const hasDigits = /\d/.test(rawProfitStr);
+            const suspiciousZero = mtImportSettings.useMTProfit && mtProfit === 0 && hasDigits && !rawWasEmptyOrZero;
+            if (suspiciousZero && closePriceVal > 0 && entryPriceVal > 0) {
+                const calculated = calculateProfitLoss(entryPriceVal, closePriceVal, sizeVal, mappedSymbol, tradeType);
+                if (Math.abs(calculated) > 0.01) {
+                    console.warn('[MT IMPORT] Suspicious zero profit detected. Using calculated fallback.', {
+                        ticket, raw: rawProfitStr, calculated
+                    });
+                    finalProfit = calculated;
                 }
             }
 
