@@ -1,4 +1,4 @@
-// app.js - COMPLETE WORKING VERSION WITH ADVANCED TRADING OBJECTIVES LOGIC
+// app.js - COMPLETE WORKING VERSION WITH FIXED MT4/5 IMPORT AND UI TEXT COLORS
 import { 
     auth, db, storage, onAuthStateChanged, signOut, 
     collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc,
@@ -750,66 +750,6 @@ function calculatePipsPoints(entry, sl, tp, symbol, type) {
     }
 }
 
-function getPricePipsMode() {
-    return document.getElementById('pricePipsMode')?.value || 'price';
-}
-
-function getPricePrecision(symbol) {
-    if (!symbol) return 4;
-    if (symbol.includes('JPY')) return 3;
-    const instrumentType = getInstrumentType(symbol);
-    return instrumentType === 'forex' ? 5 : 4;
-}
-
-function getStopLossTakeProfitFromInput(entry, slInput, tpInput, symbol, type, mode) {
-    const instrumentType = getInstrumentType(symbol);
-    const pipSize = instrumentType === 'forex' ? getPipSize(symbol) : 1;
-    let stopLoss = null;
-    let takeProfit = null;
-    let slDistance = null;
-    let tpDistance = null;
-
-    if (mode === 'pips') {
-        if (slInput != null && !Number.isNaN(slInput)) {
-            slDistance = Math.abs(slInput);
-            stopLoss = type === 'long' ? entry - slDistance * pipSize : entry + slDistance * pipSize;
-        }
-        if (tpInput != null && !Number.isNaN(tpInput)) {
-            tpDistance = Math.abs(tpInput);
-            takeProfit = type === 'long' ? entry + tpDistance * pipSize : entry - tpDistance * pipSize;
-        }
-    } else {
-        if (slInput != null && !Number.isNaN(slInput)) {
-            stopLoss = slInput;
-            slDistance = type === 'long' ? (entry - stopLoss) / pipSize : (stopLoss - entry) / pipSize;
-        }
-        if (tpInput != null && !Number.isNaN(tpInput)) {
-            takeProfit = tpInput;
-            tpDistance = type === 'long' ? (takeProfit - entry) / pipSize : (entry - takeProfit) / pipSize;
-        }
-    }
-
-    return { stopLoss, takeProfit, slDistance, tpDistance };
-}
-
-function updatePricePipsModeUI() {
-    const mode = getPricePipsMode();
-    const stopLossInput = document.getElementById('stopLoss');
-    const takeProfitInput = document.getElementById('takeProfit');
-    const hint = document.getElementById('pricePipsHint');
-    if (!stopLossInput || !takeProfitInput || !hint) return;
-
-    if (mode === 'pips') {
-        stopLossInput.placeholder = 'Enter SL distance in pips/points';
-        takeProfitInput.placeholder = 'Enter TP distance in pips/points';
-        hint.textContent = 'Enter SL/TP distance from entry in pips or points. Entry price remains exact.';
-    } else {
-        stopLossInput.placeholder = 'Enter SL price level';
-        takeProfitInput.placeholder = 'Enter TP price level';
-        hint.textContent = 'Use exact price levels, or enter stop loss and take profit as pip/point distances from entry.';
-    }
-}
-
 let pointValueOverrides = {};
 
 // ---------- UPDATED getPointValue with accurate values ----------
@@ -1214,6 +1154,7 @@ function updateCalendarStats() {
     }
 }
 
+// ========== ACCOUNT MANAGEMENT SYSTEM ==========
 async function initializeAccounts() {
     console.log('🔄 Initializing accounts system...');
     await loadUserAccounts();
@@ -4625,123 +4566,154 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function cleanMTNumber(value) {
-    if (!value && value !== 0) return '';
-    return String(value)
-        .replace(/"/g, '')
-        .replace(/\s+/g, '')
-        .replace(/,/g, '')
-        .trim();
-}
-
+// FIXED: Robust MetaTrader CSV Parser
 function parseMetaTraderCSV(csvText) {
     const rawLines = csvText.split('\n');
-    const lines = rawLines.map(line => line.replace(/\r$/, '')).filter(line => line.trim());
+    const lines = rawLines.map(line => line.replace(/\r$/, '').trim()).filter(line => line.length > 0);
     if (lines.length < 2) return [];
-    const headerLineIndex = lines.findIndex(line => {
+
+    // 1. Find the header line
+    let headerLineIndex = -1;
+    let delimiter = ',';
+    for (let i = 0; i < Math.min(lines.length, 20); i++) {
+        const line = lines[i];
         const lower = line.toLowerCase();
-        const hasSymbol = lower.includes('symbol');
-        const hasType = lower.includes('type');
-        const hasSL = lower.includes('s / l') || lower.includes('s/l') || lower.includes('sl');
-        const hasTP = lower.includes('t / p') || lower.includes('t/p') || lower.includes('tp');
-        const hasProfit = lower.includes('profit') || lower.includes('p/l');
-        const hasPosition = lower.includes('position') || lower.includes('deal');
-        return hasSymbol && hasType && hasSL && hasTP && (hasPosition || hasProfit);
-    });
-    const firstLine = (headerLineIndex >= 0 ? lines[headerLineIndex] : lines[0]).replace(/^\uFEFF/, '');
-    const delimiter = detectDelimiter(firstLine);
-    const rawHeaders = parseCSVLineWithDelimiter(firstLine, delimiter);
-    const headers = rawHeaders.map(header => normalizeHeader(header));
-    console.log('[MT IMPORT] Headers detected:', headers);
+        // Check for universally present MT4/MT5 header keywords
+        if (lower.includes('time') && lower.includes('type') && lower.includes('profit') && (lower.includes('price') || lower.includes('open'))) {
+            headerLineIndex = i;
+            delimiter = detectDelimiter(line);
+            break;
+        }
+    }
+
+    if (headerLineIndex === -1) {
+        // Fallback: use the first line and guess delimiter
+        headerLineIndex = 0;
+        delimiter = detectDelimiter(lines[0]);
+    }
+
+    const headerLine = lines[headerLineIndex];
+    const rawHeaders = parseCSVLineWithDelimiter(headerLine, delimiter);
+    const headers = rawHeaders.map(h => normalizeHeader(h));
+
+    // Build a map of header name -> indices to handle duplicate column names (like 'Price' in MT5)
     const headerMap = new Map();
-    headers.forEach((header, index) => {
-        if (!headerMap.has(header)) headerMap.set(header, []);
-        headerMap.get(header).push(index);
+    headers.forEach((h, index) => {
+        if (!headerMap.has(h)) headerMap.set(h, []);
+        headerMap.get(h).push(index);
     });
+
     const findHeaderIndex = (possibleNames, second = false) => {
         for (const name of possibleNames) {
             const normalizedName = normalizeHeader(name);
             if (headerMap.has(normalizedName)) {
                 const indexes = headerMap.get(normalizedName);
-                if (second && indexes.length > 1) return indexes[1];
-                return indexes[0];
+                if (second && indexes.length > 1) {
+                    return indexes[1]; // Return second occurrence (e.g., Close Price)
+                }
+                return indexes[0]; // Return first occurrence
             }
         }
         return -1;
     };
-    const getValue = (possibleNames, second = false) => {
+
+    const getValue = (values, possibleNames, second = false) => {
         const index = findHeaderIndex(possibleNames, second);
         if (index !== -1 && index < values.length && values[index] !== undefined) {
-            return values[index].replace(/"/g, '').trim();
+            return values[index].replace(/^"|"$/g, '').trim();
         }
         return '';
     };
+
     const trades = [];
-    const sectionMarkers = [/^orders\b/i, /^deals\b/i, /^results\b/i, /^balance:/i, /^trade history report/i];
-    for (let i = headerLineIndex >= 0 ? headerLineIndex + 1 : 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        if (sectionMarkers.some(marker => marker.test(line))) {
+    // Iterate through data rows
+    for (let i = headerLineIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        // Stop conditions (e.g., "Balance: ..." or empty line or report footer)
+        if (line.toLowerCase().startsWith('balance') || line.toLowerCase().startsWith('credit') || line.toLowerCase().includes('closed p/l') || line.toLowerCase().includes('working orders')) {
             break;
         }
+
         const values = parseCSVLineWithDelimiter(line, delimiter);
-        if (values.length < 2) continue;
+        if (values.length < headers.length / 2) continue; // Skip malformed rows
+
         try {
-            const getValue = (possibleNames, second = false) => {
-                const index = findHeaderIndex(possibleNames, second);
-                if (index !== -1 && index < values.length && values[index] !== undefined) {
-                    return values[index].replace(/"/g, '').trim();
-                }
-                return '';
-            };
-            const ticket = getValue(['Position', 'position', 'Ticket', 'ticket', 'Order', 'order']).trim();
-            const openTime = getValue(['Open Time', 'openTime', 'OpenTime', 'Time']).trim();
-            const type = getValue(['Type', 'type', 'Action']).trim().toLowerCase();
-            const size = getValue(['Size', 'size', 'Volume', 'volume', 'Lots', 'lots']).trim();
-            const item = getValue(['Item', 'item', 'Symbol', 'symbol', 'Instrument']).trim();
-            const openPrice = getValue(['Open Price', 'openPrice', 'Open', 'Price']).trim();
-            const sl = getValue(['S/L', 'SL', 'Stop Loss', 'stopLoss', 'StopLoss']).trim();
-            const tp = getValue(['T/P', 'TP', 'Take Profit', 'takeProfit', 'TakeProfit']).trim();
-            const closeTime = getValue(['Close Time', 'closeTime', 'CloseTime', 'Time'], true).trim();
-            const closePrice = getValue(['Close Price', 'closePrice', 'Close', 'Price'], true).trim();
-            const commission = getValue(['Commission', 'commission', 'Commis']).trim();
-            const swap = getValue(['Swap', 'swap', 'Storage']).trim();
-            const profit = getValue(['Profit', 'profit', 'P/L']).trim();
-            const comment = getValue(['Comment', 'comment', 'Note']).trim();
-            if (!closeTime || closeTime === '') {
-                console.log('[MT IMPORT] Skipping open trade:', ticket);
-                continue;
-            }
-            if (!ticket) continue;
+            // Extract raw values
+            const ticket = getValue(values, ['Position', 'Ticket', 'Order']);
+            const typeStr = getValue(values, ['Type', 'Action']).toLowerCase();
+            
+            // Skip non-trade rows (e.g., balance updates where type is 'balance' or 'credit')
+            if (typeStr === 'balance' || typeStr === 'credit' || typeStr === '') continue;
+            if (!ticket || ticket === '0') continue; // MT5 uses 0 for balance rows
+
+            const openTime = getValue(values, ['Open Time', 'Time']);
+            const size = getValue(values, ['Size', 'Volume', 'Lots']);
+            const item = getValue(values, ['Item', 'Symbol', 'Instrument']);
+            const openPrice = getValue(values, ['Open Price', 'Price']);
+            const sl = getValue(values, ['S/L', 'SL', 'Stop Loss', 'StopLoss']);
+            const tp = getValue(values, ['T/P', 'TP', 'Take Profit', 'TakeProfit']);
+            // For close time and close price, we look for the SECOND occurrence of 'Time' and 'Price' (MT5 format)
+            // or the explicit 'Close Time' / 'Close Price' if they exist.
+            const closeTime = getValue(values, ['Close Time', 'CloseTime', 'Time'], true);
+            const closePrice = getValue(values, ['Close Price', 'ClosePrice', 'Price'], true);
+            const commission = getValue(values, ['Commission', 'Commis']);
+            const swap = getValue(values, ['Swap', 'Storage']);
+            const profit = getValue(values, ['Profit', 'P/L']);
+            const comment = getValue(values, ['Comment', 'Note']);
+
+            // Must have a close time and a valid symbol to be considered a closed trade
+            if (!closeTime || !item) continue;
+
             const mappedSymbol = mapMTSymbol(item);
-            const tradeType = type.includes('buy') ? 'long' : 'short';
-            const mtProfit = parseFloat(profit) || 0;
+            const tradeType = typeStr.includes('buy') ? 'long' : 'short';
+            
+            // Parse numeric values safely
+            const parseNum = (val) => {
+                if (!val) return 0;
+                let clean = val.replace(/\s/g, '');
+                if (clean.includes(',') && clean.includes('.')) {
+                    clean = clean.replace(/,/g, '');
+                } else if (clean.includes(',')) {
+                    const parts = clean.split(',');
+                    if (parts[1] && parts[1].length === 3) clean = clean.replace(/,/g, '');
+                    else clean = clean.replace(',', '.');
+                }
+                return parseFloat(clean) || 0;
+            };
+
+            const entryPriceVal = parseNum(openPrice);
+            const slVal = parseNum(sl);
+            const tpVal = parseNum(tp);
+            const closePriceVal = parseNum(closePrice);
+            const sizeVal = parseNum(size);
+            const mtProfit = parseNum(profit);
+            const commVal = parseNum(commission);
+            const swapVal = parseNum(swap);
+
             let finalProfit = mtProfit;
             if (mtImportSettings.useMTProfit) {
-                if (mtImportSettings.includeCommission) finalProfit += parseFloat(commission) || 0;
-                if (mtImportSettings.includeSwap) finalProfit += parseFloat(swap) || 0;
+                if (mtImportSettings.includeCommission) finalProfit += commVal;
+                if (mtImportSettings.includeSwap) finalProfit += swapVal;
             } else {
-                const exitPrice = parseFloat(closePrice) || 0;
-                const entryPriceVal = parseFloat(openPrice) || 0;
-                const lotSizeVal = parseFloat(size) || 0.01;
-                if (exitPrice > 0 && entryPriceVal > 0) {
-                    finalProfit = calculateProfitLoss(entryPriceVal, exitPrice, lotSizeVal, mappedSymbol, tradeType);
+                if (closePriceVal > 0 && entryPriceVal > 0) {
+                    finalProfit = calculateProfitLoss(entryPriceVal, closePriceVal, sizeVal, mappedSymbol, tradeType);
                 }
             }
+
             const trade = {
                 mtTicket: ticket,
                 symbol: mappedSymbol,
                 type: tradeType,
                 instrumentType: getInstrumentType(mappedSymbol),
-                entryPrice: parseFloat(openPrice) || 0,
-                stopLoss: parseFloat(sl) || 0,
-                takeProfit: parseFloat(tp) || null,
-                lotSize: parseFloat(size) || 0.01,
-                closePrice: parseFloat(closePrice) || 0,
+                entryPrice: entryPriceVal,
+                stopLoss: slVal,
+                takeProfit: tpVal || null,
+                lotSize: sizeVal || 0.01,
+                closePrice: closePriceVal,
                 baseProfit: mtProfit,
                 profit: finalProfit,
-                commission: parseFloat(commission) || 0,
-                swap: parseFloat(swap) || 0,
+                commission: commVal,
+                swap: swapVal,
                 openTime: parseMTDateTime(openTime),
                 closeTime: parseMTDateTime(closeTime),
                 comment: comment || '',
@@ -4750,6 +4722,7 @@ function parseMetaTraderCSV(csvText) {
                 afterScreenshot: '',
                 notes: mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${comment || ''}` : (comment || '')
             };
+
             if (trade.entryPrice > 0 && trade.stopLoss > 0) {
                 trade.riskAmount = Math.abs(calculateProfitLoss(
                     trade.entryPrice, trade.stopLoss, trade.lotSize, trade.symbol, trade.type
@@ -4765,6 +4738,7 @@ function parseMetaTraderCSV(csvText) {
                 trade.riskPercent = (trade.riskAmount / getCurrentAccount().balance) * 100;
                 trade.pipsPoints = 0;
             }
+
             if (trade.symbol && !isNaN(trade.entryPrice) && trade.entryPrice > 0) {
                 trades.push(trade);
             }
@@ -4897,25 +4871,27 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
         duplicatesWarning.classList.add('hidden');
     }
     const previewTrades = newTrades.slice(0, 20);
+    
+    // FIXED: Updated text colors to be visible on dark background
     previewBody.innerHTML = previewTrades.map(trade => `
         <tr>
-            <td class="px-4 py-2 text-sm text-gray-900">${trade.mtTicket}</td>
-            <td class="px-4 py-2 text-sm text-gray-900">${trade.symbol}</td>
+            <td class="px-4 py-2 text-sm text-gray-200">${trade.mtTicket}</td>
+            <td class="px-4 py-2 text-sm text-gray-200">${trade.symbol}</td>
             <td class="px-4 py-2 text-sm">
-                <span class="${trade.type === 'long' ? 'text-green-600' : 'text-red-600'} font-semibold">
+                <span class="${trade.type === 'long' ? 'text-green-400' : 'text-red-400'} font-semibold">
                     ${trade.type.toUpperCase()}
                 </span>
             </td>
-            <td class="px-4 py-2 text-sm text-gray-900">${trade.lotSize}</td>
-            <td class="px-4 py-2 text-sm text-gray-900">${trade.entryPrice}</td>
-            <td class="px-4 py-2 text-sm text-gray-900">${trade.closePrice}</td>
+            <td class="px-4 py-2 text-sm text-gray-200">${trade.lotSize}</td>
+            <td class="px-4 py-2 text-sm text-gray-200">${trade.entryPrice}</td>
+            <td class="px-4 py-2 text-sm text-gray-200">${trade.closePrice}</td>
             <td class="px-4 py-2 text-sm">
-                <span class="${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'} font-semibold">
+                <span class="${trade.profit >= 0 ? 'text-green-400' : 'text-red-400'} font-semibold">
                     ${formatCurrency(trade.profit)}
                 </span>
             </td>
             <td class="px-4 py-2 text-sm">
-                <span class="text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs font-semibold">
+                <span class="text-green-400 bg-green-500/20 px-2 py-1 rounded-full text-xs font-semibold">
                     Ready
                 </span>
             </td>
@@ -4924,7 +4900,7 @@ function showMTImportPreview(newTrades, duplicates, totalTrades) {
     if (newTrades.length > 20) {
         previewBody.innerHTML += `
             <tr>
-                <td colspan="8" class="px-4 py-3 text-center text-gray-500 text-sm">
+                <td colspan="8" class="px-4 py-3 text-center text-gray-400 text-sm">
                     ... and ${newTrades.length - 20} more trades
                 </td>
             </tr>
