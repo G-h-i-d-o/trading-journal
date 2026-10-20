@@ -4685,17 +4685,18 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// ========== FIXED META TRADER CSV PARSER (Positions section only) ==========
 function parseMetaTraderCSV(csvText) {
     const rawLines = csvText.split('\n');
     const lines = rawLines.map(line => line.replace(/\r$/, '').trim()).filter(line => line.length > 0);
     if (lines.length < 2) return [];
 
-    // Strip BOM if present on the first line
+    // Strip UTF-8 BOM if present
     if (lines[0].charCodeAt(0) === 0xFEFF) {
         lines[0] = lines[0].slice(1);
     }
 
-    // Find the header line
+    // 1. Find header line (the real column headers, e.g. "Time,Position,Symbol,Type,...")
     let headerLineIndex = -1;
     let delimiter = ',';
     for (let i = 0; i < Math.min(lines.length, 20); i++) {
@@ -4708,7 +4709,6 @@ function parseMetaTraderCSV(csvText) {
             break;
         }
     }
-
     if (headerLineIndex === -1) {
         headerLineIndex = 0;
         delimiter = detectDelimiter(lines[0]);
@@ -4738,7 +4738,6 @@ function parseMetaTraderCSV(csvText) {
         return -1;
     };
 
-    // Fallback keyword search across all headers
     const findHeaderByKeyword = (keywords) => {
         for (const [header, indexes] of headerMap.entries()) {
             for (const kw of keywords) {
@@ -4753,7 +4752,6 @@ function parseMetaTraderCSV(csvText) {
     const getValue = (values, possibleNames, second = false) => {
         let index = findHeaderIndex(possibleNames, second);
         if (index === -1 && !second) {
-            // Try keyword fallback for robustness
             index = findHeaderByKeyword(possibleNames.map(p => p.toLowerCase()));
         }
         if (index !== -1 && index < values.length && values[index] !== undefined) {
@@ -4762,21 +4760,48 @@ function parseMetaTraderCSV(csvText) {
         return '';
     };
 
+    // 2. Section markers - MT4/MT5 reports have Positions / Orders / Deals / Results sections.
+    // We STOP at the first one we hit after the header so we never re-parse those as trades.
+    const SECTION_MARKERS = [
+        /^orders\b/i,
+        /^deals\b/i,
+        /^results\b/i,
+        /^balance\b/i,
+        /^balance:/i,
+        /^credit\b/i,
+        /^credit facility/i,
+        /^floating\b/i,
+        /^floating p\/l/i,
+        /^equity\b/i,
+        /^margin\b/i,
+        /^margin level/i,
+        /^free margin/i,
+        /^working orders\b/i,
+        /^closed p\/l\b/i,
+    ];
+
     const trades = [];
+
     for (let i = headerLineIndex + 1; i < lines.length; i++) {
         const line = lines[i];
-        if (line.toLowerCase().startsWith('balance') || line.toLowerCase().startsWith('credit') ||
-            line.toLowerCase().includes('closed p/l') || line.toLowerCase().includes('working orders')) {
+
+        // ---- CRITICAL: stop when we leave the Positions section ----
+        if (SECTION_MARKERS.some(marker => marker.test(line))) {
+            console.log(`[MT IMPORT] Section end detected at line ${i}: "${line.substring(0, 60)}" — stopping.`);
             break;
         }
 
+        // Skip blank / all-comma rows
+        if (!line.trim() || /^[,\s]*$/.test(line)) continue;
+
         const values = parseCSVLineWithDelimiter(line, delimiter);
-        if (values.length < headers.length / 2) continue;
+        if (values.length < 3) continue;
 
         try {
             const ticket = getValue(values, ['Position', 'Ticket', 'Order']);
             const typeStr = getValue(values, ['Type', 'Action']).toLowerCase();
 
+            // Skip balance / credit / blank-type rows
             if (typeStr === 'balance' || typeStr === 'credit' || typeStr === '') continue;
             if (!ticket || ticket === '0') continue;
 
@@ -4793,12 +4818,15 @@ function parseMetaTraderCSV(csvText) {
             const profit = getValue(values, ['Profit', 'P/L', 'P&L', 'Net Profit']);
             const comment = getValue(values, ['Comment', 'Note']);
 
-            if (!closeTime || !item) continue;
+            // Must have a valid symbol and a numeric entry price to be a real position
+            if (!item) continue;
 
             const mappedSymbol = mapMTSymbol(item);
+            const entryPriceVal = robustParseNumber(openPrice);
+            if (!mappedSymbol || entryPriceVal <= 0) continue;
+
             const tradeType = typeStr.includes('buy') ? 'long' : 'short';
 
-            const entryPriceVal = robustParseNumber(openPrice);
             const slVal = robustParseNumber(sl);
             const tpVal = robustParseNumber(tp);
             const closePriceVal = robustParseNumber(closePrice);
@@ -4807,17 +4835,23 @@ function parseMetaTraderCSV(csvText) {
             const commVal = robustParseNumber(commission);
             const swapVal = robustParseNumber(swap);
 
-            // Diagnostic logging so you can see the actual parsed values in the console
-            console.log('[MT IMPORT] Row:', {
-                ticket, symbol: mappedSymbol, type: tradeType,
-                rawProfit: profit, parsedProfit: mtProfit,
-                rawCommission: commission, parsedCommission: commVal,
-                rawSwap: swap, parsedSwap: swapVal,
-                entryPrice: entryPriceVal, closePrice: closePriceVal,
-                size: sizeVal
+            // Detailed diagnostic logging
+            console.log('[MT IMPORT] Row parsed:', {
+                ticket,
+                symbol: mappedSymbol,
+                type: tradeType,
+                rawProfit: profit,
+                parsedProfit: mtProfit,
+                rawCommission: commission,
+                parsedCommission: commVal,
+                rawSwap: swap,
+                parsedSwap: swapVal,
+                entryPrice: entryPriceVal,
+                closePrice: closePriceVal,
+                size: sizeVal,
             });
 
-            // Compute final profit
+            // Compute final profit based on import settings
             let finalProfit = mtProfit;
             if (mtImportSettings.useMTProfit) {
                 if (mtImportSettings.includeCommission) finalProfit += commVal;
@@ -4828,8 +4862,7 @@ function parseMetaTraderCSV(csvText) {
                 }
             }
 
-            // Safety-net: if the raw profit string had digits but parsed to 0, and prices are valid,
-            // fall back to calculated profit (prevents silent zeroing of losses with exotic formats)
+            // Safety-net: if raw text has digits but parsed to 0 (parser failure), use calc fallback
             const rawProfitStr = String(profit || '').trim();
             const rawWasEmptyOrZero = !rawProfitStr || /^[+-]?0*(?:[.,]0*)?$/.test(rawProfitStr);
             const hasDigits = /\d/.test(rawProfitStr);
@@ -4838,7 +4871,7 @@ function parseMetaTraderCSV(csvText) {
                 const calculated = calculateProfitLoss(entryPriceVal, closePriceVal, sizeVal, mappedSymbol, tradeType);
                 if (Math.abs(calculated) > 0.01) {
                     console.warn('[MT IMPORT] Suspicious zero profit detected. Using calculated fallback.', {
-                        ticket, raw: rawProfitStr, calculated
+                        ticket, raw: rawProfitStr, calculated,
                     });
                     finalProfit = calculated;
                 }
@@ -4864,9 +4897,10 @@ function parseMetaTraderCSV(csvText) {
                 mood: mtImportSettings.defaultMood,
                 beforeScreenshot: '',
                 afterScreenshot: '',
-                notes: mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${comment || ''}` : (comment || '')
+                notes: mtImportSettings.autoAddNotes ? `[Imported from MT4/5] ${comment || ''}` : (comment || ''),
             };
 
+            // Risk calc
             if (trade.entryPrice > 0 && trade.stopLoss > 0) {
                 trade.riskAmount = Math.abs(calculateProfitLoss(
                     trade.entryPrice, trade.stopLoss, trade.lotSize, trade.symbol, trade.type
@@ -4883,6 +4917,7 @@ function parseMetaTraderCSV(csvText) {
                 trade.pipsPoints = 0;
             }
 
+            // Only push valid trades
             if (trade.symbol && !isNaN(trade.entryPrice) && trade.entryPrice > 0) {
                 trades.push(trade);
             }
@@ -4890,6 +4925,8 @@ function parseMetaTraderCSV(csvText) {
             console.warn('[MT IMPORT] Error parsing row:', error, line);
         }
     }
+
+    console.log(`[MT IMPORT] Total valid positions parsed: ${trades.length}`);
     return trades;
 }
 
