@@ -1727,6 +1727,51 @@ let userDisplayName = exportedUserDisplayName;
 function updateWelcomeGreeting(profile) {
     userDisplayName = updateUserWelcomeGreeting(currentUser, profile);
 }
+// ========== SESSION TIMEOUT ==========
+let sessionTimeoutManager = null;
+let isSessionTimeoutLogout = false;
+
+function initSessionTimeout() {
+    if (sessionTimeoutManager) {
+        sessionTimeoutManager.stop();
+        sessionTimeoutManager = null;
+    }
+    const minutes = getStoredTimeoutMinutes();
+    sessionTimeoutManager = new SessionTimeoutManager({
+        timeoutMinutes: minutes,
+        onTimeout: async () => {
+            isSessionTimeoutLogout = true;
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error('[SESSION TIMEOUT] Sign out failed:', error);
+                // Fallback: force redirect
+                window.location.href = 'login.html?reason=timeout';
+            }
+        }
+    });
+    sessionTimeoutManager.start();
+    // Sync the Preferences dropdown, if it exists on the page
+    const select = document.getElementById('sessionTimeoutSelect');
+    if (select) select.value = minutes === 0 ? 'disabled' : String(minutes);
+}
+
+window.updateSessionTimeout = function (value) {
+    const minutes = value === 'disabled' ? 0 : parseInt(value, 10) || 0;
+    if (sessionTimeoutManager) {
+        sessionTimeoutManager.updateTimeout(minutes);
+    } else {
+        // If the manager hasn't started yet, just save the preference
+        setStoredTimeoutMinutes(minutes);
+    }
+    if (typeof showSuccessMessage === 'function') {
+        showSuccessMessage(
+            minutes > 0
+                ? `Session timeout set to ${minutes} minutes.`
+                : 'Session timeout disabled (not recommended).'
+        );
+    }
+};
 
 // ========== AUTHENTICATION ==========
 onAuthStateChanged(auth, async (user) => {
@@ -1770,14 +1815,26 @@ onAuthStateChanged(auth, async (user) => {
             hideLoading();
             console.log('🏁 Initialization process completed');
         }
-    } else {
+        } else {
         console.log('🚪 No user, redirecting to login');
-        window.location.href = 'index.html';
+        if (isSessionTimeoutLogout) {
+            // User was auto-logged-out due to inactivity
+            isSessionTimeoutLogout = false;
+            window.location.href = 'login.html?reason=timeout';
+        } else {
+            window.location.href = 'index.html';
+        }
     }
 });
 
 window.logout = async () => {
     try {
+        // Stop the idle timer before logging out manually
+        if (sessionTimeoutManager) {
+            sessionTimeoutManager.stop();
+            sessionTimeoutManager = null;
+        }
+        isSessionTimeoutLogout = false;
         await signOut(auth);
     } catch (error) {
         console.error('Logout error:', error);
